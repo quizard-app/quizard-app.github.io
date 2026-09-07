@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:cap": "cross-env VITE_TARGET=capacitor VITE_API_BASE=https://quizard-67e6a203.netlify.app VITE_SHARE_BASE_URL=https://quizard-67e6a203.netlify.app vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
