@@ -29,7 +29,7 @@ export async function render(root, ctx) {
       <h2>Settings</h2>
       <div class="spacer"></div>
     </header>
-    <div class="screen">
+    <div class="screen set-screen">
 
       ${sectionTitle('Account')}
       <div class="settings-group" id="account-section"></div>

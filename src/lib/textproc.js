@@ -76,6 +76,54 @@ export function extractTitleLines(text) {
   return out
 }
 
+// Document furniture that PDF extraction glues INLINE onto prose lines when a
+// page header, page number and running head share a line with body text:
+// "Module II:", "TOPIC 3", "Outcome B", "Unit 2.1", stray page numbers.
+const FURNITURE_RE = /\b(?:module|unit|chapter|lesson|week|topic|section|part|outcome|page)\s+(?:[ivxlcdm]+|\d+(?:\.\d+)*)\b[.:|]*/gi
+
+// A real prose clause usually starts with a capitalized opener followed by a
+// lowercase word — the cut point for leftover heading text glued before it.
+const OPENER_RE = /(?:^|\s)((?:An?|The|It|In|On|At|As|By|For|To|With|When|If|This|These|Those|Because|Since|While|Although|However|According)\s+[a-z][a-z'’-]*)/
+
+/**
+ * Clean one candidate sentence: remove inline document furniture (module/
+ * topic/outcome labels, stray page numbers) and any heading text glued in
+ * front of the actual statement. Only fires when furniture LEADS the line —
+ * the page-header pattern — so prose that merely mentions "Topic 3" mid-
+ * sentence is left untouched.
+ * @param {string} s - Candidate sentence
+ * @returns {string}
+ */
+export function cleanSentence(s) {
+  const original = String(s).replace(/\s+/g, ' ').trim()
+  FURNITURE_RE.lastIndex = 0
+  const lead = original.search(FURNITURE_RE)
+  if (lead === -1 || lead > 6) return original
+  const hits = original.match(FURNITURE_RE) || []
+  // A single leading label is usually real prose ("Chapter 3 discusses…").
+  // Strip it only when Title-Case heading text follows the label.
+  if (hits.length < 2) {
+    const restWords = original.slice(lead).replace(FURNITURE_RE, ' ').trim().split(/\s+/).filter(Boolean)
+    const head = restWords.slice(0, 3)
+    if (!head.length || head.some(w => !/^[A-Z]/.test(w))) return original
+  }
+  let t = original.replace(FURNITURE_RE, ' ')
+    .replace(/(?:^|\s)\d{1,4}(?=\s|$)/g, ' ')
+    .replace(/\s*\|\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // A pure-furniture line reduces to a fragment; callers that need full
+  // sentences (sentences()) filter it out by word count.
+  if (!t) return original
+  const m = t.match(OPENER_RE)
+  if (m) {
+    const start = m.index + m[0].length - m[1].length
+    const rest = t.slice(start).trim()
+    if (rest.split(/\s+/).length >= 6) return rest
+  }
+  return t
+}
+
 /**
  * Split text into sentences, filtering out very short/long ones.
  * @param {string} text - Document text
@@ -88,6 +136,7 @@ export function sentences(text) {
   const raw = flat.match(/[^.!?…]+[.!?…]*/g) || []
   return raw
     .map(s => s.replace(/\u0001/g, '.').replace(/\s+/g, ' ').trim())
+    .map(cleanSentence)
     .filter(s => {
       const words = s.split(/\s+/).length
       return words >= 6 && words <= 45 && /[a-z]/i.test(s)

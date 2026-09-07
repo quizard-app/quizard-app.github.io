@@ -59,7 +59,7 @@ export async function render(root, ctx) {
         : ['Keep practicing', 'Revisit the document and try again.']
 
   root.innerHTML = `
-    <div class="screen">
+    <div class="screen res-screen">
       <canvas class="confetti-canvas" id="confetti"></canvas>
 
       <div class="result-ring-wrap">

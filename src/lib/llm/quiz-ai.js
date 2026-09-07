@@ -3,7 +3,7 @@ import { checkTyped } from '../textproc.js'
 import { hasApiKey, chatJSON, chatMultimodal } from './gemini.js'
 import { listDocImages, saveDocImages, updateDoc } from '../storage.js'
 import { renderPdfVisuals } from '../extract/renderPage.js'
-import { extractTitleLines, keyTerms, mulberry32, shuffleArr } from '../textproc.js'
+import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence } from '../textproc.js'
 import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt } from './prompts.js'
 import {
   extractJSONArray,
@@ -326,6 +326,15 @@ export async function generateQuizAI(doc, cfg, onProgress) {
 
   let final = out
   if (imageQuestions.length) final = final.concat(imageQuestions)
+
+  // Safety net: strip any document furniture (module/topic labels, page
+  // numbers, glued headings) the model copied from the source excerpts.
+  final = final.map(q => {
+    if (q.stem) return { ...q, stem: cleanSentence(q.stem) }
+    if (q.statement) return { ...q, statement: cleanSentence(q.statement) }
+    if (q.clue) return { ...q, clue: cleanSentence(q.clue) }
+    return q
+  })
 
   // Cap to the user-requested count so visual extras don't overflow.
   if (final.length > cfg.count) final = final.slice(0, cfg.count)

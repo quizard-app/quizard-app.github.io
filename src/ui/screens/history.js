@@ -71,7 +71,7 @@ export async function render(root, ctx) {
       <div class="brand"><span class="mark">${icon('logo')}</span>Progress</div>
       <button class="icon-btn" id="theme-btn" data-tooltip="${ctx.state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}">${ctx.state.theme === 'dark' ? icon('sun') : icon('moon')}</button>
     </header>
-    <div class="screen">
+    <div class="screen hist-screen">
       ${statsRow([
         { value: streak, label: 'Day Streak' },
         { value: attempts.length, label: 'Quizzes' },

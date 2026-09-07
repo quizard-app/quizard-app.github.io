@@ -43,7 +43,7 @@
  * @property {'partial' | 'not_enough_content' | 'no_types' | null} error
  */
 
-import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, mulberry32, shuffleArr } from './textproc.js'
+import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption } from './questionForms.js'
 
@@ -55,6 +55,8 @@ import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcq
  */
 export function buildMistakeQuestions(mistakes, docTerms) {
   const rng = mulberry32((Date.now() ^ 0x9e3779b9) >>> 0)
+  // Banked sentences may predate inline-furniture cleaning — re-clean them.
+  mistakes = mistakes.map(m => ({ ...m, sentence: cleanSentence(m.sentence) }))
   return mistakes.map(m => {
     const pool = (docTerms.get(m.docId) || []).filter(t => t.term !== m.term.toLowerCase())
     if (pool.length >= 3) {

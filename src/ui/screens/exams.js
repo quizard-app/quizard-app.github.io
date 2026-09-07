@@ -32,7 +32,7 @@ async function renderList(root, ctx) {
       <h2>Exams</h2>
       <button class="icon-btn" id="new-exam-btn" data-tooltip="New exam with the wizard">${icon('plus')}</button>
     </header>
-    <div class="screen">
+    <div class="screen ex-screen">
       ${upcoming.length ? sectionTitle('Upcoming') : ''}
       ${upcoming.map(e => examCard(e)).join('')}
       ${past.length ? sectionTitle('Past') + past.map(e => examCard(e, true)).join('') : ''}
@@ -82,7 +82,7 @@ async function renderDetail(root, ctx, examId) {
         <div style="font-size:11.5px;color:var(--text-faint)" id="exam-countdown-line"></div>
       </div>
     </header>
-    <div class="screen">
+    <div class="screen ex-screen">
       <div id="exam-detail-body"><div class="reader-loading">Summoning your exam plan…</div></div>
     </div>
   `

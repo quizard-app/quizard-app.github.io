@@ -18,7 +18,7 @@ export async function render(root, ctx) {
       <h2>Document</h2>
       <div class="spacer"></div>
     </header>
-    <div class="screen">
+    <div class="screen dd-screen">
       <div class="setup-hero">
         <div class="doc-icon ${doc.type}">${icon('fileText')}</div>
         <div style="min-width:0;flex:1">

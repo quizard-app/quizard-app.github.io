@@ -3,6 +3,7 @@ import {
   isTitleLike,
   stripHeadings,
   extractTitleLines,
+  cleanSentence,
   sentences,
   checkTyped,
   keyTerms
@@ -119,5 +120,41 @@ describe('checkTyped', () => {
   it('rejects wrong answers', () => {
     expect(checkTyped('chloroplast', 'mitochondria')).toBe(false)
     expect(checkTyped('', 'mitochondria')).toBe(false)
+  })
+})
+
+describe('cleanSentence — inline PDF furniture', () => {
+  const polluted = 'Module II: Foundation of Ethics in IT 9 TOPIC 3 Basic Ethical Theories and Their Application in IT TOPIC 3 | Outcome B Organizational build An action is ethical if it produces the greatest good (or least harm) for the greatest number.'
+
+  it('recovers the real statement from the glued header blob', () => {
+    expect(cleanSentence(polluted)).toBe(
+      'An action is ethical if it produces the greatest good (or least harm) for the greatest number.')
+  })
+
+  it('leaves prose that merely mentions a module/topic mid-sentence', () => {
+    const prose = 'The syllabus covers Module II and Topic 3 in considerable depth every semester.'
+    expect(cleanSentence(prose)).toBe(prose)
+  })
+
+  it('leaves a single leading mention alone (may be real prose)', () => {
+    const prose = 'Chapter 3 discusses how photosynthesis converts light into chemical energy stores.'
+    expect(cleanSentence(prose)).toBe(prose)
+  })
+
+  it('strips leading page numbers and running heads when they lead the line', () => {
+    expect(cleanSentence('12 TOPIC 4 | Outcome C It stores energy produced during the light reactions of photosynthesis.'))
+      .toBe('It stores energy produced during the light reactions of photosynthesis.')
+  })
+
+  it('reduces a pure-furniture line to the leftover fragment', () => {
+    expect(cleanSentence('Module II 9 TOPIC 3 Outcome B')).toBe('Outcome B')
+  })
+
+  it('sentences() emits furniture-free candidates', () => {
+    const doc = 'TOPIC 3 Basic Ethical Theories Utilitarianism. ' +
+      'Module II 9 TOPIC 3 | Outcome B An action is ethical if it produces the greatest good for the greatest number.'
+    const out = sentences(doc)
+    expect(out.some(s => s.startsWith('An action is ethical'))).toBe(true)
+    expect(out.every(s => !/TOPIC|Outcome|Module/.test(s))).toBe(true)
   })
 })

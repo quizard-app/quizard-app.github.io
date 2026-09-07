@@ -34,7 +34,7 @@ export async function render(root, ctx) {
       <h2>Quiz Setup</h2>
       <button class="icon-btn" id="theme-btn" data-tooltip="${ctx.state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}">${ctx.state.theme === 'dark' ? icon('sun') : icon('moon')}</button>
     </header>
-    <div class="screen has-actionbar">
+    <div class="screen has-actionbar setup-screen">
       <div class="setup-hero">
         <div class="doc-icon ${doc.type}">${icon('fileText')}</div>
         <div style="min-width:0">

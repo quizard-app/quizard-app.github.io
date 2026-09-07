@@ -242,7 +242,7 @@ export async function render(root, ctx) {
         <button class="icon-btn text-btn" id="font-plus" data-tooltip="Larger text">A+</button>
       </div>
     </header>
-    <div class="screen">
+    <div class="screen rev-screen">
       <div class="review-toggle">
         <div class="seg" style="width:100%">
           ${tabs.map(t => `<button id="tab-${t.id}" data-tab="${t.id}" class="${view === t.id ? 'on' : ''}" style="flex:1">${icon(t.icon)} ${t.label}</button>`).join('')}
