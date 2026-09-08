@@ -45,4 +45,14 @@ describe('payload builders', () => {
     })
     expect(p.c).toEqual({ n: 'Sam', p: 80, c: 8, t: 10 })
   })
+
+  it('keeps answerIndices so shared multi-select questions stay gradable', () => {
+    const p = buildQuizPayload('Q', [
+      { type: 'multi', stem: 'Pick two.', options: ['a', 'b', 'c', 'd', 'e'], answerIndices: [0, 2], meta: {} },
+      { type: 'except', stem: 'All true EXCEPT:', options: ['a', 'b', 'c', 'd'], answerIndex: 1, meta: {} }
+    ])
+    expect(p.q).toHaveLength(2)
+    expect(p.q[0].answerIndices).toEqual([0, 2])
+    expect(p.q[1].answerIndex).toBe(1)
+  })
 })

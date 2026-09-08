@@ -224,13 +224,13 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
 }
 
 /* ── Quiz ── */
+/* solid glass (no backdrop-filter): blur on a sticky bar can blank the
+   page while scrolling on some GPUs — especially on iOS Safari */
 .quiz-topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 0;
   position: sticky; top: 0; z-index: 10;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--glass-solid);
   border-bottom: 1px solid var(--border);
   margin: 0 calc(var(--pad-x) * -1); padding-left: var(--pad-x); padding-right: var(--pad-x);
 }
@@ -262,6 +262,8 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
 }
 .opt-btn:hover { border-color: var(--accent-border); background: var(--surface-hover); transform: translateY(-1px); }
 .opt-btn:active { transform: scale(0.98); }
+.opt-btn.sel { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 14px var(--accent-glow); }
+.opt-btn.sel .opt-key { background: var(--accent); color: #fff; border-color: var(--accent); }
 .opt-key { width: 30px; height: 30px; border-radius: var(--radius-xs); background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-faint); flex-shrink: 0; transition: background 0.16s, color 0.16s; }
 .opt-btn.correct { border-color: var(--good); background: var(--good-bg); color: var(--text); box-shadow: 0 0 16px rgba(16, 185, 129, 0.25); }
 .opt-btn.correct .opt-key { background: var(--good); color: #fff; border-color: var(--good); }
@@ -779,6 +781,7 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   background: rgba(9, 7, 26, 0.85); color: #fff;
   padding: 3px 8px; border-radius: var(--radius-xs);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .img-viewer {
@@ -809,9 +812,11 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   width: 46px; height: 46px; border-radius: var(--radius-sm);
   background: rgba(255,255,255,0.15); color: #fff;
   display: grid; place-items: center;
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
 }
+
 .iv-zoom:active { background: rgba(255,255,255,0.28); }
 .iv-zoom svg { width: 22px; height: 22px; }
 .iv-close {
@@ -820,6 +825,7 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   background: rgba(255,255,255,0.15); color: #fff;
   display: grid; place-items: center;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
 }
 .iv-close svg { width: 22px; height: 22px; }
@@ -829,6 +835,7 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   background: rgba(255,255,255,0.15); color: #fff;
   display: grid; place-items: center;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
 }
 .iv-nav svg { width: 22px; height: 22px; }
@@ -1168,14 +1175,14 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
   max-width: 340px;
 }
 
+/* solid glass (no backdrop-filter): blur on a sticky bar can blank the
+   page while scrolling on some GPUs — especially on iOS Safari */
 .onb-bottom {
   position: relative;
   z-index: 2;
   padding: 18px 24px calc(22px + env(safe-area-inset-bottom));
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--glass-solid);
 }
 .onb-dots {
   display: flex;

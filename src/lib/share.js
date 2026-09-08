@@ -45,7 +45,7 @@ async function gunzip(bytes) {
 // have no local image) and explanations (saved space; re-derivable if needed).
 const KEEP = [
   'type', 'stem', 'clue', 'statement', 'options', 'choices', 'answerIndex',
-  'prompt', 'answer', 'pairs', 'rightOrder', 'steps', 'shuffled',
+  'answerIndices', 'prompt', 'answer', 'pairs', 'rightOrder', 'steps', 'shuffled',
   'meta', 'difficulty'
 ]
 

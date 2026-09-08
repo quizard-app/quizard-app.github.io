@@ -162,10 +162,14 @@ export async function render(root, ctx) {
       `<div class="rvq-opts">${(arr || []).map((o, oi) =>
         `<span>${numbered ? oi + 1 + '.' : String.fromCharCode(65 + oi) + '.'} ${esc(o)}</span>`).join('')}</div>`
 
-    if (q.type === 'mcq') {
-      qText = esc(q.stem)
+    if (q.type === 'mcq' || q.type === 'except') {
+      qText = (q.type === 'except' ? '<span class="rvq-tag">EXCEPT</span> ' : '') + esc(q.stem)
       optsHtml = optList(q.options)
       ansHtml = q.options?.[q.answerIndex] ?? ''
+    } else if (q.type === 'multi') {
+      qText = '<span class="rvq-tag">SELECT 2</span> ' + esc(q.stem)
+      optsHtml = optList(q.options)
+      ansHtml = (q.answerIndices || []).map(i => q.options?.[i]).filter(Boolean).join(' · ')
     } else if (q.type === 'tf') {
       qText = `<span class="rvq-tag">T/F</span> ${esc(q.statement)}`
       ansHtml = q.answer ? 'True' : 'False'

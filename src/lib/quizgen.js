@@ -10,8 +10,8 @@
 /**
  * @typedef {Object} QuizConfig
  * @property {number} count - Number of questions to generate
- * @property {{ mcq?: boolean, tf?: boolean, fib?: boolean, id?: boolean, matching?: boolean, ordering?: boolean, short?: boolean }} mix - Enabled question types
- * @property {'easy' | 'medium' | 'hard'} difficulty
+ * @property {{ mcq?: boolean, tf?: boolean, fib?: boolean, id?: boolean, matching?: boolean, ordering?: boolean, short?: boolean, except?: boolean, multi?: boolean }} mix - Enabled question types
+ * @property {'easy' | 'medium' | 'hard' | 'adaptive'} difficulty
  * @property {boolean} shuffle - Whether to shuffle final questions
  * @property {number} [timerSec] - Timer in seconds (0 = off)
  * @property {boolean} [fresh] - Prefer unused sentences
@@ -19,11 +19,12 @@
  * @property {number} [fixedSeed] - Deterministic seed
  * @property {boolean} [focusWeak] - Bias toward weak terms
  * @property {Array<{term: string}>} [weakTerms] - Weak terms for biasing
+ * @property {boolean} [aiAuthor] - AI authors the whole quiz instead of polishing
  */
 
 /**
  * @typedef {Object} QuizQuestion
- * @property {'mcq' | 'tf' | 'fib' | 'id' | 'matching' | 'ordering' | 'short'} type
+ * @property {'mcq' | 'tf' | 'fib' | 'id' | 'matching' | 'ordering' | 'short' | 'except' | 'multi'} type
  * @property {string} [stem] - Question stem (mcq, fib)
  * @property {string} [statement] - Statement for TF questions
  * @property {string} [clue] - Clue for ID questions
@@ -89,13 +90,29 @@ export const TYPE_META = {
   id: { name: 'Identification', short: 'Identify' },
   matching: { name: 'Matching', short: 'Match' },
   ordering: { name: 'Ordering', short: 'Order' },
-  short: { name: 'Short Answer', short: 'Short' }
+  short: { name: 'Short Answer', short: 'Short' },
+  except: { name: 'Except (find the false one)', short: 'EXCEPT' },
+  multi: { name: 'Select Two', short: 'Select 2' }
 }
 
 const DIFFICULTY = {
   easy: [0, 0.35],
   medium: [0.3, 0.75],
-  hard: [0.65, 1]
+  hard: [0.65, 1],
+  // Adaptive serves from the full band at generation time; the quiz screen
+  // reorders questions by tier at runtime (hard on streaks, easy after misses).
+  adaptive: [0, 1]
+}
+
+// Difficulty tier of a term by its frequency rank: common terms are easy,
+// rare/specific ones are hard. Used to tag questions for adaptive serving.
+export function tierForTerm(termStr, terms) {
+  if (!termStr || !terms.length) return null
+  const sorted = terms.slice().sort((a, b) => (b.freq || 0) - (a.freq || 0))
+  const idx = sorted.findIndex(t => t.term === String(termStr).toLowerCase())
+  if (idx === -1) return null
+  const pct = sorted.length > 1 ? idx / (sorted.length - 1) : 0
+  return pct < 0.35 ? 'easy' : pct < 0.75 ? 'medium' : 'hard'
 }
 
 function findTermInSentence(sentence, terms) {
@@ -182,15 +199,6 @@ export function generateQuiz(doc, config) {
   const poolSize = Math.min(ranked.length, Math.max(config.count * 3, 30))
   let sentPool = ranked.slice(0, poolSize)
 
-  if (config.focusWeak && Array.isArray(config.weakTerms) && config.weakTerms.length) {
-    const weakSet = new Set(config.weakTerms.map(w => String(w.term || w).toLowerCase()))
-    sentPool = sentPool.slice().sort((a, b) => {
-      const aw = weakSet.has(termIn(weakSet, a.text)) ? 0 : 1
-      const bw = weakSet.has(termIn(weakSet, b.text)) ? 0 : 1
-      return aw - bw
-    })
-  }
-
   const cooccur = buildCooccurrence(ranked.map(s => s.text), terms)
 
   if (Array.isArray(config.topics) && config.topics.length) {
@@ -209,6 +217,51 @@ export function generateQuiz(doc, config) {
       tf.clear()
       for (const [k, v] of scopedTf) tf.set(k, v)
     }
+  } else {
+    // Topic coverage: interleave the pool round-robin across detected topics
+    // so every section of the document gets quizzed, not just whichever terms
+    // happen to be most frequent. Buckets keep ranked order internally.
+    try {
+      const { membership } = detectTopics(text)
+      if (membership.size) {
+        const buckets = new Map()
+        const loose = []
+        for (const s of sentPool) {
+          const t = membership.get(s.text)
+          if (t) {
+            if (!buckets.has(t)) buckets.set(t, [])
+            buckets.get(t).push(s)
+          } else loose.push(s)
+        }
+        if (buckets.size >= 2) {
+          const order = [...buckets.keys()].sort((a, b) =>
+            (buckets.get(b)[0]?.score ?? 0) - (buckets.get(a)[0]?.score ?? 0))
+          const mixed = []
+          for (let i = 0; ; i++) {
+            let added = false
+            for (const k of order) {
+              const b = buckets.get(k)
+              if (i < b.length) { mixed.push(b[i]); added = true }
+            }
+            if (!added) break
+          }
+          sentPool = mixed.concat(loose)
+        }
+      }
+    } catch { /* topic interleave is best-effort */ }
+  }
+
+  // Weak-focus partition runs LAST (stable): sentences containing the
+  // learner's weak terms float to the front of the pool while keeping the
+  // topic-interleaved order inside each group. Running it before the
+  // interleave would let the interleave destroy the biasing.
+  if (config.focusWeak && Array.isArray(config.weakTerms) && config.weakTerms.length) {
+    const weakSet = new Set(config.weakTerms.map(w => String(w.term || w).toLowerCase()))
+    sentPool = sentPool.slice().sort((a, b) => {
+      const aw = weakSet.has(termIn(weakSet, a.text)) ? 0 : 1
+      const bw = weakSet.has(termIn(weakSet, b.text)) ? 0 : 1
+      return aw - bw
+    })
   }
 
   const enabled = Object.entries(config.mix || {}).filter(([, on]) => on).map(([t]) => t)
@@ -249,6 +302,16 @@ export function generateQuiz(doc, config) {
       if (q) questions.push(q)
       continue
     }
+    if (type === 'except') {
+      const q = buildExceptQuestion(rng, sentPool, usedSentences, usedTerms, terms, tierTerms)
+      if (q) questions.push(q)
+      continue
+    }
+    if (type === 'multi') {
+      const q = buildMultiQuestion(rng, sentPool, usedSentences, usedTerms, terms, tierTerms)
+      if (q) questions.push(q)
+      continue
+    }
     const cand = takeCandidate()
     if (!cand) break
     const q = buildQuestion(type, cand, terms, tierTerms, rng, { cooccur })
@@ -260,6 +323,16 @@ export function generateQuiz(doc, config) {
 
   let final = questions
   if (config.shuffle) final = shuffleArr(final, rng)
+
+  // Tag every term-grounded question with its difficulty tier so the quiz
+  // screen can serve adaptively (and so adaptive works on AI-polished
+  // questions too, which keep the heuristic term in meta).
+  for (const q of final) {
+    if (q.meta?.term && !q.meta.tier) {
+      const tier = tierForTerm(q.meta.term, terms)
+      if (tier) q.meta.tier = tier
+    }
+  }
 
   return {
     questions: final,
@@ -376,14 +449,113 @@ function titleCase(s) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function matchCase(replacement, original) {
-  if (original[0] >= 'A' && original[0] <= 'Z') {
-    return replacement.charAt(0).toUpperCase() + replacement.slice(1)
+// Shared prep for the statement-set builders (except / multi): gather the
+// next unused candidates without consuming them, plus a falsifier for a
+// candidate sentence. Returns { cands, combined }.
+function gatherCandidates(sentPool, usedSentences, usedTerms, terms, tierTerms, want) {
+  const cands = []
+  for (const s of sentPool) {
+    if (cands.length >= want) break
+    if (usedSentences.has(s.text)) continue
+    const term = findTermInSentence(s.text, terms.filter(t => !usedTerms.has(t.term)).concat(tierTerms))
+    if (!term) continue
+    cands.push({ ...s, term })
   }
-  return replacement
+  return cands
 }
 
-function swapWithDistractor(sentence, term, allTerms, rng) {
+// Falsify a candidate sentence: swap its term (or any other proper/phrase
+// term present in the sentence) with a distractor, else tweak a number.
+function falsify(cand, combined, rng) {
+  const tried = new Set()
+  const attempt = t => {
+    if (!t || tried.has(t.term)) return null
+    tried.add(t.term)
+    const s = swapWithDistractor(cand.text, t, combined, rng)
+    return s && s !== cand.text ? s : null
+  }
+  let out = attempt(cand.term)
+  if (out) return out
+  for (const t of combined) {
+    if (!t.proper && !t.phrase) continue
+    out = attempt(t)
+    if (out) return out
+  }
+  const tweaked = tweakNumbers(cand.text, rng)
+  return tweaked && tweaked !== cand.text ? tweaked : null
+}
+
+function consume(cands, usedSentences, usedTerms) {
+  for (const c of cands) {
+    usedSentences.add(c.text)
+    usedTerms.add(c.term.term)
+  }
+}
+
+const stripEnd = s => s.replace(/[.!?…]+$/, '')
+
+// "All of the following are true EXCEPT" — three true statements from the
+// document, one falsified via a distractor swap or number tweak.
+function buildExceptQuestion(rng, sentPool, usedSentences, usedTerms, terms, tierTerms) {
+  const cands = gatherCandidates(sentPool, usedSentences, usedTerms, terms, tierTerms, 4)
+  if (cands.length < 4) return null
+  const combined = terms.concat(tierTerms.filter(t => !terms.includes(t)))
+  const options = cands.map(c => stripEnd(c.text))
+  let falseIdx = -1
+  for (const i of shuffleArr(cands.map((_, k) => k), rng)) {
+    const bad = falsify(cands[i], combined, rng)
+    if (bad) { options[i] = stripEnd(bad); falseIdx = i; break }
+  }
+  if (falseIdx === -1) return null
+  const shuffled = shuffleArr(options.map((_, i) => i), rng)
+  const shuffledOptions = shuffled.map(i => options[i])
+  const answerIndex = shuffledOptions.indexOf(options[falseIdx])
+  consume(cands, usedSentences, usedTerms)
+  return {
+    type: 'except',
+    stem: 'All of the following statements are true EXCEPT:',
+    options: shuffledOptions,
+    answerIndex,
+    meta: { sentence: cands[falseIdx].text, term: cands[falseIdx].term.term }
+  }
+}
+
+// "Select TWO correct statements" — two untouched statements hiding among
+// three falsified ones. Graded by exact set match.
+function buildMultiQuestion(rng, sentPool, usedSentences, usedTerms, terms, tierTerms) {
+  const cands = gatherCandidates(sentPool, usedSentences, usedTerms, terms, tierTerms, 6)
+  if (cands.length < 5) return null
+  const combined = terms.concat(tierTerms.filter(t => !terms.includes(t)))
+  // Falsify every candidate that CAN be falsified; need 3 false + 2 true.
+  const falsified = []
+  const stayedTrue = []
+  for (const c of cands) {
+    const bad = falsify(c, combined, rng)
+    if (bad && falsified.length < 3) falsified.push({ c, bad })
+    else stayedTrue.push(c)
+  }
+  if (falsified.length < 3 || stayedTrue.length < 2) return null
+  const options = [
+    ...stayedTrue.slice(0, 2).map(c => stripEnd(c.text)),
+    ...falsified.map(a => stripEnd(a.bad))
+  ]
+  const shuffled = shuffleArr(options.map((_, i) => i), rng)
+  const shuffledOptions = shuffled.map(i => options[i])
+  const answerIndices = shuffled
+    .map((orig, pos) => (orig < 2 ? pos : -1))
+    .filter(p => p !== -1)
+    .sort((a, b) => a - b)
+  consume([...stayedTrue.slice(0, 2), ...falsified.map(a => a.c)], usedSentences, usedTerms)
+  return {
+    type: 'multi',
+    stem: 'Select TWO correct statements.',
+    options: shuffledOptions,
+    answerIndices,
+    meta: { sentence: falsified[0].c.text, term: falsified[0].c.term.term }
+  }
+}
+
+export function swapWithDistractor(sentence, term, allTerms, rng) {
   if (!term.proper && !term.phrase) return null
   const properPool = allTerms.filter(t => t.proper || t.phrase)
   const pool = properPool.length >= 4 ? properPool : allTerms
@@ -392,8 +564,19 @@ function swapWithDistractor(sentence, term, allTerms, rng) {
   if (!usable) return null
   const re = new RegExp(term.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
   if (!re.test(sentence)) return null
-  const original = sentence.match(re)[0]
-  return sentence.replace(re, matchCase(usable, original))
+  const m = sentence.match(re)
+  // Never swap into a possessive slot ("Bentham's" → "theories's" is broken).
+  if (sentence[m.index + m[0].length] === "'") return null
+  const cand = allTerms.find(t => t.term === usable)
+  let replacement = usable
+  if (m.index === 0) {
+    replacement = replacement.charAt(0).toUpperCase() + replacement.slice(1)
+  } else if (cand && !cand.proper) {
+    // A common phrase replacing a proper noun mid-sentence stays lowercase —
+    // "developed by Bentham and Basic ethical theories" reads as a bug.
+    replacement = replacement.charAt(0).toLowerCase() + replacement.slice(1)
+  }
+  return sentence.replace(re, replacement)
 }
 
 function require_hash(str) {

@@ -3,8 +3,9 @@ import { checkTyped } from '../textproc.js'
 import { hasApiKey, chatJSON, chatMultimodal } from './gemini.js'
 import { listDocImages, saveDocImages, updateDoc } from '../storage.js'
 import { renderPdfVisuals } from '../extract/renderPage.js'
-import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence } from '../textproc.js'
-import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt } from './prompts.js'
+import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence, hashString } from '../textproc.js'
+import { sentences, termFreq, scoreSentences, stripHeadings } from '../textproc.js'
+import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt, explainBatchPrompt, authorQuizPrompt } from './prompts.js'
 import {
   extractJSONArray,
   clean,
@@ -149,7 +150,8 @@ async function authorVisualQuestions(doc, elements, isBanned, weakHint) {
       if (el && el.imageId) imageId = el.imageId
     }
     if (row?.kind === 'mcq') {
-      const correct = clean(row.correct) || q.meta.term
+      const correct = clean(row.correct)
+      if (!correct) continue // no answer, no question
       const ok = validateGeneratedMcq(row, correct)
       if (!ok) continue
       if (isBanned(ok.stem)) continue
@@ -268,11 +270,44 @@ export async function generateQuizAI(doc, cfg, onProgress) {
     }
   }
 
+  // Full AI authoring: Gemini writes the whole quiz from scratch (recall +
+  // comprehension + scenario questions) instead of polishing built-in drafts.
+  let aiNote = null
+  let authorFailed = null
+  if (cfg.aiAuthor) {
+    try {
+      const authored = await authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress)
+      if (authored.questions.length >= Math.min(3, cfg.count)) {
+        let final = authored.questions
+        if (final.length < cfg.count) {
+          const used = new Set(final.map(q => q.meta?.sentence))
+          final = final.concat(
+            base.questions.filter(q => !used.has(q.meta?.sentence)).slice(0, cfg.count - final.length)
+          )
+        }
+        final = final.slice(0, cfg.count)
+        if (cfg.shuffle) final = shuffleArr(final, mulberry32((base.seed ^ 0x5bf03635) >>> 0))
+        return {
+          questions: final,
+          seed: base.seed,
+          error: final.length < cfg.count ? 'partial' : null,
+          aiPolished: true,
+          aiNote: null
+        }
+      }
+      // Authoring yielded too little — fall through to the polish pipeline
+      // below. Remember a hard failure so the learner still gets an honest
+      // "used built-in questions" note when nothing AI lands.
+      if (authored.error) authorFailed = classifyAIError(authored.error)
+    } catch (err) {
+      authorFailed = classifyAIError(err)
+    }
+  }
+
   let done = base.questions.length - queue.length
   onProgress?.(done, base.questions.length)
 
   const optionRng = mulberry32((base.seed ^ 0x7a3f1d9b) >>> 0)
-  let aiNote = null
   const results = new Map()
   const BATCH = 6
   for (let g = 0; g < queue.length; g += BATCH) {
@@ -343,12 +378,15 @@ export async function generateQuizAI(doc, cfg, onProgress) {
     final = shuffleArr(final, mulberry32((base.seed ^ 0x5bf03635) >>> 0))
   }
 
+  const aiPolished = polishedCount > 0 || imageQuestions.length > 0
   return {
     questions: final,
     seed: base.seed,
     error: final.length < cfg.count ? 'partial' : null,
-    aiPolished: polishedCount > 0 || imageQuestions.length > 0,
-    aiNote
+    aiPolished,
+    // Surface an authoring failure only when the final quiz contains no AI
+    // content at all — otherwise the toast would lie about a polished quiz.
+    aiNote: aiNote || (!aiPolished && authorFailed ? authorFailed : null)
   }
 }
 
@@ -373,5 +411,118 @@ export async function gradeShortAnswer(userAnswer, q) {
     return null
   } catch {
     return null
+  }
+}
+
+// Full AI authoring: Gemini writes exam-style questions (recall +
+// comprehension + scenario) straight from numbered source sentences, one
+// batch of sentences per call. Every item must cite its source ("src") and
+// share content words with it — anything ungrounded, off-ban-list, or
+// malformed is rejected. Returns { questions, error } where error records
+// the first batch failure (null when every call succeeded).
+async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
+  const text = stripHeadings(doc.text)
+  const ranked = scoreSentences(sentences(text), termFreq(text))
+  if (ranked.length < 3) return { questions: [], error: null }
+  // Top sentences from across the document; one question authored per
+  // sentence so coverage spreads instead of clustering.
+  const material = ranked.slice(0, Math.max(Math.min(cfg.count * 3, 60), 12))
+  const BATCH = 6
+  const optionRng = mulberry32(hashString(String(doc.id)))
+  const out = []
+  const seen = new Set()
+  let firstErr = null
+  for (let g = 0; g < material.length && out.length < cfg.count; g += BATCH) {
+    const group = material.slice(g, g + BATCH).map((s, k) => ({ i: k, text: s.text }))
+    let arr = null
+    try {
+      arr = extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint), {
+        maxOutputTokens: 1024 + 320 * group.length, temperature: 0.7
+      }))
+    } catch (err) {
+      if (!firstErr) firstErr = err
+      /* this batch yields nothing; keep the rest */
+    }
+    for (const row of Array.isArray(arr) ? arr : []) {
+      if (out.length >= cfg.count) break
+      const src = Number(row?.src)
+      if (!Number.isInteger(src) || src < 0 || src >= group.length) continue
+      const source = group[src].text
+      if (row?.kind === 'mcq') {
+        const correct = clean(row.correct)
+        const ok = correct && validateGeneratedMcq(row, correct)
+        if (!ok) continue
+        if (isBanned(ok.stem) || ok.wrong.some(w => isBanned(w))) continue
+        if (!grounded(ok.stem + ' ' + correct, source)) continue
+        const options = shuffleArr([correct, ...ok.wrong], optionRng)
+        const stem = cleanSentence(ok.stem)
+        if (seen.has(stem.toLowerCase())) continue
+        seen.add(stem.toLowerCase())
+        out.push({
+          type: 'mcq',
+          stem,
+          options,
+          answerIndex: options.indexOf(correct),
+          meta: { sentence: source, term: correct, docId: doc.id, authored: true }
+        })
+      } else if (row?.kind === 'short') {
+        const ok = validateGeneratedShort(row, clean(row.answer))
+        if (!ok) continue
+        if (isBanned(ok.prompt)) continue
+        if (!grounded(ok.prompt + ' ' + ok.answer, source)) continue
+        if (seen.has(ok.prompt.toLowerCase())) continue
+        seen.add(ok.prompt.toLowerCase())
+        out.push({
+          type: 'short',
+          prompt: ok.prompt,
+          answer: ok.answer,
+          meta: { sentence: source, term: ok.answer, docId: doc.id, authored: true }
+        })
+      }
+    }
+    onProgress?.(Math.min(cfg.count, out.length), cfg.count)
+  }
+  return { questions: out, error: firstErr }
+}
+
+// Anti-hallucination guard for authored questions: the question + answer
+// must share at least two content words (4+ chars) with the source sentence
+// they claim to be based on.
+export function grounded(text, source) {
+  const toks = s => new Set((String(s).toLowerCase().match(/[a-z0-9]{4,}/g) || []))
+  const a = toks(text)
+  const b = toks(source)
+  let hits = 0
+  for (const w of a) if (b.has(w)) hits++
+  return hits >= 2
+}
+
+// Pre-fetch one-line explanations for a whole quiz, in chunks of 20 so the
+// batched response fits the token budget even for long quizzes. Mutates each
+// question in place (q.explanation) as results arrive — the quiz screen shows
+// them automatically in the feedback banner. Best-effort: any failure leaves
+// questions without explanations and the tap-to-explain button still works.
+export async function explainQuestions(questions) {
+  const items = (questions || []).filter(q => q && !q.explanation &&
+    (q.stem || q.statement || q.clue || q.prompt))
+  if (!items.length) return
+  const CHUNK = 20
+  for (let g = 0; g < items.length; g += CHUNK) {
+    const chunk = items.slice(g, g + CHUNK)
+    try {
+      const text = await chatJSON(explainBatchPrompt(chunk), {
+        maxOutputTokens: 2048, temperature: 0.3, timeoutMs: 45000
+      })
+      let parsed = null
+      try { parsed = JSON.parse(text) } catch { /* try array extraction */ }
+      const list = Array.isArray(parsed?.explanations)
+        ? parsed.explanations
+        : extractJSONArray(text) || []
+      for (const e of list) {
+        const q = chunk[Number(e?.i)]
+        const t = clean(e?.text)
+        if (q && t) q.explanation = t.slice(0, 240)
+      }
+    } catch { /* best-effort per chunk */ }
   }
 }

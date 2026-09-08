@@ -62,10 +62,16 @@ export function buildQuizMarkdown(docName, questions, review) {
       out.push('')
       return
     }
-    const typeLabel = q.type === 'id' ? 'IDENTIFY' : q.type === 'tf' ? 'TRUE/FALSE' : q.type === 'fib' ? 'FILL BLANK' : q.type === 'short' ? 'SHORT ANSWER' : 'MULTIPLE CHOICE'
+    const typeLabel = q.type === 'id' ? 'IDENTIFY'
+      : q.type === 'tf' ? 'TRUE/FALSE'
+      : q.type === 'fib' ? 'FILL BLANK'
+      : q.type === 'short' ? 'SHORT ANSWER'
+      : q.type === 'except' ? 'EXCEPT'
+      : q.type === 'multi' ? 'SELECT TWO'
+      : 'MULTIPLE CHOICE'
     out.push(`**${i + 1}. [${typeLabel}]** ${prompt}`)
     let opts = null
-    if (q.type === 'mcq' || q.type === 'fib') opts = q.options || q.choices
+    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except' || q.type === 'multi') opts = q.options || q.choices
     else if (q.type === 'tf') opts = ['True', 'False']
     if (opts) {
       const letters = optionLetters(opts.length)
@@ -75,7 +81,9 @@ export function buildQuizMarkdown(docName, questions, review) {
       ? q.answer
       : q.type === 'tf'
         ? String(q.answer)
-        : (q.options ?? q.choices)?.[q.answerIndex]
+        : q.type === 'multi'
+          ? (q.answerIndices || []).map(k => (q.options || [])[k]).filter(Boolean).join(' · ')
+          : (q.options ?? q.choices)?.[q.answerIndex]
     out.push(`**Answer:** ${answer}`)
     const rev = review?.[i]
     if (rev && !rev.ok && rev.chosen != null) out.push(`_Your answer: ${rev.chosen}_`)

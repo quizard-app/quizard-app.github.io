@@ -11,6 +11,8 @@
 }
 
 /* ── Header ── */
+/* solid glass (no backdrop-filter): blur on a sticky bar can blank the
+   page while scrolling on some GPUs — especially on iOS Safari */
 .app-header {
   min-height: var(--header-h);
   display: flex;
@@ -22,9 +24,7 @@
   position: sticky;
   top: 0;
   z-index: 25;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: var(--glass-solid);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
@@ -124,6 +124,7 @@ html[data-theme='dark'] .nav-item.active { color: var(--text); }
   user-select: none;
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
 }
 .btn svg { width: 17px; height: 17px; stroke-width: 2.2; }
 .btn:active { transform: scale(0.96); }

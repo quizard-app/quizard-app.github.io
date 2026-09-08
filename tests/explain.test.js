@@ -40,6 +40,20 @@ describe('explainPayload', () => {
     const q = { type: 'tf', statement: 'X', answer: false }
     expect(explainPayload(q).userAnswer).toBeNull()
   })
+
+  it('passes options through for except questions', () => {
+    const q = { type: 'except', stem: 'All true EXCEPT:', options: ['a', 'b', 'c', 'd'], answerIndex: 2 }
+    const p = explainPayload(q, 'a')
+    expect(p.options).toEqual(['a', 'b', 'c', 'd'])
+    expect(p.correctAnswer).toBe('c')
+  })
+
+  it('joins both answers for multi-select questions', () => {
+    const q = { type: 'multi', stem: 'Pick two.', options: ['a', 'b', 'c', 'd', 'e'], answerIndices: [1, 3] }
+    const p = explainPayload(q, 'a · c')
+    expect(p.options).toEqual(['a', 'b', 'c', 'd', 'e'])
+    expect(p.correctAnswer).toBe('b · d')
+  })
 })
 
 describe('explainAnswer', () => {

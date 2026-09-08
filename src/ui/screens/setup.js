@@ -7,7 +7,7 @@ import { generateQuizAI } from '../../lib/llm/quiz-ai.js'
 import { detectTopics } from '../../lib/topics.js'
 import { showShareModal } from '../shareModal.js'
 
-const ALL_TYPES = ['mcq', 'tf', 'fib', 'id', 'matching', 'ordering', 'short']
+const ALL_TYPES = ['mcq', 'tf', 'fib', 'id', 'matching', 'ordering', 'short', 'except', 'multi']
 
 export async function render(root, ctx) {
   const doc = await getDoc(ctx.state.currentDocId)
@@ -21,6 +21,7 @@ export async function render(root, ctx) {
   let timerSec = cfg.timerSec
   let fresh = cfg.fresh
   let aiOn = cfg.ai !== false
+  let aiAuthor = aiOn && cfg.aiAuthor === true
   let focusWeak = !!cfg.focusWeak
   let deepVisual = cfg.deepVisual !== false
   const detectedTopics = Array.isArray(doc.topics) && doc.topics.length ? doc.topics : detectTopics(doc.text).topics
@@ -79,6 +80,7 @@ export async function render(root, ctx) {
         <button data-diff="easy" class="${difficulty === 'easy' ? 'on' : ''}" data-tooltip="Common, frequently-appearing terms">Easy</button>
         <button data-diff="medium" class="${difficulty === 'medium' ? 'on' : ''}" data-tooltip="Balanced mix of terms">Medium</button>
         <button data-diff="hard" class="${difficulty === 'hard' ? 'on' : ''}" data-tooltip="Rare, specific technical terms">Hard</button>
+        <button data-diff="adaptive" class="${difficulty === 'adaptive' ? 'on' : ''}" data-tooltip="Rises to rarer terms on a streak, eases off after a miss">Adaptive</button>
       </div>
 
       ${sectionTitle('Options')}
@@ -86,6 +88,10 @@ export async function render(root, ctx) {
         <div class="row" data-tooltip="Google Gemini writes complete exam-style questions from the parsed content">
           <div><div class="label">AI-written questions</div><div class="sub">${hasApiKey() ? 'Gemini · key set' : 'Gemini · add a free key in Settings'}</div></div>
           <div class="switch ${aiOn ? 'on' : ''}" id="sw-ai" data-tooltip="Toggle AI question writing"></div>
+        </div>
+        <div class="row" id="author-row" ${aiOn ? '' : 'style="display:none"'} data-tooltip="Gemini authors the whole quiz from scratch — why and scenario questions, not just rephrased sentences">
+          <div><div class="label">↳ Full AI authoring</div><div class="sub">AI writes every question from the whole document</div></div>
+          <div class="switch ${aiAuthor ? 'on' : ''}" id="sw-author" data-tooltip="Toggle full AI authoring"></div>
         </div>
         <div class="row" data-tooltip="When on, the next attempt uses a new random order">
           <div><div class="label">Shuffle questions</div><div class="sub">Randomize order every attempt</div></div>
@@ -222,6 +228,15 @@ export async function render(root, ctx) {
   root.querySelector('#sw-ai').addEventListener('click', e => {
     aiOn = !aiOn
     e.currentTarget.classList.toggle('on', aiOn)
+    if (!aiOn) {
+      aiAuthor = false
+      root.querySelector('#sw-author')?.classList.remove('on')
+    }
+    root.querySelector('#author-row').style.display = aiOn ? '' : 'none'
+  })
+  root.querySelector('#sw-author').addEventListener('click', e => {
+    aiAuthor = aiOn && !aiAuthor
+    e.currentTarget.classList.toggle('on', aiAuthor)
   })
   root.querySelector('#sw-shuffle').addEventListener('click', e => {
     shuffleOn = !shuffleOn
@@ -247,6 +262,7 @@ export async function render(root, ctx) {
       count, mix: { ...mix }, difficulty, shuffle: shuffleOn, timerSec, fresh,
       topics: [...selectedTopics],
       ai: aiOn,
+      aiAuthor: aiOn && aiAuthor,
       focusWeak,
       deepVisual,
       fixedSeed: null
@@ -264,7 +280,7 @@ export async function render(root, ctx) {
     btn.disabled = true
     btn.textContent = 'Generating…'
     try {
-      const cfg = { count, mix: { ...mix }, difficulty, shuffle: shuffleOn, timerSec, fresh, topics: [...selectedTopics], ai: aiOn, focusWeak, deepVisual }
+      const cfg = { count, mix: { ...mix }, difficulty, shuffle: shuffleOn, timerSec, fresh, topics: [...selectedTopics], ai: aiOn, aiAuthor: aiOn && aiAuthor, focusWeak, deepVisual }
       if (focusWeak) {
         try { cfg.weakTerms = await getWeakTerms(doc.id) } catch { cfg.weakTerms = [] }
       }
@@ -299,7 +315,9 @@ function typeGlyph(t) {
     id: icon('target'),
     matching: icon('gitCompare'),
     ordering: icon('listOrdered'),
-    short: icon('edit')
+    short: icon('edit'),
+    except: icon('x'),
+    multi: icon('plus')
   }[t]
 }
 
@@ -311,7 +329,9 @@ function typeSub(t) {
     id: 'Name the missing term',
     matching: 'Match terms to definitions',
     ordering: 'Put steps in order',
-    short: 'Write a short answer'
+    short: 'Write a short answer',
+    except: 'Spot the one false statement',
+    multi: 'Pick the two correct statements'
   }[t]
 }
 function typeTip(t) {
@@ -322,6 +342,8 @@ function typeTip(t) {
     id: 'Type the term that matches the description',
     matching: 'Pair each term with the sentence that defines it',
     ordering: 'Arrange the shuffled steps into the correct sequence',
-    short: 'Type a short phrase — graded automatically'
+    short: 'Type a short phrase — graded automatically',
+    except: 'Exam style: three statements are true, one is not',
+    multi: 'Exam style: two statements are correct — select both'
   }[t]
 }

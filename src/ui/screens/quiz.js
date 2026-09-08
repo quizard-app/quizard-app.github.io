@@ -1,6 +1,6 @@
 import { getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake, gradeSrsItem, getImageById, loadSettings } from '../../lib/storage.js'
 import { generateQuiz, TYPE_META } from '../../lib/quizgen.js'
-import { generateQuizAI, gradeShortAnswer } from '../../lib/llm/quiz-ai.js'
+import { generateQuizAI, gradeShortAnswer, explainQuestions } from '../../lib/llm/quiz-ai.js'
 import { explainAnswer } from '../../lib/llm/explain.js'
 import { assetUrl } from '../../lib/assets.js'
 import { hasApiKey } from '../../lib/llm/gemini.js'
@@ -10,7 +10,7 @@ import { esc, blankHtml } from '../helpers.js'
 import { attachZoom } from '../../lib/imgZoom.js'
 
 function configKey(cfg) {
-  return JSON.stringify([cfg.count, cfg.mix, cfg.difficulty, cfg.shuffle, cfg.timerSec, cfg.fresh, cfg.topics, !!cfg.ai, !!cfg.focusWeak])
+  return JSON.stringify([cfg.count, cfg.mix, cfg.difficulty, cfg.shuffle, cfg.timerSec, cfg.fresh, cfg.topics, !!cfg.ai, !!cfg.aiAuthor, !!cfg.focusWeak])
 }
 
 function resumeKey() {
@@ -189,6 +189,12 @@ export async function render(root, ctx) {
   let locked = false
   const root2 = root
 
+  // Pre-fetch one-line explanations for the whole quiz in one batched call —
+  // feedback then shows them automatically instead of needing a "Why?" tap.
+  if (loadSettings().aiExplain !== false && hasApiKey()) {
+    explainQuestions(session).catch(() => {})
+  }
+
   // Resolve object urls for any image-grounded questions (best-effort).
   const imgUrlMap = {}
   const imgIds = [...new Set(session.filter(q => q.imageId).map(q => q.imageId))]
@@ -207,18 +213,61 @@ export async function render(root, ctx) {
   }
   function total() { return session.length }
 
+  // Adaptive difficulty: serve rarer-term questions while the learner is on
+  // a streak (2+ correct), easier ones right after a miss, medium otherwise.
+  // Implemented as a swap of the question ABOUT TO BE DRAWN with the best
+  // tier match among the unanswered ones — positions already answered are
+  // never touched, so the answers/review alignment stays intact.
+  const adaptiveOn = cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode && !st.shared
+  function adaptivePick() {
+    if (!adaptiveOn) return
+    if (st.index + 1 >= session.length) return
+    let streak = 0
+    const ans = st.answers
+    for (let i = ans.length - 1; i >= 0; i--) {
+      if (ans[i].userOk) streak++
+      else break
+    }
+    const lastWrong = ans.length > 0 && !ans[ans.length - 1].userOk
+    const want = lastWrong ? 'easy' : streak >= 2 ? 'hard' : 'medium'
+    const fallbacks = want === 'easy'
+      ? ['easy', 'medium', 'hard']
+      : want === 'hard'
+        ? ['hard', 'medium', 'easy']
+        : ['medium', 'easy', 'hard']
+    for (const tier of fallbacks) {
+      for (let j = st.index + 1; j < session.length; j++) {
+        const qt = session[j].meta?.tier || 'medium'
+        if (qt === tier) {
+          const tmp = session[st.index]
+          session[st.index] = session[j]
+          session[j] = tmp
+          return
+        }
+      }
+    }
+  }
+
   function draw() {
+    adaptivePick()
     const q = currentQ()
     clearInterval(timerInterval)
     locked = false
 
     let bodyHtml = ''
-    if (q.type === 'mcq') {
+    if (q.type === 'mcq' || q.type === 'except') {
       bodyHtml = q.options.map((opt, i) => `
         <button class="opt-btn" data-i="${i}">
           <span class="opt-key">${String.fromCharCode(65 + i)}</span>
           <span>${esc(opt)}</span>
         </button>`).join('')
+    } else if (q.type === 'multi') {
+      bodyHtml = q.options.map((opt, i) => `
+        <button class="opt-btn multi-opt" data-i="${i}" aria-pressed="false">
+          <span class="opt-key">${String.fromCharCode(65 + i)}</span>
+          <span>${esc(opt)}</span>
+        </button>`).join('') + `
+        <button class="btn btn-primary" id="multi-submit" style="margin-top:14px;width:100%" disabled data-tooltip="Pick exactly two statements">Check selection</button>`
     } else if (q.type === 'fib') {
       bodyHtml = q.choices.map((c, i) => `
         <button class="opt-btn" data-i="${i}">
@@ -281,7 +330,7 @@ export async function render(root, ctx) {
       <div class="quiz-body">
         <img class="q-wiz" src="${assetUrl('wizard/wizard-thinking.jpg')}" alt="" />
         ${imageHtml}
-        <div class="q-type-badge"><span class="chip on">${TYPE_META[q.type].short}</span></div>
+        <div class="q-type-badge"><span class="chip on">${TYPE_META[q.type].short}</span>${adaptiveOn && q.meta?.tier ? ` <span class="chip" data-tooltip="Adaptive difficulty: this question's tier">${q.meta.tier === 'easy' ? 'Easy' : q.meta.tier === 'hard' ? 'Hard' : 'Med'}</span>` : ''}</div>
         ${stemHtml}
         <div id="answers">${bodyHtml}</div>
         <div id="feedback-zone"></div>
@@ -351,7 +400,7 @@ export async function render(root, ctx) {
     gradedThisCard = !srsId
     const zone = root2.querySelector('#feedback-zone')
     const q = currentQ()
-    const canExplain = hasApiKey() && loadSettings().aiExplain !== false && !q.explanation
+    const canExplain = hasApiKey() && loadSettings().aiExplain !== false
     const goNext = async () => {
       if (!gradedThisCard && srsId) {
         gradedThisCard = true
@@ -368,7 +417,8 @@ export async function render(root, ctx) {
           ${!ok && extraCorrectText ? `<span class="fb-answer">Answer: ${esc(extraCorrectText)}</span>` : ''}
         </div>
       </div>
-      ${canExplain ? `
+      ${canExplain && q.explanation ? `<div class="explain-box" style="margin-top:14px">${esc(q.explanation)}</div>` : ''}
+      ${canExplain && !q.explanation ? `
       <button class="btn btn-ghost explain-btn" id="explain-btn" style="margin-top:14px;width:100%" data-tooltip="Ask Gemini why this answer is right">${icon('sparkles')} Why? Explain answer</button>
       <div id="explain-zone"></div>` : ''}
       ${srsId != null ? `
@@ -442,7 +492,7 @@ export async function render(root, ctx) {
     const q = currentQ()
     let ok = false
 
-    if (q.type === 'mcq' || q.type === 'fib') {
+    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except') {
       ok = choice != null && choice === q.answerIndex
       markOptions(q, choice)
     } else if (q.type === 'tf') {
@@ -460,7 +510,7 @@ export async function render(root, ctx) {
   }
 
   function chosenTextFor(q, choice) {
-    if (q.type === 'mcq' || q.type === 'fib') return choice != null ? (q.options ?? q.choices)?.[choice] ?? null : null
+    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except') return choice != null ? (q.options ?? q.choices)?.[choice] ?? null : null
     if (q.type === 'tf') return choice === true ? 'True' : choice === false ? 'False' : null
     if (q.type === 'id') return root2.querySelector('#id-input')?.value?.trim() ?? null
     return null
@@ -473,6 +523,7 @@ export async function render(root, ctx) {
       : q.type === 'short' ? q.answer
       : q.type === 'ordering' ? q.steps.join(' → ')
       : q.type === 'matching' ? q.pairs.map(p => p.left).join(', ')
+      : q.type === 'multi' ? q.answerIndices.map(i => q.options[i]).join(' · ')
       : q.options?.[q.answerIndex] ?? q.choices?.[q.answerIndex]
 
     st.answers.push({
@@ -515,10 +566,12 @@ export async function render(root, ctx) {
   }
 
   function wireAnswers(q) {
-    if (q.type === 'mcq' || q.type === 'fib') {
+    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except') {
       root2.querySelectorAll('.opt-btn').forEach((el, i) =>
         el.addEventListener('click', () => handleAnswer(i))
       )
+    } else if (q.type === 'multi') {
+      wireMulti(q)
     } else if (q.type === 'tf') {
       root2.querySelectorAll('.tf-btn').forEach(el =>
         el.addEventListener('click', () => handleAnswer(el.dataset.ans === 'true'))
@@ -613,6 +666,43 @@ export async function render(root, ctx) {
     })
   }
 
+  // Multi-select: toggle any two options, then grade by exact set match.
+  function wireMulti(q) {
+    const picked = new Set()
+    const submitBtn = root2.querySelector('#multi-submit')
+    root2.querySelectorAll('.multi-opt').forEach(el =>
+      el.addEventListener('click', () => {
+        if (locked) return
+        const i = Number(el.dataset.i)
+        if (picked.has(i)) picked.delete(i)
+        else if (picked.size < 2) picked.add(i)
+        else return
+        el.classList.toggle('sel', picked.has(i))
+        el.setAttribute('aria-pressed', String(picked.has(i)))
+        submitBtn.disabled = picked.size !== 2
+        if (!submitBtn.disabled) submitBtn.textContent = 'Check selection'
+      })
+    )
+    submitBtn.addEventListener('click', () => {
+      if (locked || picked.size !== 2) return
+      locked = true
+      stopTimer()
+      const sel = [...picked].sort((a, b) => a - b)
+      const ok = sel.length === q.answerIndices.length &&
+        sel.every((v, k) => v === q.answerIndices[k])
+      root2.querySelectorAll('.multi-opt').forEach((el, i) => {
+        el.setAttribute('disabled', '')
+        const isAns = q.answerIndices.includes(i)
+        if (isAns) el.classList.add('correct')
+        else if (picked.has(i)) el.classList.add('wrong')
+        else el.classList.add('dimmed')
+      })
+      const correctText = q.answerIndices.map(i => q.options[i]).join(' · ')
+      const chosenText = sel.map(i => q.options[i]).join(' · ')
+      finishAnswer(ok, chosenText)
+    })
+  }
+
   async function submitShort(val) {
     if (locked) return
     locked = true
@@ -679,7 +769,9 @@ export async function render(root, ctx) {
           ? q.answer
           : q.type === 'tf'
             ? String(q.answer)
-            : (q.options ?? q.choices)?.[q.answerIndex]
+            : q.type === 'multi'
+              ? (q.answerIndices || []).map(k => q.options?.[k]).filter(Boolean).join(' · ')
+              : (q.options ?? q.choices)?.[q.answerIndex]
         if (q.type === 'matching') {
           prompt = `Match terms: ${(q.pairs || []).map(p => p.left).join(' / ')}`
           answer = (q.pairs || []).map(p => `${p.left} → ${p.right}`).join('  |  ')
@@ -749,7 +841,7 @@ export async function render(root, ctx) {
       }
       return
     }
-    if (q.type === 'mcq' || q.type === 'fib') {
+    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except') {
       const opts = q.options || q.choices
       const n = parseInt(e.key, 10)
       if (n >= 1 && n <= opts.length) { handleAnswer(n - 1); return }

@@ -1,7 +1,7 @@
 import { listAttempts, listDocs, countMistakes, countDueCards, getWeakTerms } from '../../lib/storage.js'
 import { icon } from '../icons.js'
 import { dayLabel, fmtTime, scorePill, esc, statsRow, card, sectionTitle, row, muted } from '../helpers.js'
-import { startMistakeReview, startDueReview, startWeakReview } from '../mistakes.js'
+import { startMistakeReview, startDueReview, startWeakReview, startMasterReview } from '../mistakes.js'
 import { emptyProgressArt } from '../art.js'
 
 function dayKey(ts) {
@@ -113,6 +113,18 @@ export async function render(root, ctx) {
         `, { borderless: true })}
         <button class="btn btn-primary" id="weak-review-btn" style="padding:11px" data-tooltip="Review your weakest terms first">${icon('target')} Review weak spots</button>
       `, { style: 'padding:14px 16px;margin-bottom:14px' }) : ''}
+      ${docs.length ? card(`
+        ${row(`
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--accent-strong);display:flex">${icon('sparkles')}</span>
+            <div>
+              <div class="label">Master review</div>
+              <div class="sub">One mixed session across all ${docs.length} document${docs.length === 1 ? '' : 's'} — due cards, fresh questions, old mistakes</div>
+            </div>
+          </div>
+        `, { borderless: true })}
+        <button class="btn btn-primary" id="master-review-btn" style="padding:11px" data-tooltip="Interleaved review across your whole library">${icon('sparkles')} Start master review</button>
+      `, { style: 'padding:14px 16px;margin-bottom:14px;border-color:var(--accent-border);background:var(--accent-soft)' }) : ''}
   `
 
   html += trendChart(attempts)
@@ -145,6 +157,7 @@ export async function render(root, ctx) {
     root.querySelector('#theme-btn').addEventListener('click', () => ctx.toggleTheme())
     root.querySelector('#review-mistakes-btn')?.addEventListener('click', () => startMistakeReview(ctx, null))
     root.querySelector('#weak-review-btn')?.addEventListener('click', () => startWeakReview(ctx))
+    root.querySelector('#master-review-btn')?.addEventListener('click', () => startMasterReview(ctx))
     return
   }
 
@@ -182,4 +195,5 @@ export async function render(root, ctx) {
   root.querySelector('#review-mistakes-btn')?.addEventListener('click', () => startMistakeReview(ctx, null))
   root.querySelector('#weak-review-btn')?.addEventListener('click', () => startWeakReview(ctx))
   root.querySelector('#due-review-btn')?.addEventListener('click', () => startDueReview(ctx))
+  root.querySelector('#master-review-btn')?.addEventListener('click', () => startMasterReview(ctx))
 }

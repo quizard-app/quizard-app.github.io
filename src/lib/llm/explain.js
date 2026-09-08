@@ -17,11 +17,14 @@ function extractExplanation(raw) {
 export function explainPayload(q, userAnswerText) {
   const stem = q.statement || q.stem || q.clue || ''
   let options = null
-  if (q.type === 'mcq' || q.type === 'fib') options = q.options || q.choices || null
+  if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except') options = q.options || q.choices || null
+  else if (q.type === 'multi') options = q.options || null
   else if (q.type === 'tf') options = ['True', 'False']
   const correctAnswer = q.type === 'tf'
     ? String(q.answer)
-    : (q.options ?? q.choices)?.[q.answerIndex] ?? q.answer
+    : q.type === 'multi'
+      ? (q.answerIndices || []).map(k => (q.options || [])[k]).filter(Boolean).join(' · ') || q.answer
+      : (q.options ?? q.choices)?.[q.answerIndex] ?? q.answer
   return { stem, options, correctAnswer, userAnswer: userAnswerText == null ? null : userAnswerText }
 }
 

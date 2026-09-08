@@ -194,6 +194,7 @@ body::after {
 
 #app {
   position: relative;
+  z-index: 4;
   width: 100%;
   max-width: var(--frame-max);
   margin: 0 auto;

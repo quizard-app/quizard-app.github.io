@@ -6,7 +6,7 @@
 import { generateQuiz } from './quizgen.js'
 import { detectTopics } from './topics.js'
 
-const EXAM_MIX = { mcq: true, tf: true, fib: true, id: true, matching: true, ordering: true }
+const EXAM_MIX = { mcq: true, tf: true, fib: true, id: true, matching: true, ordering: true, except: true, multi: true }
 
 /**
  * @param {import('./db-types.js').Exam} exam

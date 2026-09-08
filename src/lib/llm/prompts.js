@@ -161,3 +161,48 @@ export function examChatPrompt(conversation, digest, draft) {
   }
   return prompt
 }
+
+// One batched call fetches a one-line explanation for every question in a
+// quiz right after generation, so feedback can show it without a extra tap.
+export const EXPLAIN_BATCH_RULES = [
+  'You are a patient tutor. For each numbered study question, write ONE short sentence explaining why the given answer is correct.',
+  'Use only the question and answer given — never invent facts beyond them.',
+  'Plain text, no markdown, at most 140 characters each.',
+  'Reply ONLY with strict JSON: {"explanations":[{"i":0,"text":"..."}]} using the same i numbers.'
+].join('\n')
+
+export function explainBatchPrompt(items) {
+  return EXPLAIN_BATCH_RULES + '\n\n' + JSON.stringify({
+    questions: items.map((q, i) => ({
+      i,
+      type: q.type,
+      question: String(q.stem || q.statement || q.clue || q.prompt || '').slice(0, 300),
+      answer: String(q.answer ?? q.options?.[q.answerIndex] ?? q.choices?.[q.answerIndex] ?? '').slice(0, 200)
+    }))
+  })
+}
+
+// Full AI authoring: instead of polishing built-in drafts, the model authors
+// original exam-style questions straight from numbered source sentences.
+// Each item cites its source sentence ("src") so the caller can validate the
+// grounding; validators + the heading ban list keep it honest.
+export const AUTHOR_RULES = [
+  'You are an exam writer. Author ORIGINAL exam questions STRICTLY grounded in the numbered source sentences below.',
+  'For EACH numbered source sentence, write ONE exam-style question a teacher would put on a real test.',
+  'Vary the cognitive level: mix recall ("What is…"), comprehension ("Why…", "How…"), and application/scenario questions ("A student is… What should they do?").',
+  'Ground every question ONLY in its own source sentence — never invent facts, and never blend material from other sentences.',
+  'Each item MUST cite its source: "src" is the number of the sentence it is based on.',
+  'For "mcq": "stem" (a complete question, never a fill-in-the-blank), "correct" (the best answer, a complete sentence or specific phrase), "wrong" (exactly 3 specific, believable, on-topic distractors, parallel in length and form to the correct answer).',
+  'For "short": "prompt" (a direct question) and "answer" (a short key phrase).',
+  'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
+  'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers.',
+  'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
+  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"...","correct":"...","wrong":["...","...","..."]},{"src":1,"kind":"short","prompt":"...","answer":"..."}]'
+].join('\n')
+
+export function authorQuizPrompt(group, weakHint) {
+  const lines = group.map(s => `[${s.i}] ${s.text}`).join('\n')
+  let prompt = AUTHOR_RULES + '\n\nSource sentences:\n' + lines
+  if (weakHint) prompt += '\n\n' + weakHint
+  return prompt
+}

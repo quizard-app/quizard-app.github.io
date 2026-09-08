@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { generateQuiz } from '../src/lib/quizgen.js'
-import { isTitleLike } from '../src/lib/textproc.js'
+import { generateQuiz, swapWithDistractor, tierForTerm } from '../src/lib/quizgen.js'
+import { isTitleLike, mulberry32 } from '../src/lib/textproc.js'
 import { buildMcqStem, buildShortPrompt, pickDistractors, termClass, formatOption, buildCooccurrence } from '../src/lib/questionForms.js'
 
 const DOC = [
@@ -181,5 +181,122 @@ describe('questionForms', () => {
     const co = buildCooccurrence(sents, terms)
     expect(co.get('ATP').get('NADPH')).toBe(1)
     expect(co.get('NADPH').get('ATP')).toBe(1)
+  })
+
+  it('pickDistractors rejects near-duplicate distractors (same stem)', () => {
+    const rng = () => 0.5
+    const terms = [
+      { term: 'photosynthesis', freq: 4 },
+      { term: 'photosynthetic', freq: 4 },
+      { term: 'chlorophyll', freq: 5 },
+      { term: 'mitochondria', freq: 5 },
+      { term: 'glucose', freq: 5 }
+    ]
+    const distractors = pickDistractors({ term: 'respiration', freq: 6 }, terms, rng, 4)
+    expect(distractors.length).toBe(4)
+    // "photosynthesis" and "photosynthetic" share a stem — never both options
+    expect(distractors.includes('photosynthesis') && distractors.includes('photosynthetic')).toBe(false)
+  })
+})
+
+describe('tf false-statement swaps', () => {
+  const pool = [
+    { term: 'basic ethical theories', phrase: true, freq: 3 },
+    { term: 'john stuart mill', proper: true, freq: 3 },
+    { term: 'immanuel kant', proper: true, freq: 3 },
+    { term: 'aristotle', proper: true, freq: 3 }
+  ]
+  const sentence = 'Developed by Jeremy Bentham, this view differs from John Stuart Mill, Immanuel Kant and Aristotle.'
+
+  it('lowercases a common-phrase swap mid-sentence (the "Basic ethical theories" bug)', () => {
+    const out = swapWithDistractor(
+      sentence,
+      { term: 'jeremy bentham', proper: true },
+      pool,
+      mulberry32(42)
+    )
+    expect(out).toBeTruthy()
+    // the only distractor not already in the sentence is the common phrase
+    expect(out).toContain('basic ethical theories')
+    expect(out).not.toContain('Basic ethical theories')
+  })
+
+  it('capitalizes the swap when it opens the sentence', () => {
+    const out = swapWithDistractor(
+      'Jeremy Bentham developed this view over many years of careful study.',
+      { term: 'jeremy bentham', proper: true },
+      pool,
+      mulberry32(42)
+    )
+    expect(out).toBeTruthy()
+    expect(out[0]).toBe(out[0].toUpperCase())
+  })
+
+  it('refuses possessive slots ("Bentham\'s" -> "theories\'s" is broken)', () => {
+    const out = swapWithDistractor(
+      "Jeremy Bentham's view on happiness shaped later thinkers considerably.",
+      { term: 'jeremy bentham', proper: true },
+      pool,
+      mulberry32(7)
+    )
+    expect(out).toBeNull()
+  })
+})
+
+describe('exam-style formats', () => {
+  it('except questions have 4 options with one false answer', () => {
+    const gen = generateQuiz(makeDoc(), { ...CONFIG, count: 4, mix: { except: true }, fixedSeed: 21 })
+    const ex = gen.questions.filter(q => q.type === 'except')
+    expect(ex.length).toBeGreaterThan(0)
+    for (const q of ex) {
+      expect(q.stem).toMatch(/EXCEPT/)
+      expect(q.options).toHaveLength(4)
+      expect(q.answerIndex).toBeGreaterThanOrEqual(0)
+      expect(q.answerIndex).toBeLessThan(4)
+      expect(new Set(q.options).size).toBe(4)
+    }
+  })
+
+  it('multi questions have 5 options with exactly two answers', () => {
+    const gen = generateQuiz(makeDoc(), { ...CONFIG, count: 4, mix: { multi: true }, fixedSeed: 22 })
+    const mu = gen.questions.filter(q => q.type === 'multi')
+    expect(mu.length).toBeGreaterThan(0)
+    for (const q of mu) {
+      expect(q.options).toHaveLength(5)
+      expect(q.answerIndices).toHaveLength(2)
+      const sorted = [...q.answerIndices].sort((a, b) => a - b)
+      expect(q.answerIndices).toEqual(sorted)
+      for (const i of q.answerIndices) {
+        expect(i).toBeGreaterThanOrEqual(0)
+        expect(i).toBeLessThan(5)
+      }
+    }
+  })
+})
+
+describe('adaptive difficulty', () => {
+  it('tierForTerm ranks common terms easy and rare terms hard', () => {
+    const terms = [
+      { term: 'energy', freq: 20 },
+      { term: 'glucose', freq: 8 },
+      { term: 'chlorophyll', freq: 3 },
+      { term: 'nadph', freq: 1 }
+    ]
+    expect(tierForTerm('energy', terms)).toBe('easy')
+    expect(tierForTerm('nadph', terms)).toBe('hard')
+    expect(['easy', 'medium', 'hard']).toContain(tierForTerm('glucose', terms))
+    expect(tierForTerm('missing-term', terms)).toBeNull()
+  })
+
+  it('adaptive generation tags term-grounded questions with a valid tier', () => {
+    const gen = generateQuiz(makeDoc(), { ...CONFIG, count: 8, difficulty: 'adaptive', fixedSeed: 9 })
+    expect(gen.questions.length).toBeGreaterThan(0)
+    const tagged = gen.questions.filter(q => q.meta?.tier)
+    expect(tagged.length).toBeGreaterThan(0)
+    for (const q of tagged) {
+      expect(['easy', 'medium', 'hard']).toContain(q.meta.tier)
+    }
+    // the pool should span more than one tier for adaptivity to matter
+    expect(new Set(tagged.map(q => q.meta.tier)).size).toBeGreaterThan(1)
   })
 })

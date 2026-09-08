@@ -135,7 +135,21 @@ export function pickDistractors(answer, allTerms, rng, count = 3, opts = {}) {
   }
 
   scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, count).map(s => s.term)
+  // Plausibility guard: reject near-duplicates and containment overlaps
+  // between the chosen distractors themselves, so options stay distinct.
+  const picked = []
+  for (const s of scored) {
+    if (picked.length >= count) break
+    const t = s.term.toLowerCase()
+    const clash = picked.some(p => {
+      const l = p.toLowerCase()
+      if (l.includes(t) || t.includes(l)) return true
+      // Same word stem ("photosynthesis" / "photosynthetic") reads as a dupe.
+      return l.slice(0, 5) === t.slice(0, 5) && Math.abs(l.length - t.length) <= 4
+    })
+    if (!clash) picked.push(s.term)
+  }
+  return picked
 }
 
 /* ── Sentence pattern detection ── */
