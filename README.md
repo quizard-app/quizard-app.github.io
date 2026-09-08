@@ -17,39 +17,28 @@
 
 ## Offline-first, cloud-optional
 
-Everything core — import, quiz generation, flashcards, SRS, reviewer, PDF export, encrypted backups — works with **zero internet**. Three features are optional and use a server relay when online: AI question polish, answer explanations, and the Fish Audio wizard voice. All of them degrade gracefully to the built-in offline engines.
+Everything core — import, quiz generation, flashcards, SRS, reviewer, PDF export, encrypted backups — works with **zero internet**. Two features are optional and use the network when online: AI question polish and answer explanations. Both degrade gracefully to the built-in offline engines.
 
-The relay (`netlify/functions/`) holds the provider keys server-side; the client never sees them.
+AI calls go **directly from your browser to Google's Gemini API** using your own free key (Settings → AI question writing). The key is stored only on your device and is sent nowhere except Google — there is no intermediate server.
 
 ## Development
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # vitest — 151 tests (12 files)
+npm test           # vitest
 npm run typecheck  # tsc --noEmit against src/lib/db-types.ts
 npm run build      # PWA production build (service worker included)
 ```
 
-### Wizard voice (optional)
+### Gemini key (optional, BYOK)
 
-The reviewer's read-aloud uses Fish Audio through `netlify/functions/tts.js`. Configure in Netlify → Environment variables (and in a local `.env` for dev):
-
-```
-FISH_API_KEY=…     # https://fish.audio/app/api-keys/
-FISH_VOICE_ID=…    # the designed voice — `node scripts/gen-wizard-voice.mjs` designs one and saves the id
-```
-
-Without these the app falls back to the on-device deep synthesis voice.
-
-### AI relay (optional)
-
-`netlify/functions/gemini.js` rotates across providers: `GEMINI_KEYS`, `GLM_KEYS`, and optionally `CF_ACCOUNT_ID` + `CF_API_TOKEN` (Cloudflare Workers AI). See `.env.example`.
+Create a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and paste it into **Settings → AI question writing** in the app. Without a key, quizzes are still generated offline by the built-in engine.
 
 ## Android
 
 ```bash
-npm run build:cap        # web bundle for Capacitor (relay URL baked in)
+npm run build:cap        # web bundle for Capacitor (share links open the web app)
 npx cap sync android
 cd android
 JAVA_HOME="<jdk-17+" ./gradlew assembleRelease
@@ -61,18 +50,16 @@ JAVA_HOME="<jdk-17+" ./gradlew assembleRelease
 
 ## Deployment
 
-- **Netlify**: `netlify.toml` builds `vite build` → `dist`, functions from `netlify/functions/`. Or `npx netlify deploy --prod --dir dist`.
-- **GitHub Pages**: `npm run build:pages` (base `/` + relay API base), push `dist/` to the `gh-pages` branch — repo: quizard-app/quizard.github.io → **https://quizard-app.github.io/**
+- **GitHub Pages** (the only hosted target): `npm run build:pages` (base `/`), push `dist/` to the `gh-pages` branch — repo: quizard-app/quizard-app.github.io → **https://quizard-app.github.io/**
 
 ## Project layout
 
 ```
 src/lib/          core engines — quizgen, srs, storage (IndexedDB v9),
                   extract (pdf/docx/pptx), topics, exam, tts, export, crypto-backup
-src/lib/llm/      AI relay client + prompts (quiz, explain, transcribe, exam chat)
+src/lib/llm/      direct Gemini client (BYOK) + prompts (quiz, explain, transcribe, exam chat)
 src/ui/screens/   one module per screen (library, quiz, reviewer, exams, …)
 src/styles/       design system + the "magic" animation layer
-netlify/functions/ server relays (gemini multi-provider, fish tts)
 public/wizard/    mascot art + tutorial screenshots + narration MP3s
 tests/            vitest: engines, storage flows, exam prep (fake-indexeddb)
 ```

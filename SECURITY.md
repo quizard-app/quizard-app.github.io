@@ -9,7 +9,7 @@ vulnerabilities.
 
 Only the latest deployment is supported:
 
-- Web: https://quizforge-app.github.io/quizard/
+- Web: https://quizard-app.github.io/
 - Android APK: the latest release
 
 ## Data handling
@@ -20,28 +20,23 @@ Only the latest deployment is supported:
 | Quiz results, mistakes, SRS schedule | IndexedDB (local) | Never, by design |
 | Shared quiz links | Compressed into the URL fragment | Only when you create/share a link |
 | Encrypted backups | A file you export (PBKDF2-SHA256 210k + AES-GCM-256) | Only when you save/send the file |
-| AI question writing / explanations | Netlify relay function → Gemini/GLM | Only when AI features are enabled; the document text excerpt needed for generation is sent to the relay |
-| Wizard voice (TTS) | Netlify relay function → Fish Audio | Only the exact text being spoken |
+| AI question writing / explanations | Direct browser → Google Gemini API | Only when you add your own Gemini key and use AI features; the document text excerpt needed for generation is sent to Google |
+| Wizard voice (TTS) | On-device speech synthesis | Never |
 
-The relay functions hold the provider API keys server-side; keys are never
-shipped to the client.
+Your Gemini API key (optional) is stored in `localStorage` on your device and
+is transmitted only to `generativelanguage.googleapis.com` over HTTPS. The app
+ships no secrets — there is no server component at all.
 
 ## Hardening in place
 
 - **Content-Security-Policy**: `script-src 'self'` (no inline scripts, no
-  third-party script origins), locked `connect-src` to the app's own origins
-  plus its relay host, `object-src 'none'`, `base-uri 'self'`,
-  `form-action 'none'`. On GitHub Pages it ships as a `<meta>` tag; on
-  Netlify as a real HTTP header, together with `X-Frame-Options: DENY`,
-  `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS and COOP.
-- **Relay API allowlist**: the Gemini/TTS functions only return CORS headers
-  for the deployed app origins (and local dev / the Capacitor WebView).
-  Unknown origins are rejected with `403`.
-- **Rate limiting + payload caps**: per-IP fixed-window limits (best-effort)
-  and request-size caps on both relay functions.
-- **No secrets in the client**: API keys live in Netlify environment
-  variables; the repo has a pre-commit secret scanner; keystores and `.env`
-  are gitignored.
+  third-party script origins), `connect-src` locked to the app itself plus
+  `generativelanguage.googleapis.com`, `object-src 'none'`,
+  `base-uri 'self'`, `form-action 'none'`. It ships as a `<meta>` tag
+  (GitHub Pages cannot set HTTP headers).
+- **No secrets in the client**: the repo has a pre-commit secret scanner;
+  keystores and `.env` are gitignored. AI is bring-your-own-key — the app
+  never contains, and never needs, a server-held credential.
 - **Share links carry no server state**: shared quizzes are fully encoded in
   the link fragment (`#...`), which browsers do not send to any server.
 
@@ -49,9 +44,10 @@ shipped to the client.
 
 - GitHub Pages cannot set HTTP headers, so `frame-ancestors` /
   `X-Frame-Options` cannot be enforced there; the CSP meta tag covers the
-  script/style/connect surface instead. Netlify enforces the full header set.
-- The relay rate limiter is per-instance (serverless), so it caps per-instance
-  abuse rather than providing a global quota.
+  script/style/connect surface instead.
+- The Gemini API key is visible to anything that can read your browser's
+  local storage on this origin (e.g. malicious browser extensions) — the same
+  trade-off as every client-side BYOK web app.
 
 ## Reporting a vulnerability
 

@@ -1,58 +1,88 @@
-// The app talks to OUR backend relay (the Netlify function at
-// /.netlify/functions/gemini) which holds the Gemini API keys and rotates them.
-// No API key ever lives in the client.
+// The app talks straight to Google's Generative Language API using the
+// user's own free Gemini API key (aistudio.google.com/apikey). The key is
+// stored only on this device and is sent nowhere except Google. No server
+// sits in between — the whole app is static. Without a key, every AI feature
+// degrades to the built-in non-AI generators (see quiz-ai.js `no_key` path).
 
 export const MODEL_LABEL = 'gemini-3.5-flash-lite'
 
-const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '')
-const PROXY_PATH = '/.netlify/functions/gemini'
+const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
+const KEY_STORAGE = 'quizard.gemini.key'
 
-function proxyUrl() {
-  return (API_BASE || '') + PROXY_PATH
+export function getApiKey() {
+  try { return localStorage.getItem(KEY_STORAGE) || '' } catch { return '' }
 }
 
-async function proxyRequest(body, timeoutMs) {
+export function setApiKey(key) {
+  try {
+    key = (key || '').trim()
+    if (key) localStorage.setItem(KEY_STORAGE, key)
+    else localStorage.removeItem(KEY_STORAGE)
+  } catch { /* storage unavailable — AI stays off */ }
+}
+
+export function hasApiKey() { return !!getApiKey() }
+export function getModelPool() { return [MODEL_LABEL] }
+
+async function geminiRequest({ prompt, images = [], json = true, maxOutputTokens, temperature }, timeoutMs) {
+  const key = getApiKey()
+  if (!key) throw new Error('no_key')
+  const parts = [{ text: prompt }]
+  for (const im of images) {
+    if (im?.data && im?.mimeType) parts.push({ inlineData: { mimeType: im.mimeType, data: im.data } })
+  }
+  const payload = {
+    contents: [{ parts }],
+    generationConfig: {
+      temperature,
+      maxOutputTokens,
+      ...(json ? { responseMimeType: 'application/json' } : {})
+    }
+  }
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  let res
   try {
-    const res = await fetch(proxyUrl(), {
+    res = await fetch(`${ENDPOINT}/${MODEL_LABEL}:generateContent`, {
       method: 'POST',
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(payload)
     })
-    if (!res.ok) {
-      let msg = `relay_http_${res.status}`
-      try { const b = await res.json(); msg = b?.error || b?.message || msg } catch { /* keep generic */ }
-      throw new Error(msg)
-    }
-    const text = await res.text()
-    clearTimeout(timer)
-    return text
   } catch (err) {
+    throw new Error(err.name === 'AbortError' ? 'timeout' : 'network_error')
+  } finally {
     clearTimeout(timer)
-    throw new Error(err.name === 'AbortError' ? 'timeout' : err.message || 'network_error')
   }
+  if (!res.ok) {
+    let msg = `gemini_http_${res.status}`
+    try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep generic */ }
+    throw new Error(res.status === 429 || res.status === 403 ? `${msg}` : msg)
+  }
+  const data = await res.json().catch(() => null)
+  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') ?? ''
+  if (!text) {
+    const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason
+    throw new Error(reason ? `blocked_${reason}` : 'empty_response')
+  }
+  return text
 }
 
 export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000 } = {}) {
-  return proxyRequest({ prompt, json: true, maxOutputTokens, temperature }, timeoutMs)
+  return geminiRequest({ prompt, json: true, maxOutputTokens, temperature }, timeoutMs)
 }
 
 export async function chatMultimodal(prompt, images = [], { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 90000, json = true } = {}) {
-  return proxyRequest({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs)
+  return geminiRequest({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs)
 }
 
-// AI is always available through the built-in relay.
-export function hasApiKey() { return true }
-export function getModelPool() { return [MODEL_LABEL] }
-
 export async function testApiKey() {
+  if (!hasApiKey()) return { ok: false, message: 'no_key', working: 0, total: 1, model: MODEL_LABEL }
   try {
-    const text = await proxyRequest({ prompt: 'Reply with JSON {"ok":true} only', json: true, maxOutputTokens: 256, temperature: 0.4 }, 20000)
+    const text = await chatJSON('Reply with JSON {"ok":true} only', { maxOutputTokens: 256, temperature: 0.4, timeoutMs: 20000 })
     const ok = /ok"?\s*:\s*true/i.test(text)
-    return { ok, working: ok ? 1 : 0, total: ok ? 1 : 0, model: MODEL_LABEL }
+    return { ok, working: ok ? 1 : 0, total: 1, model: MODEL_LABEL, message: ok ? '' : 'unexpected_response' }
   } catch (e) {
-    return { ok: false, message: String(e?.message || e), working: 0, total: 0 }
+    return { ok: false, message: String(e?.message || e), working: 0, total: 1, model: MODEL_LABEL }
   }
 }

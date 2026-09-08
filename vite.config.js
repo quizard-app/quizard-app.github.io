@@ -60,12 +60,11 @@ function fishTtsDev(env) {
 }
 
 // Content-Security-Policy for the web builds: everything is self-hosted
-// except Google Fonts and the AI/TTS relay. Injected as a meta tag (GitHub
-// Pages can't set HTTP headers); skipped for the Capacitor APK, whose
-// WebView origin and plugin bridge don't need it. Netlify gets the same
-// policy as a real header via netlify.toml.
+// except Google Fonts and direct Gemini API calls (user's own key, BYOK).
+// Injected as a meta tag (GitHub Pages can't set HTTP headers); skipped for
+// the Capacitor APK, whose WebView origin and plugin bridge don't need it.
 function cspMeta(env) {
-  const hosts = new Set()
+  const hosts = new Set(['https://generativelanguage.googleapis.com'])
   for (const v of [env.VITE_API_BASE, env.VITE_SHARE_BASE_URL]) {
     try { if (v) hosts.add(new URL(v).origin) } catch { /* ignore malformed */ }
   }

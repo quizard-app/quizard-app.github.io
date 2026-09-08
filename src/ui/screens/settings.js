@@ -1,5 +1,5 @@
 import { exportAll, importAll, clearAllData, storageUsage, saveSettings, loadSettings, listDocs, listAccounts, getAccount, deleteAccount, setActiveAccount, getActiveAccountId, accountHasData } from '../../lib/storage.js'
-import { testApiKey } from '../../lib/llm/gemini.js'
+import { testApiKey, getApiKey, setApiKey, hasApiKey } from '../../lib/llm/gemini.js'
 import { maybeScheduleReminders } from '../reminders.js'
 import { icon } from '../icons.js'
 import { esc, sectionTitle, row, muted, card, btn } from '../helpers.js'
@@ -68,10 +68,21 @@ export async function render(root, ctx) {
       ${sectionTitle('AI question writing')}
       ${card(`
         <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
-          Quizard uses Google Gemini via a built-in relay to write natural exam-style questions.
-          The relay rotates across several API keys automatically, so quizzes keep generating even when one key hits its limit.
-          Without the relay, quizzes are still generated using built-in rules.
+          Quizard talks directly to Google Gemini to write natural exam-style questions — using
+          <b>your own free API key</b>. Grab one in about a minute at
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>.
+          The key is stored only on this device and is sent to no one except Google.
+          Without a key, quizzes are still generated using built-in rules.
         </p>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key" autocomplete="off"
+            spellcheck="false" aria-label="Gemini API key"
+            style="flex:1;min-width:180px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text);font-size:13px" />
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="save-key-btn" style="flex:1;min-width:110px">${icon('check')} Save key</button>
+          <button class="btn btn-secondary" id="remove-key-btn" style="flex:1;min-width:110px">${icon('trash')} Remove</button>
+        </div>
         <div class="row" style="border-bottom:none;margin-bottom:12px" data-tooltip="After answering, tap 'Why?' to get a Gemini explanation of the correct answer">
           <div><div class="label">Explain answers</div><div class="sub">Show a “Why?” button to explain quiz answers with Gemini</div></div>
           <div class="seg" id="explain-seg" style="grid-auto-columns:auto;width:auto">
@@ -80,12 +91,12 @@ export async function render(root, ctx) {
           </div>
         </div>
         <p class="muted" style="font-size:12.5px;line-height:1.5;margin:0 0 12px">
-          Model: <b>gemini-3.5-flash-lite</b> · keys are built-in and auto-rotating.
+          Model: <b>gemini-3.5-flash-lite</b> · your key never leaves this device (except to Google).
         </p>
         <div style="display:flex;gap:10px;margin-top:4px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-secondary" id="test-key-btn">${icon('zap')} Test connection</button>
         </div>
-        <p class="faint" id="key-status" style="font-size:12px;margin-top:10px">AI relay ready.</p>
+        <p class="faint" id="key-status" style="font-size:12px;margin-top:10px"></p>
       `, { style: 'padding:16px' })}
 
       ${sectionTitle('Study reminders')}
@@ -148,19 +159,38 @@ export async function render(root, ctx) {
 
   root.querySelector('#back-btn').addEventListener('click', () => ctx.go('library'))
 
-  function renderKeyStatus() {
-    root.querySelector('#key-status').textContent = 'AI relay ready (gemini-3.5-flash-lite, built-in keys).'
+  function renderKeyStatus(msg) {
+    root.querySelector('#key-status').textContent = msg || (hasApiKey()
+      ? 'Key saved — AI features ready.'
+      : 'No key yet — quizzes still work with built-in rules.')
   }
+  renderKeyStatus()
+  const keyInput = root.querySelector('#gemini-key-input')
+  root.querySelector('#save-key-btn').addEventListener('click', () => {
+    const val = (keyInput.value || '').trim()
+    if (!val) { renderKeyStatus('Paste a key first — get a free one at aistudio.google.com/apikey'); return }
+    setApiKey(val)
+    keyInput.value = ''
+    renderKeyStatus('Key saved ✓ — tap Test connection to check it.')
+    ctx.toast('Gemini key saved ✓')
+  })
+  root.querySelector('#remove-key-btn').addEventListener('click', () => {
+    setApiKey('')
+    renderKeyStatus('Key removed — AI off, built-in rules in use.')
+    ctx.toast('Gemini key removed')
+  })
   const testBtn = root.querySelector('#test-key-btn')
   testBtn.addEventListener('click', async () => {
     testBtn.disabled = true
-    root.querySelector('#key-status').textContent = 'Testing…'
+    renderKeyStatus('Testing…')
     const res = await testApiKey()
     testBtn.disabled = false
-    root.querySelector('#key-status').textContent = res.ok
-      ? `✓ Relay reachable — model ${res.model}`
-      : `✗ ${res.message}`
-    if (res.ok) ctx.toast('Gemini relay OK ✓')
+    renderKeyStatus(res.ok
+      ? `✓ Gemini reachable — model ${res.model}`
+      : res.message === 'no_key'
+        ? 'Save your key first — aistudio.google.com/apikey'
+        : `✗ ${res.message}`)
+    if (res.ok) ctx.toast('Gemini OK ✓')
   })
   root.querySelectorAll('#explain-seg button').forEach(b =>
     b.addEventListener('click', () => {

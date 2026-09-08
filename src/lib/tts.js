@@ -1,10 +1,11 @@
 // Reviewer read-aloud: a powerful wizard's voice.
 //
-// Primary  — Fish Audio "wise old wizard" voice, fetched from the server
-//            relay (/.netlify/functions/tts) and played through a Web Audio
-//            hall-reverb graph so the voice itself echoes.
+// Primary  — Fish Audio "wise old wizard" voice, fetched from a relay host
+//            when one is configured at build time (VITE_API_BASE), played
+//            through a Web Audio hall-reverb graph so the voice itself echoes.
 // Fallback — on-device speech synthesis pitched deep, with a soft reverb-soaked
-//            drone underneath (used in offline/dev when the relay isn't set up).
+//            drone underneath (used on the static GitHub Pages build and
+//            offline — no relay needed).
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '')
 const TTS_URL = API_BASE + '/.netlify/functions/tts'
@@ -93,6 +94,9 @@ function fishGraph() {
 }
 
 async function fetchFishChunk(text, speed, signal) {
+  // The Fish voice only exists behind a relay host configured at build time;
+  // the static GitHub Pages build goes straight to the on-device voice.
+  if (!API_BASE) throw new Error('fish_unavailable')
   // Instant fallback when offline — never hang waiting for the network.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new Error('offline')
