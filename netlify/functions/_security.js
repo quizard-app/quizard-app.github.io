@@ -6,6 +6,8 @@
 // - Payload caps.
 
 const ALLOWED_ORIGINS = new Set([
+  'https://quizard-app.github.io',
+  // legacy homes that redirect or still have open tabs
   'https://quizforge-app.github.io',
   'https://quizard-67e6a203.netlify.app',
   'https://live--quizard-67e6a203.netlify.app',
