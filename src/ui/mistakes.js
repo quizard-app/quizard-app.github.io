@@ -68,7 +68,7 @@ export async function startWeakReview(ctx) {
     return
   }
   items.sort((a, b) =>
-    (rank.get(String(a.term).toLowerCase()) || 0) - (rank.get(String(b.term).toLowerCase()) || 0))
+    (rank.get(String(b.term).toLowerCase()) || 0) - (rank.get(String(a.term).toLowerCase()) || 0))
   const seen = new Set()
   const chosen = []
   for (const it of items) {

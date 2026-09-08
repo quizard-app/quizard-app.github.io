@@ -87,6 +87,8 @@ export function render(root, ctx) {
   const wrap = root.querySelector('.onb-wrap')
 
   async function finish() {
+    if (finish._done) return
+    finish._done = true
     saveSettings({ onboarded: true })
     const accounts = await listAccounts()
     if (!accounts.length || (accounts.length === 1 && accounts[0].name === 'My account')) {

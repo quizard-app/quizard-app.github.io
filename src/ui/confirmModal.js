@@ -1,5 +1,7 @@
 // Reusable confirm dialog — replaces native confirm() with an in-app modal.
 // Returns a Promise that resolves to true (confirmed) or false (cancelled).
+function _esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML }
+
 export function confirmModal(title, body, { confirmLabel = 'Delete', danger = true } = {}) {
   return new Promise(resolve => {
     document.querySelector('.confirm-mask')?.remove()
@@ -8,7 +10,7 @@ export function confirmModal(title, body, { confirmLabel = 'Delete', danger = tr
     mask.tabIndex = 0
     mask.innerHTML = `
       <div class="confirm-modal">
-        <div class="confirm-head"><h3>${title}</h3></div>
+        <div class="confirm-head"><h3>${_esc(title)}</h3></div>
         <div class="confirm-body">${body}</div>
         <div class="confirm-actions">
           <button class="btn btn-secondary" data-action="cancel">Cancel</button>
@@ -37,10 +39,10 @@ export function promptModal(title, body, { confirmLabel = 'Continue', placeholde
     el.tabIndex = 0
     el.innerHTML = `
       <div class="confirm-modal">
-        <div class="confirm-head"><h3>${title}</h3></div>
+        <div class="confirm-head"><h3>${_esc(title)}</h3></div>
         <div class="confirm-body">${body}</div>
         <input class="text-input" id="modal-prompt-input" type="${mask ? 'password' : 'text'}"
-          placeholder="${placeholder}" autocomplete="off" spellcheck="false" />
+          placeholder="${_esc(placeholder)}" autocomplete="off" spellcheck="false" />
         <div class="confirm-actions">
           <button class="btn btn-secondary" data-action="cancel">Cancel</button>
           <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-action="confirm">${confirmLabel}</button>

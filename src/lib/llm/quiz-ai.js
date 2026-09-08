@@ -404,8 +404,13 @@ export async function gradeShortAnswer(userAnswer, q) {
       maxOutputTokens: 64,
       rules: SHORT_GRADE_RULES
     })
-    const parsed = extractJSONArray(raw)
-    const obj = Array.isArray(parsed) ? parsed[0] : raw
+    // AI returns {"ok":true} or {"ok":false} — try JSON.parse first, fall back to array extraction.
+    let obj = null
+    try { obj = JSON.parse(raw) } catch { /* not plain JSON */ }
+    if (!obj || typeof obj !== 'object') {
+      const parsed = extractJSONArray(raw)
+      obj = Array.isArray(parsed) ? parsed[0] : null
+    }
     if (obj && typeof obj === 'object' && typeof obj.ok === 'boolean') return obj.ok
     if (obj && typeof obj.correct === 'boolean') return obj.correct
     return null

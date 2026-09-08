@@ -84,20 +84,29 @@ export async function encodeShare(payload) {
 
 export async function decodeShare(str) {
   str = (str || '').trim()
+  let data = null
   if (str.startsWith('qf1:')) {
     const bytes = b64urlToBytes(str.slice(4))
     try {
       const out = await gunzip(bytes)
-      return JSON.parse(new TextDecoder().decode(out))
+      data = JSON.parse(new TextDecoder().decode(out))
     } catch {
       throw new Error('This quiz link looks corrupted or was cut off.')
     }
-  }
-  if (str.startsWith('qf0:')) {
+  } else if (str.startsWith('qf0:')) {
     const bytes = b64urlToBytes(str.slice(4))
-    return JSON.parse(new TextDecoder().decode(bytes))
+    try {
+      data = JSON.parse(new TextDecoder().decode(bytes))
+    } catch {
+      throw new Error('This quiz link looks corrupted or was cut off.')
+    }
+  } else {
+    throw new Error('This is not a valid quiz link.')
   }
-  throw new Error('This is not a valid quiz link.')
+  if (!data || typeof data !== 'object') {
+    throw new Error('This quiz link has an invalid format.')
+  }
+  return data
 }
 
 // The base URL baked into share links. For a deployed web app this should be

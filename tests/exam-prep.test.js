@@ -146,9 +146,11 @@ describe('exam CRUD + countdown + topic ranking', () => {
 
   it('labels countdowns correctly', () => {
     const day = 86400000
+    const now = new Date()
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).getTime()
     expect(countdownLabel(Date.now() + 5 * day)).toBe('in 5 days')
     expect(countdownLabel(Date.now() + day)).toBe('tomorrow')
-    expect(countdownLabel(Date.now() + 3600000)).toBe('today')
+    expect(countdownLabel(endOfToday)).toBe('today')
     expect(countdownLabel(Date.now() - 3 * day)).toBe('past')
     expect(countdownLabel(undefined)).toBe('')
   })

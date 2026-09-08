@@ -62,7 +62,13 @@ function updateGeneratingUI(root, done, total) {
 }
 
 let quizKeyCleanup = null
-export function unmount() { if (quizKeyCleanup) { quizKeyCleanup(); quizKeyCleanup = null } }
+let quizTimerInterval = null
+export function unmount() {
+  if (quizKeyCleanup) { quizKeyCleanup(); quizKeyCleanup = null }
+  if (quizTimerInterval) { clearInterval(quizTimerInterval); quizTimerInterval = null }
+  document.getElementById('quiz-img-viewer')?.remove()
+  document.querySelector('.quit-dialog-mask')?.remove()
+}
 
 export async function render(root, ctx) {
   if (quizKeyCleanup) quizKeyCleanup()
@@ -172,7 +178,7 @@ export async function render(root, ctx) {
         return
       }
       session = gen.questions
-      ctx.state.cachedQuiz = { [doc.id]: { questions: session, configKey: configKey(cfg), index: 0, correct: 0, answers: [] } }
+      ctx.state.cachedQuiz = { ...ctx.state.cachedQuiz, [doc.id]: { questions: session, configKey: configKey(cfg), index: 0, correct: 0, answers: [] } }
     } else {
       const cached = ctx.state.cachedQuiz[doc.id]
       if (cached.configKey !== configKey(cfg)) {
@@ -185,7 +191,7 @@ export async function render(root, ctx) {
   }
 
   st.startTime = Date.now()
-  let timerInterval = null
+  quizTimerInterval = null
   let locked = false
   const root2 = root
 
@@ -251,7 +257,7 @@ export async function render(root, ctx) {
   function draw() {
     adaptivePick()
     const q = currentQ()
-    clearInterval(timerInterval)
+    clearInterval(quizTimerInterval)
     locked = false
 
     let bodyHtml = ''
@@ -381,18 +387,18 @@ export async function render(root, ctx) {
     const valEl = root2.querySelector('#timer-val')
     const chipEl = root2.querySelector('#timer-chip')
     valEl.textContent = remaining
-    timerInterval = setInterval(() => {
+    quizTimerInterval = setInterval(() => {
       remaining--
       valEl.textContent = Math.max(0, remaining)
       if (remaining <= 5) chipEl.classList.add('danger')
       if (remaining <= 0) {
-        clearInterval(timerInterval)
+        clearInterval(quizTimerInterval)
         handleAnswer(null)
       }
     }, 1000)
   }
 
-  function stopTimer() { clearInterval(timerInterval) }
+  function stopTimer() { clearInterval(quizTimerInterval) }
 
   let gradedThisCard = true
 
@@ -503,6 +509,9 @@ export async function render(root, ctx) {
       ok = checkTyped(inputEl?.value ?? '', q.answer)
       if (inputEl) inputEl.setAttribute('disabled', '')
     } else {
+      // short, multi, matching, ordering — timeout fires handleAnswer(null)
+      // with no user interaction; mark wrong and advance via finishAnswer.
+      finishAnswer(false, null)
       return
     }
 
@@ -790,7 +799,7 @@ export async function render(root, ctx) {
   }
 
   function goResultsNoNav() {
-    clearInterval(timerInterval)
+    clearInterval(quizTimerInterval)
     ctx.go('results')
   }
 
@@ -813,7 +822,7 @@ export async function render(root, ctx) {
   }
 
   function goResultsCleanup() {
-    clearInterval(timerInterval)
+    clearInterval(quizTimerInterval)
     revokeImages()
     if (doc) delete ctx.state.cachedQuiz[doc.id]
     ctx.state.mistakeReview = null
@@ -836,8 +845,10 @@ export async function render(root, ctx) {
     if (e.target.tagName === 'INPUT') return
     if (locked) {
       if (e.key === 'Enter') {
-        root2.querySelector('#next-btn')?.click()
-        root2.querySelector('#finish-btn')?.click()
+        const nextBtn = root2.querySelector('#next-btn')
+        const finishBtn = root2.querySelector('#finish-btn')
+        if (nextBtn) { nextBtn.click(); return }
+        if (finishBtn) finishBtn.click()
       }
       return
     }

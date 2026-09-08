@@ -36,7 +36,7 @@ export function buildSummaryMarkdown(doc) {
     sec.points.forEach(p => out.push(`- ${p}`))
     out.push('')
   })
-  out.push('---', `_${doc.wordCount.toLocaleString()} words · exported from Quizard_`, '')
+  out.push('---', `_${(doc.wordCount || 0).toLocaleString()} words · exported from Quizard_`, '')
   return out.join('\n')
 }
 
@@ -84,7 +84,7 @@ export function buildQuizMarkdown(docName, questions, review) {
         : q.type === 'multi'
           ? (q.answerIndices || []).map(k => (q.options || [])[k]).filter(Boolean).join(' · ')
           : (q.options ?? q.choices)?.[q.answerIndex]
-    out.push(`**Answer:** ${answer}`)
+    out.push(`**Answer:** ${answer ?? '(ungraded)'}`)
     const rev = review?.[i]
     if (rev && !rev.ok && rev.chosen != null) out.push(`_Your answer: ${rev.chosen}_`)
     out.push('')
@@ -124,7 +124,7 @@ export async function exportPdfHandout(doc, extras = {}) {
   pdf.text('S T U D Y   R E V I E W E R', M, M + 8)
   y = M + 26
   text(doc.name, { size: 20, bold: true, gap: 2 })
-  text(`${doc.wordCount.toLocaleString()} words · forged from your document · ${stamp()}`, { size: 9, color: '#868ea8', gap: 10 })
+  text(`${(doc.wordCount || 0).toLocaleString()} words · forged from your document · ${stamp()}`, { size: 9, color: '#868ea8', gap: 10 })
   rule()
 
   // I. overview
@@ -287,7 +287,7 @@ export function printStudySheet(doc) {
       h1{font-size:22px} h2{font-size:16px;margin-top:22px;color:#5b3df5} ul{margin:6px 0} li{margin:3px 0}
       .meta{color:#868ea8;font-size:13px} hr{border:none;border-top:1px solid #e4e9f2;margin:18px 0}
     </style></head><body>
-    <h1>${escHtml(doc.name)}</h1><p class="meta">Study sheet · ${doc.wordCount.toLocaleString()} words · exported from Quizard</p>
+    <h1>${escHtml(doc.name)}</h1><p class="meta">Study sheet · ${(doc.wordCount || 0).toLocaleString()} words · exported from Quizard</p>
     ${tldr}${sections}
     <hr><p class="meta">Generated ${stamp()}</p>
     <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>

@@ -229,7 +229,7 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
 .quiz-topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 0;
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 15;
   background: var(--glass-solid);
   border-bottom: 1px solid var(--border);
   margin: 0 calc(var(--pad-x) * -1); padding-left: var(--pad-x); padding-right: var(--pad-x);
@@ -506,13 +506,6 @@ html[data-theme='dark'] .rvw-term dt { color: var(--accent); }
 .rvw-term dd { margin: 3px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-dim); }
 
 /* read-along: the line the wizard is speaking lights up */
-.speaking {
-  background: var(--accent-soft);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-xs);
-  box-shadow: 0 0 18px var(--accent-glow);
-  transition: background 0.25s ease, box-shadow 0.25s ease;
-}
 .reader p.speaking { padding: 8px 10px; }
 
 /* "What's next?" card on the results screen */
@@ -789,7 +782,7 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   background: rgba(9, 7, 26, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 95;
+  z-index: 96;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   animation: fadeIn 0.18s ease;
@@ -866,6 +859,8 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   border-left: 3.5px solid var(--accent);
   padding-left: 12px;
   border-radius: var(--radius-xs);
+  box-shadow: 0 0 18px var(--accent-glow);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* ── Flashcards ── */

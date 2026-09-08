@@ -14,25 +14,25 @@ function proxyUrl() {
 async function proxyRequest(body, timeoutMs) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-  let res
   try {
-    res = await fetch(proxyUrl(), {
+    const res = await fetch(proxyUrl(), {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     })
+    if (!res.ok) {
+      let msg = `relay_http_${res.status}`
+      try { const b = await res.json(); msg = b?.error || b?.message || msg } catch { /* keep generic */ }
+      throw new Error(msg)
+    }
+    const text = await res.text()
+    clearTimeout(timer)
+    return text
   } catch (err) {
     clearTimeout(timer)
-    throw new Error(err.name === 'AbortError' ? 'timeout' : 'network_error')
+    throw new Error(err.name === 'AbortError' ? 'timeout' : err.message || 'network_error')
   }
-  clearTimeout(timer)
-  if (!res.ok) {
-    let msg = `relay_http_${res.status}`
-    try { const b = await res.json(); msg = b?.error || b?.message || msg } catch { /* keep generic */ }
-    throw new Error(msg)
-  }
-  return await res.text()
 }
 
 export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000 } = {}) {

@@ -86,7 +86,7 @@ export function daysUntil(examDate) {
   if (!examDate) return null
   const day = 86400000
   const startOf = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime() }
-  return Math.round((startOf(examDate) - startOf(Date.now())) / day)
+  return Math.floor((startOf(examDate) - startOf(Date.now())) / day)
 }
 
 /** Human countdown label: "in 5 days", "tomorrow", "today", "past". */

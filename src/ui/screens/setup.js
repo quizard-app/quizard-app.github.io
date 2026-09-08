@@ -9,9 +9,13 @@ import { showShareModal } from '../shareModal.js'
 
 const ALL_TYPES = ['mcq', 'tf', 'fib', 'id', 'matching', 'ordering', 'short', 'except', 'multi']
 
+let setupMounted = false
+export function unmount() { setupMounted = false }
+
 export async function render(root, ctx) {
+  setupMounted = true
   const doc = await getDoc(ctx.state.currentDocId)
-  if (!doc) { ctx.go('library'); return }
+  if (!doc || !setupMounted) { ctx.go('library'); return }
 
   const cfg = ctx.getConfig(doc.id)
   let count = cfg.count
@@ -270,6 +274,7 @@ export async function render(root, ctx) {
     if (focusWeak) {
       try { save.weakTerms = await getWeakTerms(doc.id) } catch { save.weakTerms = [] }
     }
+    if (!setupMounted) return
     ctx.saveConfig(doc.id, save)
     ctx.go('quiz')
   })

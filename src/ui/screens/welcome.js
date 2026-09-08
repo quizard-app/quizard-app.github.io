@@ -1,6 +1,9 @@
 import { icon } from '../icons.js'
 import { assetUrl } from '../../lib/assets.js'
 
+let welcomeTimer = null
+export function unmount() { if (welcomeTimer) { clearTimeout(welcomeTimer); welcomeTimer = null } }
+
 const SPARKS = Array.from({ length: 10 }, (_, i) =>
   `<i style="--a:${i * 36}deg;--d:${(0.45 + i * 0.045).toFixed(2)}s"></i>`
 ).join('')
@@ -57,9 +60,9 @@ export function render(root, ctx) {
 
   // First launch: full 2s show. Repeat launches: a quick beat, then through.
   const short = ctx.state.shortIntro
-  const timer = setTimeout(advance, short ? 1100 : 2050)
+  welcomeTimer = setTimeout(advance, short ? 1100 : 2050)
   root.querySelector('#welcome').addEventListener('click', () => {
-    clearTimeout(timer)
+    clearTimeout(welcomeTimer)
     advance()
   })
 }

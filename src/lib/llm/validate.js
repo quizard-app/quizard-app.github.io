@@ -73,8 +73,9 @@ export function validateGeneratedShort(row, term) {
   if (!row || typeof row !== 'object') return null
   const prompt = clean(row.prompt)
   const answer = clean(row.answer)
+  const termClean = clean(term)
   if (prompt.length < 6 || prompt.length > 240) return null
   if (answer.length < 1 || answer.length > 160) return null
-  if (new RegExp(escapeRegExp(term), 'i').test(prompt)) return null
+  if (termClean && new RegExp(escapeRegExp(termClean), 'i').test(prompt)) return null
   return { prompt, answer }
 }

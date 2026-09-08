@@ -202,9 +202,9 @@ export async function updateAccount(id, patch) {
 export async function deleteAccount(id) {
   if (!id) return
   const db = await dbPromise
-  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks'], 'readwrite')
+  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams'], 'readwrite')
   tx.objectStore('accounts').delete(id)
-  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks']) {
+  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams']) {
     const store = tx.objectStore(storeName)
     let cursor = await store.openCursor()
     while (cursor) {
@@ -217,7 +217,7 @@ export async function deleteAccount(id) {
 
 export async function accountHasData(accountId) {
   const db = await dbPromise
-  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs']) {
+  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams']) {
     const store = db.transaction(storeName).objectStore(storeName)
     let cursor = await store.openCursor()
     while (cursor) {
@@ -330,7 +330,7 @@ export async function updateDoc(id, patch) {
 export async function deleteDoc(id) {
   if (!id) return
   const db = await dbPromise
-  const tx = db.transaction(['docs', 'attempts', 'images'], 'readwrite')
+  const tx = db.transaction(['docs', 'attempts', 'images', 'srs', 'mistakes'], 'readwrite')
   tx.objectStore('docs').delete(id)
   const idx = tx.objectStore('attempts').index('docId')
   let cursor = await idx.openCursor(IDBKeyRange.only(id))
@@ -343,6 +343,18 @@ export async function deleteDoc(id) {
   while (imgCursor) {
     imgCursor.delete()
     imgCursor = await imgCursor.continue()
+  }
+  const srsIdx = tx.objectStore('srs').index('docId')
+  let srsCursor = await srsIdx.openCursor(IDBKeyRange.only(id))
+  while (srsCursor) {
+    srsCursor.delete()
+    srsCursor = await srsCursor.continue()
+  }
+  const mIdx = tx.objectStore('mistakes').index('docId')
+  let mCursor = await mIdx.openCursor(IDBKeyRange.only(id))
+  while (mCursor) {
+    mCursor.delete()
+    mCursor = await mCursor.continue()
   }
   await tx.done
 }
@@ -539,14 +551,14 @@ export async function saveExam(exam) {
 export async function getExam(id) {
   const db = await dbPromise
   const rec = await db.get('exams', id)
-  const accountId = await getActiveAccountId()
+  const accountId = await requireAccount()
   return rec && rec.accountId === accountId ? rec : null
 }
 
 /** @returns {Promise<Array<import('./db-types.js').Exam>>} upcoming first, then by createdAt desc */
 export async function listExams() {
   const db = await dbPromise
-  const accountId = await getActiveAccountId()
+  const accountId = await requireAccount()
   const now = Date.now()
   return (await db.getAllFromIndex('exams', 'accountId', accountId))
     .filter(e => (e.status || 'upcoming') === 'upcoming' || now - (e.examDate || 0) < 7 * 86400000)
@@ -654,14 +666,15 @@ function blobToDataUrl(blob) {
 /** @returns {Promise<ExportData>} */
 export async function exportAll() {
   const db = await dbPromise
-  const [accounts, docs, attempts, mistakes, images, srs, decks] = await Promise.all([
+  const [accounts, docs, attempts, mistakes, images, srs, decks, exams] = await Promise.all([
     db.getAll('accounts'),
     db.getAll('docs'),
     db.getAll('attempts'),
     db.getAll('mistakes'),
     db.getAll('images'),
     db.getAll('srs'),
-    db.getAll('decks')
+    db.getAll('decks'),
+    db.getAll('exams')
   ])
   saveSettings({ lastBackupAt: Date.now() })
   // embed slide images as data urls so restores are complete (backup v3)
@@ -691,6 +704,7 @@ export async function exportAll() {
     imageRecords,
     srs,
     decks,
+    exams,
     settings: loadSettings()
   }
 }
@@ -715,13 +729,14 @@ export async function importAll(data, mode = 'merge') {
     decodedImages.push({ rec, blob })
   }
 
-  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'decks'], 'readwrite')
+  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks'], 'readwrite')
   if (mode === 'replace') {
     tx.objectStore('accounts').clear()
     tx.objectStore('docs').clear()
     tx.objectStore('attempts').clear()
     tx.objectStore('mistakes').clear()
     tx.objectStore('images').clear()
+    tx.objectStore('srs').clear()
     tx.objectStore('decks').clear()
   }
   let added = 0
@@ -741,6 +756,7 @@ export async function importAll(data, mode = 'merge') {
   await putUnique('mistakes', data.mistakes || [])
   await putUnique('srs', data.srs || [])
   await putUnique('decks', data.decks || [])
+  await putUnique('exams', data.exams || [])
   for (const { rec, blob } of decodedImages) {
     if (mode === 'merge') {
       const exists = await tx.objectStore('images').get(rec.id)
@@ -772,7 +788,7 @@ export async function importAll(data, mode = 'merge') {
 
 export async function clearAllData() {
   const db = await dbPromise
-  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks'], 'readwrite')
+  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams'], 'readwrite')
   tx.objectStore('accounts').clear()
   tx.objectStore('docs').clear()
   tx.objectStore('attempts').clear()
@@ -780,6 +796,7 @@ export async function clearAllData() {
   tx.objectStore('images').clear()
   tx.objectStore('srs').clear()
   tx.objectStore('decks').clear()
+  tx.objectStore('exams').clear()
   await tx.done
   localStorage.removeItem('quizard-settings')
   localStorage.removeItem('quizard-active-account')

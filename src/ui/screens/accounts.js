@@ -62,7 +62,11 @@ async function renderPicker(root, ctx) {
 }
 
 /* ── Create ── */
+let createMounted = false
+export function unmount() { createMounted = false; lockMounted = false }
+
 function renderCreate(root, ctx) {
+  createMounted = true
   let color = COLORS[0]
   let pin = ''
   let pinConfirm = ''
@@ -134,12 +138,15 @@ function renderCreate(root, ctx) {
     const hasPin = pin || pinConfirm
     if (hasPin && !pinOk) { ctx.toast(hint.textContent, true); return }
     const pinHash = hasPin ? await hashPin(pin) : null
+    if (!createMounted) return
     const acc = await createAccount({ name, color, pinHash })
+    if (!createMounted) return
 
     const others = (await listAccounts()).filter(a => a.id !== acc.id)
     for (const other of others) {
       if (!(await accountHasData(other.id))) await deleteAccount(other.id)
     }
+    if (!createMounted) return
 
     setActiveAccount(acc.id)
     ctx.state.account = acc
@@ -154,7 +161,10 @@ function renderCreate(root, ctx) {
 }
 
 /* ── Lock ── */
+let lockMounted = false
+
 async function renderLock(root, ctx) {
+  lockMounted = true
   const { accountId } = ctx.state.accountFlow
   const acc = await getAccount(accountId)
   if (!acc) { ctx.state.accountFlow = { mode: 'picker' }; ctx.go('accounts'); return }
@@ -187,6 +197,7 @@ async function renderLock(root, ctx) {
 
   async function tryUnlock() {
     const res = await verifyPin(entered, acc.pinHash)
+    if (!lockMounted) return
     if (res.ok) {
       // transparently upgrade legacy unsalted hashes to pbkdf2
       if (res.upgrade) updateAccount(acc.id, { pinHash: res.upgrade }).catch(() => {})

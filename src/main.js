@@ -249,6 +249,7 @@ addEventListener('resize', () => {
 let renderToken = 0
 let currentRoot = null
 let currentScreen = null
+let booted = false
 
 async function renderScreen(name) {
   const token = ++renderToken
@@ -284,7 +285,7 @@ async function renderScreen(name) {
       window.dispatchEvent(new Event('quizScreenChanged'))
 
       app.querySelectorAll('[data-nav]').forEach(btn =>
-        btn.addEventListener('click', () => go(btn.dataset.nav))
+        btn.addEventListener('click', () => ctx.go(btn.dataset.nav))
       )
       moveNavPill(state.screen)
     } else {
@@ -314,7 +315,7 @@ function go(nav) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !['quiz'].includes(state.screen)) go('library')
+  if (booted && e.key === 'Escape' && !['quiz'].includes(state.screen)) ctx.go('library')
 })
 
 const boot = document.getElementById('boot')
@@ -422,4 +423,4 @@ function resolveLanding(accounts, savedId, onlyDefault) {
   return { screen: home, askResume }
 }
 
-bootFlow()
+bootFlow().then(() => { booted = true })
