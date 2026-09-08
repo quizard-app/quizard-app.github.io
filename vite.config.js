@@ -115,8 +115,16 @@ export default defineConfig(({ mode }) => {
         name: 'Quizard',
         short_name: 'Quizard',
         description: 'Turn your PDF, PPTX and DOCX documents into quizzes. Offline, private, 100% local.',
-        start_url: '/',
-        scope: '/',
+        // Base-aware install URLs: VITE_BASE may arrive as '/quizard/' or
+        // 'quizard/' depending on the shell — normalize both to '/quizard/'.
+        start_url: (() => {
+          const b = process.env.VITE_BASE || '/'
+          return (b.startsWith('/') ? b : '/' + b).replace(/\/?$/, '/')
+        })(),
+        scope: (() => {
+          const b = process.env.VITE_BASE || '/'
+          return (b.startsWith('/') ? b : '/' + b).replace(/\/?$/, '/')
+        })(),
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#0b0d14',
