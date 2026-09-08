@@ -6,12 +6,12 @@
 
 Quizard is an offline-first study PWA: import a document and it extracts the text locally and generates multiple-choice, true/false, fill-in-the-blank, identification, matching, ordering and short-answer quizzes.
 
-- [App homepage](https://quizard-67e6a203.netlify.app/)
-- [PWA manifest](https://quizard-67e6a203.netlify.app/manifest.webmanifest)
-- [Service worker](https://quizard-67e6a203.netlify.app/sw.js)
+- [App homepage](https://quizard-app.github.io/)
+- [PWA manifest](https://quizard-app.github.io/manifest.webmanifest)
+- [Service worker](https://quizard-app.github.io/sw.js)
 
 ## Tech notes
 
 - Static Vite PWA (vanilla JS modules, no framework). Data in IndexedDB; settings in localStorage.
-- AI features call a [Netlify Function relay](https://quizard-67e6a203.netlify.app/.netlify/functions/gemini) — no user keys needed.
-- Source repository: [github.com/quizard-app/quizard.github.io](https://github.com/quizard-app/quizard.github.io)
+- Optional AI features call Google's Gemini API directly from the browser using the user's own free key (BYOK) — the key is stored only on the user's device.
+- Source repository: [github.com/quizard-app/quizard-app.github.io](https://github.com/quizard-app/quizard-app.github.io)
