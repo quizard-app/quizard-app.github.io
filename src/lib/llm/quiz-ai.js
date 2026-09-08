@@ -12,7 +12,8 @@ import {
   makeBannedCheckerFromTitles,
   validateGeneratedMcq,
   validateGeneratedClue,
-  validateGeneratedShort
+  validateGeneratedShort,
+  escapeRegExp
 } from './validate.js'
 
 function blobToDataUrlLocal(blob) {
@@ -529,5 +530,69 @@ export async function explainQuestions(questions) {
         if (q && t) q.explanation = t.slice(0, 240)
       }
     } catch { /* best-effort per chunk */ }
+  }
+}
+
+// Full AI authoring: the model writes original exam-style questions straight
+// from the document's best sentences. Every item cites its source sentence so
+// the result can be validated against real text; malformed, ungrounded or
+// heading-touched items are dropped. When this yields too few questions the
+// caller chains into the polish/built-in path.
+export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
+  const text = stripHeadings(doc.text)
+  const ranked = scoreSentences(sentences(text), termFreq(text))
+  if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
+  const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
+
+  const pick = ranked.slice(0, Math.min(ranked.length, Math.max(cfg.count * 2, 12)))
+  const groups = []
+  for (let i = 0; i < pick.length; i += 6) {
+    groups.push(pick.slice(i, i + 6).map((s, k) => ({ i: i + k, text: s.text })))
+  }
+  const weakHint = Array.isArray(cfg.weakTerms) && cfg.weakTerms.length
+    ? 'Lean toward these terms the student struggles with: ' +
+      cfg.weakTerms.slice(0, 20).map(w => String(w.term || w)).join(', ')
+    : ''
+
+  const out = []
+  for (let g = 0; g < groups.length && out.length < cfg.count; g++) {
+    onProgress(out.length, cfg.count)
+    let raw = null
+    try {
+      raw = await chatJSON(authorQuizPrompt(groups[g], weakHint), {
+        maxOutputTokens: 3000, temperature: 0.5, timeoutMs: 60000
+      })
+    } catch { continue }
+    for (const it of (extractJSONArray(raw) || [])) {
+      if (out.length >= cfg.count) break
+      const src = groups[g][Number(it?.src)] || groups[g][0]
+      const sentence = src ? src.text : ''
+      if (!sentence) continue
+      if (it.kind === 'mcq') {
+        const stem = clean(it.stem)
+        const correct = clean(it.correct)
+        const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
+        if (!stem || !correct || wrong.length !== 3) continue
+        if (stem.length > 300 || isBanned(stem) || wrong.some(w => isBanned(w))) continue
+        const all = [correct, ...wrong]
+        if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
+        if (new RegExp('\b' + escapeRegExp(correct) + '\b', 'i').test(stem)) continue
+        const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
+        const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
+        if (answerIndex === -1) continue
+        out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct } })
+      } else if (it.kind === 'short') {
+        const prompt = clean(it.prompt)
+        const answer = clean(it.answer)
+        if (!prompt || !answer || prompt.length > 300 || isBanned(prompt)) continue
+        out.push({ type: 'short', prompt, answer, meta: { sentence, term: answer } })
+      }
+    }
+  }
+  return {
+    questions: out,
+    error: out.length ? null : 'not_enough_content',
+    aiPolished: out.length > 0,
+    aiNote: out.length ? null : 'author_empty'
   }
 }

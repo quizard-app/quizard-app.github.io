@@ -59,6 +59,39 @@ function fishTtsDev(env) {
   }
 }
 
+// Content-Security-Policy for the web builds: everything is self-hosted
+// except Google Fonts and the AI/TTS relay. Injected as a meta tag (GitHub
+// Pages can't set HTTP headers); skipped for the Capacitor APK, whose
+// WebView origin and plugin bridge don't need it. Netlify gets the same
+// policy as a real header via netlify.toml.
+function cspMeta(env) {
+  const hosts = new Set()
+  for (const v of [env.VITE_API_BASE, env.VITE_SHARE_BASE_URL]) {
+    try { if (v) hosts.add(new URL(v).origin) } catch { /* ignore malformed */ }
+  }
+  const connect = ["'self'", ...hosts].join(' ')
+  const policy = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "media-src 'self' blob:",
+    `connect-src ${connect}`,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'none'"
+  ].join('; ')
+  return {
+    name: 'csp-meta',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace('</title>', `</title>\n  <meta http-equiv="Content-Security-Policy" content="${policy}" />`)
+    }
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
@@ -74,6 +107,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       fishTtsDev(env),
+      !isCapacitor && cspMeta(env),
       !isCapacitor && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'llms.txt'],

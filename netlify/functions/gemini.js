@@ -16,6 +16,8 @@ const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/m
 const GLM_ENDPOINT = 'https://api.z.ai/api/paas/v4/chat/completions'
 const THROTTLE_MS = 60 * 1000
 
+import { isAllowedOrigin, corsHeaders, clientIp, rateLimit, tooLarge } from './_security.js'
+
 // ── Gemini key state ──
 const gemThrottled = new Map()
 let gemRr = 0
@@ -168,32 +170,37 @@ async function callCloudflare(model, { messages, json, temperature, maxOutputTok
   return { text }
 }
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
+function ok(text, headers = {}) {
+  return new Response(text, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers } })
 }
-
-function ok(text) {
-  return new Response(text, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', ...CORS } })
-}
-function fail(status, msg) {
-  return new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json', ...CORS } })
+function fail(status, msg, headers = {}) {
+  return new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json', ...headers } })
 }
 
 export default async function handler(request) {
+  const origin = request.headers.get('origin')
+  const sec = corsHeaders(origin)
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS })
+    return new Response(null, { status: 204, headers: sec })
   }
   if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: CORS })
+    return new Response('Method Not Allowed', { status: 405, headers: sec })
+  }
+  if (!isAllowedOrigin(origin)) {
+    return fail(403, 'origin_not_allowed', sec)
+  }
+  if (!rateLimit(clientIp(request), 40)) {
+    return fail(429, 'rate_limited', sec)
+  }
+  if (tooLarge(request)) {
+    return fail(413, 'payload_too_large', sec)
   }
 
   let body
   try {
     body = await request.json()
   } catch {
-    return fail(400, 'invalid_json')
+    return fail(400, 'invalid_json', sec)
   }
 
   const prompt = body.prompt
@@ -229,7 +236,7 @@ export default async function handler(request) {
         messages: [{ role: 'user', content }],
         json, temperature, maxOutputTokens
       })
-      if (r.text != null && r.text !== '') return ok(r.text)
+      if (r.text != null && r.text !== '') return ok(r.text, sec)
       cfMarkThrottled()
     }
     const model = getGemModel()
@@ -239,11 +246,11 @@ export default async function handler(request) {
       if (gemIsThrottled(key)) continue
       const r = await callGemini(model, key, gemPayload)
       if (r.networkError) { lastErr = r.networkError; continue }
-      if (r.fatal) return fail(502, r.fatal)
+      if (r.fatal) return fail(502, r.fatal, sec)
       if (r.error) { lastErr = r.error; continue }
-      return ok(r.text)
+      return ok(r.text, sec)
     }
-    return fail(429, lastErr || 'all_keys_throttled')
+    return fail(429, lastErr || 'all_keys_throttled', sec)
   }
 
   // Text-only: prefer Cloudflare Workers AI (free), then GLM, then Gemini.
@@ -253,7 +260,7 @@ export default async function handler(request) {
       messages: [{ role: 'user', content: prompt }],
       json, temperature, maxOutputTokens
     })
-    if (r.text != null && r.text !== '') return ok(r.text)
+    if (r.text != null && r.text !== '') return ok(r.text, sec)
     cfMarkThrottled()
   }
 
@@ -265,22 +272,22 @@ export default async function handler(request) {
       if (glmIsThrottled(key)) continue
       const r = await callGlm(model, key, { prompt, json, temperature, maxOutputTokens })
       if (r.networkError || r.error || r.fatal) continue
-      return ok(r.text)
+      return ok(r.text, sec)
     }
     // fall through to Gemini
   }
 
   const model = getGemModel()
   const combos = gemCombo(getGemKeys(), model)
-  if (!combos.length) return fail(503, 'no_keys_configured')
+  if (!combos.length) return fail(503, 'no_keys_configured', sec)
   let lastErr = null
   for (const [, key] of combos) {
     if (gemIsThrottled(key)) continue
     const r = await callGemini(model, key, gemPayload)
     if (r.networkError) { lastErr = r.networkError; continue }
-    if (r.fatal) return fail(502, r.fatal)
+    if (r.fatal) return fail(502, r.fatal, sec)
     if (r.error) { lastErr = r.error; continue }
-  return ok(r.text)
+  return ok(r.text, sec)
 }
-  return fail(429, lastErr || 'all_keys_throttled')
+  return fail(429, lastErr || 'all_keys_throttled', sec)
 }

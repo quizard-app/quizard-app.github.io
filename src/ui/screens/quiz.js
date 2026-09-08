@@ -1,6 +1,6 @@
 import { getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake, gradeSrsItem, getImageById, loadSettings } from '../../lib/storage.js'
 import { generateQuiz, TYPE_META } from '../../lib/quizgen.js'
-import { generateQuizAI, gradeShortAnswer, explainQuestions } from '../../lib/llm/quiz-ai.js'
+import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions } from '../../lib/llm/quiz-ai.js'
 import { explainAnswer } from '../../lib/llm/explain.js'
 import { assetUrl } from '../../lib/assets.js'
 import { hasApiKey } from '../../lib/llm/gemini.js'
@@ -10,7 +10,7 @@ import { esc, blankHtml } from '../helpers.js'
 import { attachZoom } from '../../lib/imgZoom.js'
 
 function configKey(cfg) {
-  return JSON.stringify([cfg.count, cfg.mix, cfg.difficulty, cfg.shuffle, cfg.timerSec, cfg.fresh, cfg.topics, !!cfg.ai, !!cfg.aiAuthor, !!cfg.focusWeak])
+  return JSON.stringify([cfg.count, cfg.mix, cfg.difficulty, cfg.shuffle, cfg.timerSec, cfg.fresh, cfg.topics, !!cfg.ai, !!cfg.focusWeak, !!cfg.aiAuthor])
 }
 
 function resumeKey() {
@@ -149,7 +149,21 @@ export async function render(root, ctx) {
 
     if (cfg.fresh || !ctx.state.cachedQuiz?.[doc.id]) {
       let gen = null
-      if (cfg.ai) {
+      if (cfg.aiAuthor) {
+        renderGeneratingUI(root, doc.name)
+        try {
+          gen = await authorExamQuestions(doc, cfg, (d, t) => updateGeneratingUI(root, d, t))
+        } catch {
+          gen = null
+        }
+        if (ctx.state.screen !== 'quiz') return
+        const enough = (gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2)
+        if (!enough) {
+          ctx.toast('AI authoring unavailable — using built-in questions', true)
+          gen = null
+        }
+      }
+      if (!gen && cfg.ai) {
         renderGeneratingUI(root, doc.name)
         try {
           gen = await generateQuizAI(doc, cfg, (d, t) => updateGeneratingUI(root, d, t))
@@ -163,6 +177,26 @@ export async function render(root, ctx) {
       }
       if (!gen || gen.error === 'not_enough_content' || !gen.questions.length) {
         gen = generateQuiz(doc, cfg)
+        // Adaptive difficulty (setup: Difficulty → Adaptive): build easy/
+        // medium/hard pools and tag each question; advance() then re-orders
+        // live by performance — streak pulls harder items, a miss eases off.
+        if (cfg.difficulty === 'adaptive' && !gen.error && gen.questions.length) {
+          const per = Math.max(2, Math.ceil(cfg.count / 3))
+          const poolMix = { mcq: true, tf: true, fib: true, id: true, except: !!cfg.mix.except, multi: !!cfg.mix.multi }
+          const pools = {}
+          for (const tier of ['easy', 'medium', 'hard']) {
+            const r = generateQuiz(doc, {
+              ...cfg, count: per, difficulty: tier, mix: poolMix,
+              fixedSeed: (gen.seed ^ (tier === 'easy' ? 0x51ab : tier === 'medium' ? 0x9e37 : 0x77aa)) >>> 0
+            })
+            pools[tier] = (r.questions || []).map(q => ({ ...q, meta: { ...(q.meta || {}), tier } }))
+          }
+          const merged = [...pools.medium, ...pools.easy, ...pools.hard]
+          if (merged.length >= 4) {
+            gen = { questions: merged.slice(0, cfg.count), seed: gen.seed, error: null }
+            gen.adaptive = true
+          }
+        }
       }
       if (gen.error === 'not_enough_content' || !gen.questions.length) {
         root.innerHTML = `
@@ -178,7 +212,7 @@ export async function render(root, ctx) {
         return
       }
       session = gen.questions
-      ctx.state.cachedQuiz = { ...ctx.state.cachedQuiz, [doc.id]: { questions: session, configKey: configKey(cfg), index: 0, correct: 0, answers: [] } }
+      ctx.state.cachedQuiz = { ...ctx.state.cachedQuiz, [doc.id]: { questions: session, configKey: configKey(cfg), index: 0, correct: 0, answers: [], adaptive: !!gen.adaptive } }
     } else {
       const cached = ctx.state.cachedQuiz[doc.id]
       if (cached.configKey !== configKey(cfg)) {
@@ -193,6 +227,7 @@ export async function render(root, ctx) {
   st.startTime = Date.now()
   quizTimerInterval = null
   let locked = false
+  let lastOk = null // last answer result, feeds adaptive difficulty
   const root2 = root
 
   // Pre-fetch one-line explanations for the whole quiz in one batched call —
@@ -527,6 +562,7 @@ export async function render(root, ctx) {
 
   async function finishAnswer(ok, chosenText) {
     const q = currentQ()
+    lastOk = ok
     const correctText = q.type === 'id' ? q.answer
       : q.type === 'tf' ? String(q.answer)
       : q.type === 'short' ? q.answer
@@ -726,6 +762,22 @@ export async function render(root, ctx) {
 
   function advance() {
     if (st.index >= total() - 1) return finish()
+    // Adaptive difficulty: after each answer, pull a question of the tier the
+    // performance suggests (streak → harder, miss → easier) into the next slot.
+    if (st.adaptive && lastOk != null) {
+      const cur = session[st.index]?.meta?.tier || 'medium'
+      const want = lastOk
+        ? (cur === 'easy' ? 'medium' : 'hard')
+        : (cur === 'hard' ? 'medium' : 'easy')
+      if (want !== cur) {
+        const at = session.findIndex((q, i) => i > st.index && q.meta?.tier === want)
+        if (at > st.index) {
+          const [moved] = session.splice(at, 1)
+          session.splice(st.index + 1, 0, moved)
+        }
+      }
+    }
+    lastOk = null
     st.index++
     draw()
     window.scrollTo(0, 0)

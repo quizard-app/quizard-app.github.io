@@ -14,12 +14,31 @@
 
 const API = 'https://api.fish.audio'
 
+import { isAllowedOrigin, corsHeaders, clientIp, rateLimit, tooLarge } from './_security.js'
+
 export default async function handler(request) {
+  const origin = request.headers.get('origin')
+  const sec = corsHeaders(origin)
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204 })
+    return new Response(null, { status: 204, headers: sec })
   }
   if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 })
+    return new Response('Method Not Allowed', { status: 405, headers: sec })
+  }
+  if (!isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: 'origin_not_allowed' }), {
+      status: 403, headers: { 'Content-Type': 'application/json', ...sec }
+    })
+  }
+  if (!rateLimit(clientIp(request), 60)) {
+    return new Response(JSON.stringify({ error: 'rate_limited' }), {
+      status: 429, headers: { 'Content-Type': 'application/json', ...sec }
+    })
+  }
+  if (tooLarge(request, 100_000)) {
+    return new Response(JSON.stringify({ error: 'payload_too_large' }), {
+      status: 413, headers: { 'Content-Type': 'application/json', ...sec }
+    })
   }
 
   const key = (process.env.FISH_API_KEY || '').trim()
@@ -27,7 +46,7 @@ export default async function handler(request) {
   if (!key || !voiceId) {
     return new Response(JSON.stringify({ error: 'fish_not_configured' }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...sec }
     })
   }
 
@@ -35,10 +54,10 @@ export default async function handler(request) {
   try {
     body = await request.json()
   } catch {
-    return new Response('invalid_json', { status: 400 })
+    return new Response('invalid_json', { status: 400, headers: sec })
   }
   const text = String(body.text || '').slice(0, 2000).trim()
-  if (!text) return new Response('empty_text', { status: 400 })
+  if (!text) return new Response('empty_text', { status: 400, headers: sec })
   const speed = Math.min(2, Math.max(0.5, Number(body.speed) || 0.95))
 
   // Fish Audio's free tier occasionally answers 503/429 — retry briefly.
@@ -66,13 +85,13 @@ export default async function handler(request) {
       }
       return new Response(JSON.stringify({ error: 'fish_error', status: res.status }), {
         status: 502,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...sec }
       })
     } catch {
       if (attempt === 3) {
         return new Response(JSON.stringify({ error: 'fish_unreachable' }), {
           status: 502,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...sec }
         })
       }
       await new Promise(r => setTimeout(r, 900 * attempt))
@@ -81,6 +100,6 @@ export default async function handler(request) {
 
   return new Response(res.body, {
     status: 200,
-    headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=86400' }
+    headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=86400', ...sec }
   })
 }

@@ -300,3 +300,68 @@ describe('adaptive difficulty', () => {
     expect(new Set(tagged.map(q => q.meta.tier)).size).toBeGreaterThan(1)
   })
 })
+
+describe('exam-style types: except + multi', () => {
+  const text = `Photosynthesis is the process by which green plants convert light energy into chemical energy. The process occurs in the chloroplast, an organelle containing the green pigment chlorophyll. The light-dependent reactions happen in the thylakoid membrane, where sunlight splits water molecules and produces ATP and NADPH. The Calvin cycle happens in the stroma, where the enzyme rubisco captures carbon dioxide and builds glucose. Chlorophyll absorbs mostly red and blue light and reflects green light, which is why leaves look green. Light intensity, carbon dioxide concentration, and temperature affect the rate of photosynthesis. Plants use glucose for energy and growth, storing excess as starch. Oxygen is released as a byproduct when water molecules are split during the light reactions.`
+  const doc = { id: 'd1', name: 'Photosynthesis Notes', text }
+
+  it('builds EXCEPT questions with exactly one false statement', () => {
+    const r = generateQuiz(doc, { count: 2, mix: { except: true }, difficulty: 'medium', fixedSeed: 42 })
+    expect(r.questions.length).toBeGreaterThan(0)
+    for (const q of r.questions) {
+      expect(q.type).toBe('except')
+      expect(q.options).toHaveLength(4)
+      expect(q.stem).toMatch(/EXCEPT/)
+      expect(q.answerIndex).toBeGreaterThanOrEqual(0)
+      expect(q.answerIndex).toBeLessThan(4)
+      // the false statement must differ from every true one
+      const falseOpt = q.options[q.answerIndex]
+      expect(q.options.filter(o => o === falseOpt)).toHaveLength(1)
+    }
+  })
+
+  it('builds multi-select questions with exactly two correct answers', () => {
+    const r = generateQuiz(doc, { count: 2, mix: { multi: true }, difficulty: 'medium', fixedSeed: 7 })
+    expect(r.questions.length).toBeGreaterThan(0)
+    for (const q of r.questions) {
+      expect(q.type).toBe('multi')
+      expect(q.options).toHaveLength(5)
+      expect(q.answerIndices).toHaveLength(2)
+      expect(q.answerIndices[0]).toBeLessThan(q.answerIndices[1])
+      expect(new Set(q.answerIndices).size).toBe(2)
+      expect(q.stem).toMatch(/TWO/)
+    }
+  })
+
+  it('keeps meta.docId-free questions bankable via caller-supplied tags', () => {
+    const r = generateQuiz(doc, { count: 1, mix: { except: true }, difficulty: 'medium', fixedSeed: 99 })
+    const q = r.questions[0]
+    expect(q.meta.sentence).toBeTruthy()
+    expect(q.meta.term).toBeTruthy()
+  })
+})
+
+describe('TF swap grammar', () => {
+  it('lowercases common-phrase distractors swapped mid-sentence', async () => {
+    const { swapWithDistractorForTest: swap } = await import('../src/lib/quizgen.js').catch(() => ({}))
+    // swapWithDistractor is private — verify through generateQuiz output instead:
+    const text = `Jeremy Bentham developed utilitarianism in the eighteenth century. Immanuel Kant founded deontology as a rival moral theory. John Stuart Mill refined the greatest happiness principle. Virtue ethics comes from Aristotle and focuses on character. Moral philosophy studies right and wrong conduct.`
+    const doc = { id: 'd2', name: 'Ethics', text }
+    for (let seed = 1; seed <= 8; seed++) {
+      const r = generateQuiz(doc, { count: 3, mix: { tf: true }, difficulty: 'medium', fixedSeed: seed })
+      for (const q of r.questions.filter(x => x.type === 'tf' && !x.answer)) {
+        // a false statement must not contain a mid-sentence Title-Case insertion
+        // like "and Basic ethical theories" — allow proper nouns and sentence start
+        const words = q.statement.split(/\s+/)
+        for (let i = 1; i < words.length; i++) {
+          const w = words[i]
+          if (/^[A-Z][a-z]+ [a-z]/.test(w) || /^[A-Z][a-z]+s\b/.test(w)) {
+            // "Basic ethical" style fragments — flag only if previous word is not a name-ish token
+            const prev = words[i - 1].replace(/[^A-Za-z]/g, '')
+            expect(['and', 'or', 'the', 'a', 'in', 'of', 'to'].includes(prev.toLowerCase())).toBe(false)
+          }
+        }
+      }
+    }
+  })
+})
