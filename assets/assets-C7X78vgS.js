@@ -1,1 +1,0 @@
-function e(e){if(/^(https?:|data:|blob:|capacitor:)/i.test(e))return e;let t=`/quizard/`;return(t.endsWith(`/`)?t:t+`/`)+(e.startsWith(`/`)?e.slice(1):e)}export{e as t};
