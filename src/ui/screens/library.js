@@ -49,7 +49,7 @@ export async function render(root, ctx) {
         <button class="icon-btn" id="theme-btn" aria-label="Toggle theme" data-tooltip="${ctx.state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}">${ctx.state.theme === 'dark' ? icon('sun') : icon('moon')}</button>
       </div>
     </header>
-    <div class="screen${docs.length ? '' : ' screen-center'}">
+    <div class="screen lib-screen${docs.length ? '' : ' screen-center'}">
       ${nextExam ? `
       <button class="exam-card exam-card-lib" data-exam="${nextExam.id}">
         <span class="exam-ico">${icon('fileText')}</span>

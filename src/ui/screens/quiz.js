@@ -172,7 +172,7 @@ export async function render(root, ctx) {
         }
         if (ctx.state.screen !== 'quiz') return
         // surface silent fallbacks so weak questions are never mistaken for a dumb ai
-        if (gen?.aiNote === 'no_key') ctx.toast('Add a Gemini key in Settings for AI questions', true)
+        if (gen?.aiNote === 'no_key') ctx.toast('Built-in questions ready — add a free Gemini key in Settings for AI-written ones')
         else if (gen?.aiNote) ctx.toast(`Gemini unavailable (${gen.aiNote}) — used built-in questions`, true)
       }
       if (!gen || gen.error === 'not_enough_content' || !gen.questions.length) {
