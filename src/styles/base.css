@@ -361,5 +361,13 @@ h4 { font-size: 14px; line-height: 1.4; font-weight: 600; }
   }
   .screen { animation: none !important; }
   .stagger { animation: none !important; opacity: 1; }
+  /* The welcome splash is a ~2s loading indicator, not decorative motion —
+     it keeps playing even when the OS asks for reduced motion (it reads as
+     "the app is broken" otherwise, e.g. Windows with animation effects off). */
+  .welcome, .welcome *, .welcome-dust, .welcome-dust * {
+    animation-duration: unset !important;
+    animation-iteration-count: unset !important;
+    transition-duration: unset !important;
+  }
 }
 
