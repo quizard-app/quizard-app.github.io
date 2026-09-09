@@ -87,7 +87,7 @@ const gemThrottled = new Map()
 let gemRr = 0
 
 function getGemKeys() {
-  return (env.GEMINI_KEYS || '').split(/[\n,]/).map(k => k.trim()).filter(Boolean)
+  return (env.GEMINI_KEYS || '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
 }
 function getGemModel() {
   return (env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()

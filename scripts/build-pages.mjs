@@ -7,10 +7,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Load .env (gitignored) without clobbering real environment variables.
+// [^\r\n] not `.` — JS dots don't match \r, and values can embed CRs.
 try {
   for (const line of readFileSync(join(process.cwd(), '.env'), 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/)
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*([^\r\n]*)/)
+    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/\r/g, '').replace(/^["']|["']$/g, '')
   }
 } catch { /* no .env — fine */ }
 
