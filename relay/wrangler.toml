@@ -1,0 +1,8 @@
+name = "quizard-relay"
+main = "worker.js"
+compatibility_date = "2026-01-15"
+
+[vars]
+# Override with `npx wrangler secret put` for anything sensitive.
+# GEMINI_MODEL = "gemini-3.5-flash-lite"
+# FISH_MODEL = "s2.1-pro-free"

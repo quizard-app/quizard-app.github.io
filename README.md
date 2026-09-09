@@ -19,7 +19,7 @@
 
 Everything core — import, quiz generation, flashcards, SRS, reviewer, PDF export, encrypted backups — works with **zero internet**. Two features are optional and use the network when online: AI question polish and answer explanations. Both degrade gracefully to the built-in offline engines.
 
-AI calls go **directly from your browser to Google's Gemini API** using your own free key (Settings → AI question writing). The key is stored only on your device and is sent nowhere except Google — there is no intermediate server.
+AI runs through the **built-in relay** (`relay/`, a free Cloudflare Worker) which holds the Gemini keys server-side and rotates across them when one hits its limit — users never need a key. A personal Gemini key (Settings) is supported as an optional fallback. The reviewer's wizard voice uses Fish Audio through the same relay; without it the app falls back to on-device synthesis.
 
 ## Development
 
@@ -31,9 +31,24 @@ npm run typecheck  # tsc --noEmit against src/lib/db-types.ts
 npm run build      # PWA production build (service worker included)
 ```
 
-### Gemini key (optional, BYOK)
+### Relay (AI + wizard voice, optional)
 
-Create a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and paste it into **Settings → AI question writing** in the app. Without a key, quizzes are still generated offline by the built-in engine.
+The worker lives in `relay/`. Keys come from the gitignored `.env`:
+
+```
+GEMINI_KEYS=…,…     # one or more keys — rotated automatically (aistudio.google.com/apikey)
+FISH_API_KEY=…      # https://fish.audio/app/api-keys/
+FISH_VOICE_ID=…     # designed voice — `node scripts/gen-wizard-voice.mjs` designs one
+```
+
+Deploy and wire it up (first run: `npx wrangler login`):
+
+```bash
+npm run relay:dev      # local test on :8787
+npm run relay:deploy   # deploy + push keys as secrets; prints the URL
+# then put the printed URL in .env as VITE_API_BASE=… and rebuild:
+npm run build:pages
+```
 
 ## Android
 
@@ -50,16 +65,18 @@ JAVA_HOME="<jdk-17+" ./gradlew assembleRelease
 
 ## Deployment
 
-- **GitHub Pages** (the only hosted target): `npm run build:pages` (base `/`), push `dist/` to the `gh-pages` branch — repo: quizard-app/quizard-app.github.io → **https://quizard-app.github.io/**
+- **Website — GitHub Pages** (the only hosted target): `npm run build:pages` (picks the relay URL up from `.env`), push `dist/` to the `gh-pages` branch — repo: quizard-app/quizard-app.github.io → **https://quizard-app.github.io/**
+- **AI/TTS relay — Cloudflare Worker** (invisible, free tier): `npm run relay:deploy` — see "Relay" above.
 
 ## Project layout
 
 ```
 src/lib/          core engines — quizgen, srs, storage (IndexedDB v9),
                   extract (pdf/docx/pptx), topics, exam, tts, export, crypto-backup
-src/lib/llm/      direct Gemini client (BYOK) + prompts (quiz, explain, transcribe, exam chat)
+src/lib/llm/      relay-first Gemini client + prompts (quiz, explain, transcribe, exam chat)
 src/ui/screens/   one module per screen (library, quiz, reviewer, exams, …)
 src/styles/       design system + the "magic" animation layer
+relay/            Cloudflare Worker: rotating Gemini keys + Fish Audio wizard voice
 public/wizard/    mascot art + tutorial screenshots + narration MP3s
 tests/            vitest: engines, storage flows, exam prep (fake-indexeddb)
 ```

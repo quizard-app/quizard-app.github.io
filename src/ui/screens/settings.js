@@ -1,5 +1,5 @@
 import { exportAll, importAll, clearAllData, storageUsage, saveSettings, loadSettings, listDocs, listAccounts, getAccount, deleteAccount, setActiveAccount, getActiveAccountId, accountHasData } from '../../lib/storage.js'
-import { testApiKey, getApiKey, setApiKey, hasApiKey } from '../../lib/llm/gemini.js'
+import { testApiKey, getApiKey, setApiKey, hasApiKey, hasRelay } from '../../lib/llm/gemini.js'
 import { maybeScheduleReminders } from '../reminders.js'
 import { icon } from '../icons.js'
 import { esc, sectionTitle, row, muted, card, btn } from '../helpers.js'
@@ -68,11 +68,11 @@ export async function render(root, ctx) {
       ${sectionTitle('AI question writing')}
       ${card(`
         <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
-          Quizard talks directly to Google Gemini to write natural exam-style questions — using
-          <b>your own free API key</b>. Grab one in about a minute at
-          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>.
-          The key is stored only on this device and is sent to no one except Google.
-          Without a key, quizzes are still generated using built-in rules.
+          Quizard writes AI questions through its <b>built-in relay</b> — the app rotates several
+          Gemini keys automatically, so quizzes keep generating even when one key hits its limit.
+          Nothing to configure. Optionally, paste your own free key
+          (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>)
+          as a backup: it is stored only on this device and used if the relay keys are ever all busy.
         </p>
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
           <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key" autocomplete="off"
@@ -160,9 +160,11 @@ export async function render(root, ctx) {
   root.querySelector('#back-btn').addEventListener('click', () => ctx.go('library'))
 
   function renderKeyStatus(msg) {
-    root.querySelector('#key-status').textContent = msg || (hasApiKey()
-      ? 'Key saved — AI features ready.'
-      : 'No key yet — quizzes still work with built-in rules.')
+    root.querySelector('#key-status').textContent = msg || (hasRelay()
+      ? `Built-in relay ready${getApiKey() ? ' · personal backup key saved' : ''}.`
+      : getApiKey()
+        ? 'No relay configured — using your personal key.'
+        : 'No relay and no key — quizzes still work with built-in rules.')
   }
   renderKeyStatus()
   const keyInput = root.querySelector('#gemini-key-input')
@@ -171,13 +173,13 @@ export async function render(root, ctx) {
     if (!val) { renderKeyStatus('Paste a key first — get a free one at aistudio.google.com/apikey'); return }
     setApiKey(val)
     keyInput.value = ''
-    renderKeyStatus('Key saved ✓ — tap Test connection to check it.')
-    ctx.toast('Gemini key saved ✓')
+    renderKeyStatus('Key saved ✓ — used only if the relay keys are ever all busy.')
+    ctx.toast('Personal backup key saved ✓')
   })
   root.querySelector('#remove-key-btn').addEventListener('click', () => {
     setApiKey('')
-    renderKeyStatus('Key removed — AI off, built-in rules in use.')
-    ctx.toast('Gemini key removed')
+    renderKeyStatus('Personal key removed — the built-in relay handles AI.')
+    ctx.toast('Personal key removed')
   })
   const testBtn = root.querySelector('#test-key-btn')
   testBtn.addEventListener('click', async () => {

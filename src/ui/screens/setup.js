@@ -1,5 +1,5 @@
 import { getDoc, getWeakTerms } from '../../lib/storage.js'
-import { hasApiKey } from '../../lib/llm/gemini.js'
+import { hasApiKey, hasRelay } from '../../lib/llm/gemini.js'
 import { icon } from '../icons.js'
 import { esc, typeLabel, sectionTitle, chipRow, chip } from '../helpers.js'
 import { TYPE_META, estimateAvailable, generateQuiz } from '../../lib/quizgen.js'
@@ -90,7 +90,7 @@ export async function render(root, ctx) {
       ${sectionTitle('Options')}
       <div class="card" style="padding:2px 16px;border-top:1px solid var(--border)">
         <div class="row" data-tooltip="Google Gemini writes complete exam-style questions from the parsed content">
-          <div><div class="label">AI-written questions</div><div class="sub">${hasApiKey() ? 'Gemini · key set' : 'Gemini · add a free key in Settings'}</div></div>
+          <div><div class="label">AI-written questions</div><div class="sub">${hasRelay() ? 'Gemini · built-in relay' : hasApiKey() ? 'Gemini · personal key' : 'Gemini · needs the relay or a key (Settings)'}</div></div>
           <div class="switch ${aiOn ? 'on' : ''}" id="sw-ai" data-tooltip="Toggle AI question writing"></div>
         </div>
         <div class="row" id="author-row" ${aiOn ? '' : 'style="display:none"'} data-tooltip="Gemini authors the whole quiz from scratch — why and scenario questions, not just rephrased sentences">

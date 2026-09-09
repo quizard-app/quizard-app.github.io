@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "build:cap": "cross-env VITE_TARGET=capacitor VITE_SHARE_BASE_URL=https://quizard-app.github.io/ vite build",
     "preview": "vite preview --host",
-    "build:pages": "node scripts/build-pages.mjs"
+    "build:pages": "node scripts/build-pages.mjs",
+    "relay:dev": "npx wrangler dev relay/worker.js --config relay/wrangler.toml --port 8787",
+    "relay:deploy": "node scripts/deploy-relay.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
