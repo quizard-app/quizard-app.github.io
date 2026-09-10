@@ -57,6 +57,8 @@
               "node_modules/@ionic/angular/css/display.css",
               "src/theme/quizard-tokens.css",
               "src/theme/quizard.css",
+              "src/theme/screens.css",
+              "src/theme/components.css",
               "src/styles.scss"
             ]
           },

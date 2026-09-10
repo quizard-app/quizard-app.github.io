@@ -1,0 +1,75 @@
+@if (mode() === 'picker') {
+  <div class="acc-screen">
+    <div class="acc-brand"><span class="mark" [innerHTML]="icons.logo"></span>Quizard</div>
+    <h1 class="acc-title">Who's studying?</h1>
+    <p class="acc-sub">Pick a profile to continue — progress is tracked separately for each.</p>
+    <div class="acc-grid">
+      @for (a of accounts(); track a.id) {
+        <button class="acc-card" (click)="openAccount(a)" [attr.data-tooltip]="a.pinHash ? 'PIN-protected' : 'Open without PIN'">
+          <span class="acc-avatar lg" [style.background]="a.color">{{ a.name.charAt(0).toUpperCase() }}</span>
+          <span class="acc-name">{{ a.name }}</span>
+          @if (a.pinHash) { <span class="acc-lock" [innerHTML]="icons.lock"></span> }
+        </button>
+      }
+      <button class="acc-card acc-add" (click)="go({ mode: 'create' })" data-tooltip="Create a new profile">
+        <span class="acc-avatar lg ghost" [innerHTML]="icons.plus"></span>
+        <span class="acc-name">Add account</span>
+      </button>
+    </div>
+    <p class="acc-foot">Accounts live only on this device.</p>
+  </div>
+}
+
+@if (mode() === 'create') {
+  <div class="acc-screen">
+    <div class="acc-brand"><span class="mark" [innerHTML]="icons.logo"></span>Quizard</div>
+    <h1 class="acc-title">Create your profile</h1>
+    <p class="acc-sub">Your quizzes, progress and mistakes are tracked under this account.</p>
+
+    <div class="acc-form">
+      <label class="section-title" for="acc-name">Profile name</label>
+      <input class="text-input" id="acc-name" placeholder="e.g. Juan" maxlength="24" autocomplete="off" [(ngModel)]="name" />
+
+      <label class="section-title">Avatar color</label>
+      <div class="swatch-row">
+        @for (c of colors; track c) {
+          <button class="swatch" [class.on]="c === color" [style.background]="c" (click)="color = c" [attr.aria-label]="'Color ' + c"></button>
+        }
+      </div>
+
+      <label class="section-title" for="acc-pin">PIN <span class="faint" style="text-transform:none;letter-spacing:0">(optional — protects this profile)</span></label>
+      <div class="pin-row">
+        <input class="text-input pin-input" id="acc-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••" aria-label="Enter 4-digit PIN" autocomplete="off" [(ngModel)]="pin" (input)="onPinInput()" />
+        <input class="text-input pin-input" id="acc-pin2" type="tel" inputmode="numeric" maxlength="4" placeholder="repeat" aria-label="Repeat 4-digit PIN" autocomplete="off" [(ngModel)]="pinConfirm" (input)="onPinInput()" />
+      </div>
+      <p class="faint" style="font-size:12px;margin-top:6px">{{ pinHint }}</p>
+
+      <button class="btn btn-primary" style="margin-top:20px" (click)="create()"><span [innerHTML]="icons.check"></span> Create account</button>
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="back()">Back</button>
+    </div>
+  </div>
+}
+
+@if (mode() === 'lock' && lockAccount(); as acc) {
+  <div class="acc-screen">
+    <div class="acc-brand"><span class="mark" [innerHTML]="icons.logo"></span>Quizard</div>
+    <div style="display:flex;justify-content:center">
+      <span class="acc-avatar lg" [style.background]="acc.color">{{ acc.name.charAt(0).toUpperCase() }}</span>
+    </div>
+    <h1 class="acc-title">Enter PIN for {{ acc.name }}</h1>
+    <p class="acc-sub">This profile is protected.</p>
+    <div class="pin-dots">
+      @for (i of [0, 1, 2, 3]; track i) {
+        <span class="pin-dot" [class.filled]="entered.length > i"></span>
+      }
+    </div>
+    <div class="pin-pad" [class.shake]="shaking">
+      @for (k of padKeys; track k) {
+        <button class="pin-key" (click)="pressKey(k)">{{ k }}</button>
+      }
+      <button class="pin-key ghost" (click)="cancelLock()">Cancel</button>
+      <button class="pin-key" (click)="pressKey('0')">0</button>
+      <button class="pin-key ghost" (click)="delKey()">⌫</button>
+    </div>
+  </div>
+}

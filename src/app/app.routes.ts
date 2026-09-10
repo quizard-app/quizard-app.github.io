@@ -12,8 +12,11 @@ export const routes: Routes = [
   },
   {
     path: 'accounts',
-    loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage),
-    data: { title: 'Accounts', milestone: 'M0 — next increment' }
+    loadComponent: () => import('./pages/accounts/accounts').then(m => m.AccountsPage)
+  },
+  {
+    path: 'tutorial',
+    loadComponent: () => import('./pages/tutorial/tutorial').then(m => m.TutorialPage)
   },
   {
     path: 'tabs',

@@ -174,6 +174,7 @@ export async function listAccounts() {
   return all.sort((a, b) => a.createdAt - b.createdAt)
 }
 
+/** @param {{ name: string, pinHash?: string | null, color: string }} data */
 export async function createAccount({ name, pinHash = null, color }) {
   const db = await dbPromise
   const acc = { id: uid(), name: name.trim(), pinHash, color, createdAt: Date.now() }

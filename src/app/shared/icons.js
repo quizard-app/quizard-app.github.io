@@ -1,4 +1,4 @@
-import { assetUrl } from '../lib/assets.js'
+import { assetUrl } from './assets.js'
 
 const ICONS = {
   logo: `<img class="wiz-mark" src="${assetUrl('wizard/wizard-logo.jpg')}" alt="Quizard">`,
