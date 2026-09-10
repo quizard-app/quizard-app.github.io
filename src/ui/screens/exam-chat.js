@@ -140,6 +140,7 @@ export async function render(root, ctx) {
     await askWizard(text)
   }
 
+  root.querySelector('#back-btn').addEventListener('click', () => ctx.go('exams'))
   sendBtn.addEventListener('click', send)
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send() } })
 
