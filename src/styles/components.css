@@ -75,7 +75,16 @@
   box-shadow: 0 -4px 24px -2px rgba(0, 0, 0, 0.08);
 }
 @media (min-width: 720px) {
-  .bottom-nav { max-width: 560px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  /* Web version: the docked phone bar becomes a floating pill nav. */
+  .bottom-nav {
+    max-width: 540px;
+    bottom: 18px;
+    height: 70px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 22px 48px -14px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(124, 58, 237, 0.1);
+  }
 }
 .nav-item {
   position: relative;

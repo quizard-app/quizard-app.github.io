@@ -217,7 +217,7 @@ body::after {
       var(--bg-subtle);
   }
   :root {
-    --frame-max: 960px;
+    --frame-max: 1100px;
     --pad-x: 32px;
   }
   #app {
@@ -228,7 +228,7 @@ body::after {
 }
 @media (min-width: 1100px) {
   :root {
-    --frame-max: 1080px;
+    --frame-max: 1320px;
   }
 }
 

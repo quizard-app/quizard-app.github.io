@@ -240,6 +240,10 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
 .timer-chip svg { width: 14px; height: 14px; }
 .quiz-body { padding: 24px 0; max-width: 640px; }
 @media (min-width: 768px) { .quiz-body { padding: 32px 0; } }
+/* Web version: keep the question column reading-comfortable, centered. */
+@media (min-width: 720px) {
+  .quiz-body { max-width: 720px; margin: 0 auto; }
+}
 .q-type-badge { margin-bottom: 16px; }
 .q-type-badge .chip { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; font-weight: 700; }
 .q-stem {
@@ -1758,11 +1762,13 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 }
 
 /* ── Wide-screen refinement ─────────────────────────────────────────────
-   The app frame stays 960–1080px on desktop; screens that read badly at
-   that width get a comfortable centered column instead. The library gets a
-   slightly wider one so its full-width document rows keep room to breathe. */
+   Real web-version widths: the frame opens up to 1100–1320px and screens
+   use comfortable web reading columns instead of the phone-width caps.
+   The library fills the whole frame like a desktop file manager. */
 @media (min-width: 720px) {
   .rev-screen, .res-screen, .hist-screen, .set-screen, .dd-screen,
-  .ex-screen, .ec-screen, .setup-screen { max-width: 760px; margin: 0 auto; }
-  .lib-screen { max-width: 900px; margin: 0 auto; }
+  .ex-screen, .ec-screen, .setup-screen, .imp-screen { max-width: 880px; margin: 0 auto; }
+  .lib-screen { max-width: none; }
+  /* the fixed docked nav becomes a floating pill on desktop */
+  .screen { padding-bottom: 112px; }
 }
