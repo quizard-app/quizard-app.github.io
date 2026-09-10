@@ -1,0 +1,27 @@
+<div class="welcome intro-motion" id="welcome" [class.exit]="exiting">
+  <div class="welcome-dust" aria-hidden="true">
+    @for (p of dust; track $index) {
+      <i [style.left]="p.l" [style.top]="p.t" [style.animation-delay]="p.d"></i>
+    }
+  </div>
+  <div class="welcome-inner">
+    <div class="welcome-mark">
+      <span class="wm-halo"></span>
+      <span class="wm-rune"></span>
+      <span class="wm-rune r2"></span>
+      <span class="wm-circle"></span>
+      <span class="wm-icon"><img class="wiz-hero" [src]="heroUrl" alt="Quizard wizard"></span>
+      <span class="wm-sparks" aria-hidden="true">
+        @for (s of sparks; track $index) {
+          <i [style.--a]="s.a" [style.--d]="s.d"></i>
+        }
+      </span>
+    </div>
+    <h1 class="welcome-title">
+      <span class="wt-line">Welcome to</span>
+      <span class="wt-name">Quizard</span>
+    </h1>
+    <p class="welcome-sub">Your documents, forged into quizzes.</p>
+  </div>
+  <div class="welcome-progress"><span></span></div>
+</div>

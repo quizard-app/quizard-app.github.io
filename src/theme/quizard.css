@@ -1,0 +1,51 @@
+/* Ionic ↔ Quizard theme bridge.
+   Quizard tokens live in quizard-tokens.css (vanilla design system, both
+   themes). Here we map them onto Ionic's variables so Ionic components
+   inherit the wizard identity, and keep the reduced-motion exemption for
+   the first-run intro. */
+
+:root {
+  --ion-color-primary: #7C3AED;
+  --ion-color-primary-rgb: 124, 58, 237;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #6d33d1;
+  --ion-color-primary-tint: #8a4def;
+
+  --ion-font-family: var(--font-sans);
+}
+
+html[data-theme='dark'] {
+  --ion-background-color: var(--bg);
+  --ion-background-color-rgb: 11, 8, 32;
+  --ion-text-color: var(--text);
+  --ion-text-color-rgb: 236, 233, 255;
+  --ion-border-color: var(--border);
+  --ion-item-background: var(--surface);
+  --ion-toolbar-background: var(--bg);
+  --ion-tab-bar-background: transparent;
+}
+
+html[data-theme='light'] {
+  --ion-background-color: var(--bg);
+  --ion-background-color-rgb: 248, 246, 254;
+  --ion-text-color: var(--text);
+  --ion-text-color-rgb: 18, 13, 44;
+  --ion-border-color: var(--border);
+  --ion-item-background: var(--surface);
+  --ion-toolbar-background: var(--bg);
+  --ion-tab-bar-background: transparent;
+}
+
+/* ── Global reduced motion ──
+   The first-run intro (welcome splash, onboarding, tutorial) is marked
+   .intro-motion and exempt — the rest of the app respects the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.intro-motion):not(.intro-motion *),
+  *:not(.intro-motion):not(.intro-motion *)::before,
+  *:not(.intro-motion):not(.intro-motion *)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

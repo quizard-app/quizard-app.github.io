@@ -1,0 +1,12 @@
+/* Quizard global styles (Ionic brings its own per-component defaults) */
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; }
+img { display: block; max-width: 100%; }

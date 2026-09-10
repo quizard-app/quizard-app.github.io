@@ -1,0 +1,47 @@
+<div class="onb-wrap intro-motion">
+  <div class="onb-top">
+    <button class="onb-skip" type="button" (click)="finish()" data-tooltip="Skip the introduction">Skip</button>
+    <div class="onb-progress" role="progressbar" aria-label="Introduction progress" aria-valuemin="1" [attr.aria-valuemax]="slides.length" [attr.aria-valuenow]="idx + 1">
+      <div class="onb-progress-fill" [style.width.%]="((idx + 1) / slides.length) * 100"></div>
+    </div>
+  </div>
+  <div class="onb-viewport" #viewport (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
+    <div class="onb-slides" #slidesEl [style.transform]="'translateX(-' + idx * 100 + '%)'">
+      @for (s of slides; track $index) {
+        <div class="onb-slide" [attr.data-accent]="s.accent" [class.active]="$index === idx">
+          <div class="onb-stage">
+            <div class="onb-glow"></div>
+            <div class="onb-illust">
+              @if ($index === 0) {
+                <img class="wiz-hero" [src]="heroUrl" alt="Quizard wizard">
+              } @else {
+                <span [innerHTML]="s.artHtml"></span>
+              }
+            </div>
+          </div>
+          <div class="onb-copy">
+            <div class="onb-eyebrow">{{ s.eyebrow }}</div>
+            <h2>{{ s.title }}</h2>
+            <p>{{ s.body }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+  <div class="onb-bottom">
+    <div class="onb-dots" aria-hidden="true">
+      @for (s of slides; track $index) {
+        <span class="onb-dot" [class.on]="$index === idx"></span>
+      }
+    </div>
+    <div class="onb-cta-row">
+      <button class="onb-back" type="button" aria-label="Previous slide" [hidden]="idx === 0" (click)="back($event)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="btn btn-primary onb-next" type="button" (click)="next($event)">
+        <span class="onb-next-label">{{ isLast ? 'Get Started' : 'Continue' }}</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,366 @@
+:host {
+  width: 100%;
+}
+.onb-wrap {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 60%),
+    var(--bg, transparent);
+  overflow: hidden;
+}
+.onb-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(2px 2px at 12% 18%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 60%),
+    radial-gradient(1.6px 1.6px at 84% 24%, color-mix(in srgb, var(--accent) 25%, transparent), transparent 60%),
+    radial-gradient(1.4px 1.4px at 22% 78%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    radial-gradient(1.8px 1.8px at 70% 88%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+@media (min-width: 768px) { .onb-wrap { border-left: 1px solid var(--border); border-right: 1px solid var(--border); } }
+
+.onb-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px 6px;
+}
+.onb-skip {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-faint);
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 1px solid transparent;
+  margin-left: auto;
+  cursor: pointer;
+  transition: color .2s, background .2s, border-color .2s;
+}
+.onb-skip:hover { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+
+.onb-progress {
+  flex: 1;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+  position: relative;
+}
+.onb-progress-fill {
+  position: relative;
+  height: 100%;
+  width: 25%;
+  border-radius: var(--radius-pill);
+  background: var(--grad-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: width .45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* light sweep travelling along the progress fill */
+.onb-progress-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.55) 50%, transparent 75%);
+  transform: translateX(-130%);
+  animation: onbSheen 2.4s ease-in-out infinite;
+}
+@keyframes onbSheen {
+  55%, 100% { transform: translateX(240%); }
+}
+
+.onb-viewport {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.onb-slides {
+  display: flex;
+  width: 100%;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+/* direction-aware push: the viewport breathes as the deck slides */
+.onb-viewport.push-forward { animation: deckPushF .55s cubic-bezier(0.22, 1, 0.36, 1); }
+.onb-viewport.push-back { animation: deckPushB .55s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes deckPushF {
+  0% { transform: scale(0.985); }
+  50% { transform: scale(0.997); }
+  100% { transform: scale(1); }
+}
+@keyframes deckPushB {
+  0% { transform: scale(0.985); }
+  50% { transform: scale(0.997); }
+  100% { transform: scale(1); }
+}
+.onb-slide {
+  min-width: 100%;
+  padding: 8px 32px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  animation: onbSlideIn .55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes onbSlideIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.onb-stage {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 13 / 9;
+  display: grid;
+  place-items: center;
+}
+.onb-illust {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  z-index: 2;
+  filter: drop-shadow(0 18px 32px rgba(0,0,0,0.18));
+  animation: onbFloat 5.5s ease-in-out infinite;
+}
+.onb-illust svg { width: 100%; height: auto; display: block; }
+.onb-glow {
+  position: absolute;
+  inset: 12% 8% 8% 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%);
+  filter: blur(20px);
+  z-index: 1;
+  animation: onbGlowPulse 4.5s ease-in-out infinite;
+}
+.onb-slide[data-accent="blue"] .onb-glow   { background: radial-gradient(closest-side, color-mix(in srgb, #6366F1 40%, transparent), transparent 70%); }
+.onb-slide[data-accent="amber"] .onb-glow  { background: radial-gradient(closest-side, color-mix(in srgb, #F59E0B 38%, transparent), transparent 70%); }
+.onb-slide[data-accent="green"] .onb-glow  { background: radial-gradient(closest-side, color-mix(in srgb, #10B981 38%, transparent), transparent 70%); }
+@keyframes onbFloat {
+  0%,100% { transform: translateY(0) rotate(0); }
+  50%     { transform: translateY(-8px) rotate(-1.2deg); }
+}
+@keyframes onbGlowPulse {
+  0%,100% { opacity: 0.7; transform: scale(1); }
+  50%     { opacity: 1;   transform: scale(1.08); }
+}
+
+.onb-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 380px;
+}
+.onb-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--accent-strong);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.onb-slide h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--text);
+}
+.onb-slide p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 340px;
+}
+
+/* solid glass (no backdrop-filter): blur on a sticky bar can blank the
+   page while scrolling on some GPUs — especially on iOS Safari */
+.onb-bottom {
+  position: relative;
+  z-index: 2;
+  padding: 18px 24px calc(22px + env(safe-area-inset-bottom));
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--glass-solid);
+}
+.onb-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.onb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  transition: width .35s cubic-bezier(0.16, 1, 0.3, 1), background-color .25s, box-shadow .25s;
+}
+.onb-dot.on {
+  width: 24px;
+  background: var(--grad-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: dotPop .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes dotPop {
+  from { transform: scaleX(0.5); }
+  to { transform: scaleX(1); }
+}
+
+.onb-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.onb-back {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .15s;
+  flex: 0 0 auto;
+}
+.onb-back:hover { background: var(--surface-hover); border-color: var(--accent-border); }
+.onb-back:active { transform: scale(0.96); }
+.onb-back[hidden] { display: none; }
+
+.onb-next {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  color: white;
+  background: var(--grad-accent);
+  box-shadow: var(--grad-shadow);
+  transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+  letter-spacing: 0.01em;
+}
+.onb-next svg { transition: transform .2s ease; pointer-events: none; }
+.onb-next-label { display: inline-block; pointer-events: none; }
+/* press ripple: an expanding glow where the button was tapped */
+.onb-next .press-ripple {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 70%);
+  transform: translate(-50%, -50%) scale(0);
+  animation: pressRipple .55s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes pressRipple {
+  to { transform: translate(-50%, -50%) scale(9); opacity: 0; }
+}
+/* arrow takes flight on each advance */
+.onb-next.fly svg { animation: arrowFly .45s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes arrowFly {
+  0% { transform: translateX(0); opacity: 1; }
+  40% { transform: translateX(10px); opacity: 0; }
+  41% { transform: translateX(-10px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.onb-next:hover { filter: brightness(1.08); box-shadow: 0 10px 28px -4px var(--accent-glow); }
+.onb-next:hover svg { transform: translateX(3px); }
+.onb-next:active { transform: scale(0.98); }
+
+/* ── Onboarding motion layer (design unchanged) ── */
+/* the active slide's content choreographs in; replays on every navigation */
+.onb-slide.active .onb-stage { animation: onbArtIn .6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.onb-slide.active .onb-eyebrow { animation: onbRise .45s .14s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.onb-slide.active h2 { animation: onbRise .5s .26s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.onb-slide.active p { animation: onbRise .5s .38s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+@keyframes onbArtIn {
+  from { opacity: 0; transform: scale(0.7) translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes onbRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+/* the illustration drifts a little slower than before for a magical feel —
+   same visual, longer breath */
+.onb-slide.active .onb-illust { animation-duration: 7s; }
+/* the star specks in the backdrop gently twinkle */
+.onb-wrap::before { animation: onbDust 3.4s ease-in-out infinite; }
+@keyframes onbDust {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+/* top bar and action bar drift into place on mount */
+.onb-top { animation: riseIn .5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.onb-bottom { animation: riseIn .5s 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; line-height: 1.2;
+  letter-spacing: -0.01em;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
+  user-select: none;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn svg { width: 17px; height: 17px; stroke-width: 2.2; }
+.btn:active { transform: scale(0.96); }
+.btn[disabled] { opacity: 0.45; pointer-events: none; }
+
+/* Primary: vivid Indigo-Cyan gradient with ambient glow + magic shimmer */
+.btn-primary {
+  position: relative; overflow: hidden;
+  background: var(--grad-accent); color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--grad-shadow);
+}
+.btn-primary::after {
+  content: '';
+  position: absolute; top: -20%; bottom: -20%; left: -75%;
+  width: 45%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-20deg);
+  animation: btnShimmer 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes btnShimmer {
+  0% { left: -75%; }
+  55%, 100% { left: 135%; }
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 12px 30px -4px rgba(124, 58, 237, 0.5), 0 0 20px var(--accent-glow);
+}
