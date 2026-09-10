@@ -30,3 +30,5 @@ tmp/
 android/keystore.properties
 .zcode/
 relay/.dev.vars
+legacy/android/keystore.properties
+legacy/android/.idea
