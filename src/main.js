@@ -17,9 +17,6 @@ if (import.meta.env.VITE_TARGET !== 'capacitor') {
       onNeedRefresh() {
         toast('New version available — tap to update', false, () => updateSW(true))
       },
-      onOfflineReady() {
-        toast('App ready for offline use')
-      },
       onRegistrationError(err) {
         console.error('SW registration error:', err)
       }
