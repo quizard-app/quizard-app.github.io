@@ -1,4 +1,4 @@
-import{$ as e,H as t,L as n,S as r,b as i,d as a,ht as o,m as s,p as c,r as l,u,vt as d,x as f,y as p}from"./index-DUeJPbcj.js";import{i as m}from"./gemini-Bv9es_do.js";import{n as h}from"./quiz-ai-DkFqW9pl.js";async function g(g,_){let v=await t(_.state.currentDocId);if(!v){_.go(`library`);return}let y=Array.isArray(v.topics)?v.topics:[],b=d(await e()).filter(e=>e!==v.folder);g.innerHTML=`
+import{$ as e,H as t,L as n,S as r,b as i,d as a,ht as o,m as s,p as c,r as l,u,vt as d,x as f,y as p}from"./index-BsD152C5.js";import{i as m}from"./gemini-Bv9es_do.js";import{n as h}from"./quiz-ai-DCdurtWb.js";async function g(g,_){let v=await t(_.state.currentDocId);if(!v){_.go(`library`);return}let y=Array.isArray(v.topics)?v.topics:[],b=d(await e()).filter(e=>e!==v.folder);g.innerHTML=`
     <header class="back-header">
       <button class="icon-btn" id="back-btn" data-tooltip="Back to library">${r(`chevronLeft`)}</button>
       <h2>Document</h2>

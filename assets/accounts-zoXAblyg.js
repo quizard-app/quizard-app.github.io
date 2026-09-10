@@ -1,4 +1,4 @@
-import{A as e,B as t,F as n,I as r,J as i,S as a,X as o,_t as s,lt as c,mt as l,p as u,rt as d,ut as f}from"./index-DUeJPbcj.js";var p=[`#C4713B`,`#1A7F37`,`#0A66C2`,`#7C5CBF`,`#B54708`,`#475569`];async function m(e,t){let n=t.state.accountFlow?.mode||`picker`;return n===`create`?y(e,t):n===`lock`?x(e,t):g(e,t)}function h(e,t,n=`lg`){return`<span class="acc-avatar ${n}" style="background:${e}">${u(t)}</span>`}async function g(e,n){let r=await o();e.innerHTML=`
+import{A as e,B as t,F as n,I as r,J as i,S as a,X as o,_t as s,lt as c,mt as l,p as u,rt as d,ut as f}from"./index-BsD152C5.js";var p=[`#C4713B`,`#1A7F37`,`#0A66C2`,`#7C5CBF`,`#B54708`,`#475569`];async function m(e,t){let n=t.state.accountFlow?.mode||`picker`;return n===`create`?y(e,t):n===`lock`?x(e,t):g(e,t)}function h(e,t,n=`lg`){return`<span class="acc-avatar ${n}" style="background:${e}">${u(t)}</span>`}async function g(e,n){let r=await o();e.innerHTML=`
     <div class="acc-screen">
       <div class="acc-brand"><span class="mark">${a(`logo`)}</span>Quizard</div>
       <h1 class="acc-title">Who's studying?</h1>

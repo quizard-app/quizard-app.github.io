@@ -1,4 +1,4 @@
-import{S as e,at as t,p as n}from"./index-DUeJPbcj.js";import{a as r,r as i}from"./share-BWgg4yr2.js";async function a(a,o){let s=location.hash.match(/quiz=([^&]+)/);if(!s){o.go(`library`);return}let c;try{c=await i(decodeURIComponent(s[1]))}catch(t){a.innerHTML=`
+import{S as e,at as t,p as n}from"./index-BsD152C5.js";import{a as r,r as i}from"./share-BWgg4yr2.js";async function a(a,o){let s=location.hash.match(/quiz=([^&]+)/);if(!s){o.go(`library`);return}let c;try{c=await i(decodeURIComponent(s[1]))}catch(t){a.innerHTML=`
       <div class="screen screen-center">
         <div class="empty-state">
           <div class="art">${e(`alert`)}</div>
