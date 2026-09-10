@@ -17,7 +17,7 @@ const DUST = [
 
 export function render(root, ctx) {
   root.innerHTML = `
-    <div class="welcome" id="welcome">
+    <div class="welcome intro-motion" id="welcome">
       <div class="welcome-dust" aria-hidden="true">${DUST}</div>
       <div class="welcome-inner">
         <div class="welcome-mark">

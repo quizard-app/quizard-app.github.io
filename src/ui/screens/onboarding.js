@@ -37,7 +37,7 @@ export function render(root, ctx) {
   let idx = 0
 
   root.innerHTML = `
-    <div class="onb-wrap">
+    <div class="onb-wrap intro-motion">
       <div class="onb-top">
         <button class="onb-skip" id="onb-skip" data-tooltip="Skip the introduction">Skip</button>
         <div class="onb-progress" role="progressbar" aria-label="Introduction progress" aria-valuemin="1" aria-valuemax="${SLIDES.length}" aria-valuenow="1" id="onb-progress">

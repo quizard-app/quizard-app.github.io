@@ -353,13 +353,14 @@ h4 { font-size: 14px; line-height: 1.4; font-weight: 600; }
 .skeleton-chip { display: inline-block; width: 72px; height: 32px; border-radius: var(--radius-pill); margin-right: 8px; }
 
 /* ── Global reduced motion ──
-   Excludes the welcome splash with :not() — CSS `unset` can't undo a
-   !important override (it forces the initial 0s), so the splash must be
-   left out of the kill rule entirely to keep its loading animation. */
+   The first-run intro (welcome splash, onboarding slides, wizard tutorial)
+   is marked .intro-motion and is exempt — CSS `unset` can't undo a
+   !important override (it forces the initial 0s), so the intro must be left
+   out of the kill rule entirely or it reads as frozen/broken. */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.welcome):not(.welcome *),
-  *:not(.welcome):not(.welcome *)::before,
-  *:not(.welcome):not(.welcome *)::after {
+  *:not(.intro-motion):not(.intro-motion *),
+  *:not(.intro-motion):not(.intro-motion *)::before,
+  *:not(.intro-motion):not(.intro-motion *)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

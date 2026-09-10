@@ -187,7 +187,7 @@ export function render(root, ctx) {
   } catch {}
 
   root.innerHTML = `
-    <div class="tut-wrap">
+    <div class="tut-wrap intro-motion">
       <div class="onb-top">
         <button class="onb-skip" id="tut-skip" data-tooltip="Skip the tutorial">Skip</button>
         <div class="onb-progress" role="progressbar" aria-label="Tutorial progress" aria-valuemin="1" aria-valuemax="${SLIDES.length}" aria-valuenow="1" id="tut-progress">

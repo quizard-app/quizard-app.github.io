@@ -1275,11 +1275,6 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 .onb-next:hover svg { transform: translateX(3px); }
 .onb-next:active { transform: scale(0.98); }
 
-@media (prefers-reduced-motion: reduce) {
-  .onb-slide, .onb-illust, .onb-glow, .onb-progress-fill { animation: none !important; transition-duration: .001s !important; }
-  .onb-illust { animation: none; }
-}
-
 /* ── Onboarding motion layer (design unchanged) ── */
 /* the active slide's content choreographs in; replays on every navigation */
 .onb-slide.active .onb-stage { animation: onbArtIn .6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
@@ -1755,10 +1750,6 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
   color: var(--text-dim);
   margin: 0;
   line-height: 1.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tut-slide, .tut-highlight-glow, .tut-highlight-label { animation: none !important; transition-duration: .001s !important; }
 }
 
 /* ── Wide-screen refinement ─────────────────────────────────────────────
