@@ -1,0 +1,178 @@
+<ion-content [fullscreen]="true">
+@if (phase() === 'generating') {
+  <div class="screen screen-center">
+    <div class="empty-state">
+      <div class="art" [innerHTML]="'sparkles' | ico"></div>
+      <h3 style="margin-top:14px">AI is writing your quiz</h3>
+      <p class="faint" style="margin-top:6px">{{ genLabel() }}</p>
+    </div>
+    <div style="width:min(280px,80%);height:8px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:18px">
+      <div style="height:100%;background:var(--accent);transition:width .25s" [style.width.%]="genPct()"></div>
+    </div>
+  </div>
+}
+
+@if (phase() === 'error') {
+  <div class="screen screen-center">
+    <div class="empty-state">
+      <div class="art" [innerHTML]="'sparkles' | ico"></div>
+      <h3>Not enough content</h3>
+      <p>{{ errorMsg() }}</p>
+      <button class="btn btn-secondary" style="max-width:200px;margin:0 auto" (click)="quit()">Back</button>
+    </div>
+  </div>
+}
+
+@if (phase() === 'active' && q(); as question) {
+  <div class="quiz-topbar">
+    <button class="icon-btn" (click)="quit()" data-tooltip="Quit quiz" [innerHTML]="'x' | ico"></button>
+    <div class="progress-track" data-tooltip="Your progress through the quiz"><div class="progress-fill" [style.width.%]="progressPct()"></div></div>
+    <span class="q-counter" data-tooltip="Question number">{{ counter() }}</span>
+    @if (timerVal() !== null) {
+      <span class="timer-chip" [class.danger]="timerDanger()" data-tooltip="Time remaining"><span [innerHTML]="'timer' | ico"></span><span>{{ timerVal() }}</span></span>
+    }
+  </div>
+  <div class="quiz-body">
+    <img class="q-wiz" [src]="wizThinking" alt="" />
+    @if (question.imageId && imgUrlMap[question.imageId]) {
+      <img class="q-image" [src]="imgUrlMap[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap[question.imageId])" />
+    }
+    <div class="q-type-badge">
+      <span class="chip on">{{ metaShort }}</span>
+      @if (adaptiveTier) { <span class="chip" data-tooltip="Adaptive difficulty: this question's tier">{{ tierLabel(adaptiveTier!) }}</span> }
+    </div>
+
+    @if (question.type === 'matching') {
+      <div class="match-grid">
+        <div class="match-col">
+          @for (p of question.pairs; track $index; let i = $index) {
+            <button class="match-cell match-left" [class]="matchStateFor(i)" (click)="pickLeft(i)">{{ p.left }}</button>
+          }
+        </div>
+        <div class="match-col">
+          @for (pi of question.rightOrder; track $index; let j = $index) {
+            <button class="match-cell match-right" [class]="rightStateFor(j)" (click)="pickRight(j, pi)">{{ question.pairs[pi].right }}</button>
+          }
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;width:100%" [disabled]="matchedCount !== question.pairs.length" (click)="submitMatching()" data-tooltip="Pair every term first">Check matches</button>
+    } @else if (question.type === 'ordering') {
+      <div class="order-pool">
+        @for (si of question.shuffled; track si) {
+          @if (!orderChosen().includes(si)) {
+            <button class="order-cell" (click)="orderPick(si)">{{ question.steps[si] }}</button>
+          }
+        }
+      </div>
+      <div class="order-answer">
+        @for (si of orderChosen(); track si; let k = $index) {
+          <button class="order-ans" (click)="orderRemove(k)"><span class="order-pos">{{ k + 1 }}</span>{{ question.steps[si] }}</button>
+        }
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;width:100%" [disabled]="orderChosen().length !== question.steps.length" (click)="submitOrder()" data-tooltip="Place every step first">Check order</button>
+    } @else {
+      @if (question.type === 'id') {
+        <p class="q-stem">Identify the missing term:<br /><span style="font-size:15px;color:var(--text-dim);display:block;margin-top:10px;line-height:1.6">“{{ question.clue }}”</span></p>
+      } @else if (question.type === 'short') {
+        <p class="q-stem">{{ question.prompt || question.stem || question.statement || question.clue || '' }}</p>
+      } @else if (question.type === 'tf') {
+        <p class="q-stem">{{ question.statement }}</p>
+      } @else {
+        <p class="q-stem" [innerHTML]="blankStem(question.stem)"></p>
+      }
+      @if (question.imageId && imgUrlMap[question.imageId]) {
+        <img class="q-image" [src]="imgUrlMap[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap[question.imageId])" />
+      }
+
+      @if (question.type === 'mcq' || question.type === 'except' || question.type === 'fib') {
+        <div id="answers">
+          @for (opt of (question.type === 'fib' ? question.choices : question.options); track $index; let i = $index) {
+            <button class="opt-btn" [class]="optionClass(i)" (click)="answerChoice(i)">
+              <span class="opt-key">{{ question.type === 'fib' ? i + 1 : letter(i) }}</span>
+              <span>{{ opt }}</span>
+            </button>
+          }
+        </div>
+      } @else if (question.type === 'multi') {
+        <div id="answers">
+          @for (opt of question.options; track $index; let i = $index) {
+            <button class="opt-btn multi-opt" [class]="optionClass(i)" [class.sel]="picked().has(i)" [attr.aria-pressed]="picked().has(i)" (click)="toggleMulti(i)">
+              <span class="opt-key">{{ letter(i) }}</span>
+              <span>{{ opt }}</span>
+            </button>
+          }
+          <button class="btn btn-primary" style="margin-top:14px;width:100%" [disabled]="picked().size !== 2" (click)="submitMulti()" data-tooltip="Pick exactly two statements">Check selection</button>
+        </div>
+      } @else if (question.type === 'tf') {
+        <div class="tf-row">
+          <button class="tf-btn true-opt" [class]="tfClass(true)" (click)="answerTf(true)"><span [innerHTML]="'check' | ico"></span> True</button>
+          <button class="tf-btn false-opt" [class]="tfClass(false)" (click)="answerTf(false)"><span [innerHTML]="'x' | ico"></span> False</button>
+        </div>
+      } @else if (question.type === 'id') {
+        <input class="text-input" id="id-input" placeholder="Type your answer…" aria-label="Type your answer" autocomplete="off" autocapitalize="off" spellcheck="false" [(ngModel)]="idAnswer" (keyup.enter)="submitId()" />
+        <button class="btn btn-primary" id="id-submit" style="margin-top:12px" (click)="submitId()">Submit</button>
+      } @else if (question.type === 'short') {
+        <input class="text-input" id="short-input" placeholder="Type your answer…" aria-label="Type your answer" autocomplete="off" [(ngModel)]="shortAnswer" (keyup.enter)="submitShort()" />
+        <button class="btn btn-primary" id="short-submit" style="margin-top:12px" (click)="submitShort()">Submit</button>
+      }
+    }
+    <div id="feedback-zone"></div>
+  </div>
+}
+
+@if (phase() === 'feedback' && q(); as question) {
+  <div class="quiz-topbar">
+    <div class="progress-track"><div class="progress-fill" [style.width.%]="progressPct()"></div></div>
+    <span class="q-counter">{{ counter() }}</span>
+  </div>
+  <div class="quiz-body">
+    <img class="q-wiz-fb" [src]="fbOk() ? wizOk : wizBad" alt="" />
+    <div class="feedback-banner" [class.good]="fbOk()" [class.bad]="!fbOk()">
+      <span [innerHTML]="(fbOk() ? 'check' : 'x') | ico"></span>
+      <div>
+        {{ fbOk() ? 'Correct!' : 'Incorrect' }}
+        @if (!fbOk() && fbCorrectText()) { <span class="fb-answer">Answer: {{ fbCorrectText() }}</span> }
+      </div>
+    </div>
+    @if (canExplain && fbExplanation()) { <div class="explain-box" style="margin-top:14px">{{ fbExplanation() }}</div> }
+    @if (canExplain && !fbExplanation()) {
+      @if (fbExplainLoading()) {
+        <div class="explain-box faint" style="margin-top:14px">Thinking…</div>
+      } @else {
+        <button class="btn btn-ghost explain-btn" style="margin-top:14px;width:100%" (click)="explain()" data-tooltip="Ask Gemini why this answer is right"><span [innerHTML]="'sparkles' | ico"></span> Why? Explain answer</button>
+      }
+    }
+    @if (srsId() != null) {
+      <div style="margin-top:12px">
+        <p class="faint" style="font-size:11.5px;text-align:center;margin-bottom:8px">Schedule next review</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <button class="btn srs-btn srs-again" (click)="grade('again')">Again</button>
+          <button class="btn srs-btn srs-hard" (click)="grade('hard')">Hard</button>
+          <button class="btn srs-btn srs-good" (click)="grade('good')">Good</button>
+          <button class="btn srs-btn srs-easy" (click)="grade('easy')">Easy</button>
+        </div>
+      </div>
+    }
+    @if (srsId() == null) {
+      @if (curIndex < total - 1) {
+        <button class="btn btn-secondary" id="next-btn" style="margin-top:14px;width:100%" (click)="advance()">Next Question <span [innerHTML]="'chevronRight' | ico"></span></button>
+      } @else {
+        <button class="btn btn-good" id="finish-btn" style="margin-top:14px;width:100%" (click)="advance()"><span [innerHTML]="'trophy' | ico"></span> See Results</button>
+      }
+    }
+  </div>
+}
+
+@if (showViewer()) {
+  <div class="img-viewer" (click)="closeViewer()">
+    <div class="iv-zoom-bar">
+      <button class="iv-zoom" aria-label="Zoom out" (click)="zoomOut(); $event.stopPropagation()" [innerHTML]="'minus' | ico"></button>
+      <button class="iv-zoom" aria-label="Reset zoom" (click)="zoomReset(); $event.stopPropagation()" [innerHTML]="'refresh' | ico"></button>
+      <button class="iv-zoom" aria-label="Zoom in" (click)="zoomIn(); $event.stopPropagation()" [innerHTML]="'plus' | ico"></button>
+    </div>
+    <button class="iv-close" aria-label="Close" (click)="closeViewer()" [innerHTML]="'x' | ico"></button>
+    <img #viewerImg id="qiv-img" [src]="viewerSrc" alt="Viewing image" />
+  </div>
+}
+
+</ion-content>

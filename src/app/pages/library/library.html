@@ -1,0 +1,144 @@
+<ion-content [fullscreen]="true">
+  <header class="app-header">
+    <div class="brand"><span class="mark" [innerHTML]="icoLog"></span>Quizard</div>
+    <div style="display:flex;gap:2px;align-items:center">
+      <button class="avatar-chip" (click)="openAccounts()" [attr.data-tooltip]="'Switch account — ' + (account()?.name || 'account')" [style.background]="account()?.color || '#475569'">{{ (account()?.name || '?').charAt(0).toUpperCase() }}</button>
+      <button class="icon-btn" aria-label="Settings" (click)="openSettings()" data-tooltip="Settings & backup" [innerHTML]="'gear' | ico"></button>
+      <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
+    </div>
+  </header>
+  <div class="screen lib-screen" [class.screen-center]="!docs().length && !decks().length">
+    @if (nextExam(); as exam) {
+      <button class="exam-card exam-card-lib" (click)="openExamDetail(exam)">
+        <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
+        <span class="exam-card-main">
+          <span class="exam-card-title">{{ exam.title }}</span>
+          <span class="exam-card-sub">{{ exam.docIds?.length || 0 }} files · {{ exam.topics?.length || 0 }} topics{{ countdown(exam) ? ' · ' + countdown(exam) : '' }}</span>
+        </span>
+        <span class="exam-card-cta">Start prep</span>
+      </button>
+    }
+
+    @if (docs().length) {
+      <div class="hero lib-hero">
+        <img class="lib-wiz" [src]="heroImg" alt="" />
+        <div>
+          <h1>Your library</h1>
+          <p>{{ subtitle() }}</p>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="num">{{ docs().length }}</div><div class="lbl">Documents</div></div>
+        <div class="stat-div"></div>
+        <div class="stat"><div class="num">{{ totalAttempts() }}</div><div class="lbl">Quizzes</div></div>
+        <div class="stat-div"></div>
+        <div class="stat"><div class="num">{{ avg() != null ? avg() + '%' : '—' }}</div><div class="lbl">Best Avg</div></div>
+      </div>
+      <div class="lib-tools">
+        <input class="text-input" type="search" placeholder="Search documents…" aria-label="Search documents" autocomplete="off" [value]="query()" (input)="query.set($any($event.target).value.trim())" />
+        <div class="seg">
+          @for (s of sorts; track s.id) {
+            <button [class.on]="sort() === s.id" (click)="setSort(s.id)" [attr.data-tooltip]="'Sort by ' + s.label.toLowerCase()">{{ s.label }}</button>
+          }
+        </div>
+      </div>
+      <button class="exam-entry" (click)="openExams()" data-tooltip="Prepare for an upcoming exam">
+        <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
+        <span>Exam prep</span>
+        <span [innerHTML]="'chevronRight' | ico"></span>
+      </button>
+      @if (folders().length || tags().length) {
+        <div class="lib-filters">
+          @if (folders().length) {
+            <div class="filter-row">
+              <span class="filter-label" [innerHTML]="'folder' | ico"></span>
+              <div class="filter-chips">
+                <button class="fchip" [class.on]="!folderFilter()" (click)="setFolder(null)">All</button>
+                @for (f of folders(); track f) {
+                  <button class="fchip" [class.on]="folderFilter() === f" (click)="setFolder(f)">{{ f }}</button>
+                }
+              </div>
+            </div>
+          }
+          @if (tags().length) {
+            <div class="filter-row">
+              <span class="filter-label" [innerHTML]="'tag' | ico"></span>
+              <div class="filter-chips">
+                <button class="fchip" [class.on]="!tagFilter()" (click)="setTag(null)">All</button>
+                @for (t of tags(); track t) {
+                  <button class="fchip" [class.on]="tagFilter() === t" (click)="setTag(t)">{{ t }}</button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (visibleDocs().length) {
+      <div class="doc-list">
+        @for (doc of visibleDocs(); track doc.id) {
+          <div class="doc-card stagger" (click)="openDoc(doc)" data-tooltip="Open document details">
+            <div class="doc-icon {{ doc.type }}" [innerHTML]="'fileText' | ico"></div>
+            <div class="doc-info">
+              <div class="doc-name">{{ doc.name }}</div>
+              <div class="doc-meta">
+                <span>{{ typeOf(doc) }}</span>·<span>{{ doc.wordCount.toLocaleString() }} words</span>·<span>{{ dateOf(doc.createdAt) }}</span>
+                @if (doc.folder) { <span class="doc-folder"><span [innerHTML]="'folder' | ico"></span> {{ doc.folder }}</span> }
+                @if (doc.bestScore != null) { <span class="score-pill {{ pillOf(doc) }}">{{ doc.bestScore }}%</span> }
+              </div>
+            </div>
+            <div class="doc-actions">
+              <button class="btn btn-primary doc-quiz-btn" (click)="startQuiz(doc); $event.stopPropagation()" data-tooltip="Create a quiz from this document">
+                <span [innerHTML]="'play' | ico"></span> Quiz
+              </button>
+              <button class="btn btn-secondary doc-review-btn" (click)="openReviewer(doc); $event.stopPropagation()" data-tooltip="Read this document as a study reviewer">
+                <span [innerHTML]="'book' | ico"></span> Reviewer
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else if (docs().length) {
+      <p class="center faint" style="padding:32px 0;font-size:13px">No documents match “{{ query() }}”.</p>
+    }
+
+    @if (decks().length) {
+      <div class="section-title">Saved quizzes</div>
+      <p class="faint" style="font-size:12px;margin:0 4px 10px">Quizzes you saved from shared links — play them anytime, no link needed.</p>
+      <div class="doc-list">
+        @for (dk of decks(); track dk.id) {
+          <div class="doc-card deck-card stagger" (click)="playDeck(dk)" data-tooltip="Open saved quiz">
+            <div class="doc-icon saved" [innerHTML]="'layers' | ico"></div>
+            <div class="doc-info">
+              <div class="doc-name">{{ dk.name }}</div>
+              <div class="doc-meta">
+                <span>{{ dk.questions.length }} questions</span>
+                <span>·</span>
+                <span>{{ dateOf(dk.updatedAt || dk.createdAt) }}</span>
+                @if (dk.source) { <span class="doc-folder">{{ dk.source }}</span> }
+              </div>
+            </div>
+            <div class="doc-actions">
+              <button class="btn btn-primary deck-play" (click)="playDeck(dk); $event.stopPropagation()" data-tooltip="Play this saved quiz"><span [innerHTML]="'play' | ico"></span> Play</button>
+              <button class="icon-btn deck-del" aria-label="Delete" (click)="removeDeck(dk); $event.stopPropagation()" data-tooltip="Delete saved quiz" [innerHTML]="'trash' | ico"></button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (!docs().length && !decks().length) {
+      <div class="empty-state">
+        <div class="empty-illust" [innerHTML]="emptyArtHtml"></div>
+        <h3>No documents yet</h3>
+        <p>Add a PDF, Word, PowerPoint or plain text file and turn it into instant practice quizzes — right on your device.</p>
+        <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="openImport()"><span [innerHTML]="'plus' | ico"></span> Add Document</button>
+        <button class="btn exam-entry" style="max-width:230px;margin:10px auto 0" (click)="openExams()">
+          <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
+          <span>Exam prep</span>
+        </button>
+      </div>
+    }
+  </div>
+</ion-content>

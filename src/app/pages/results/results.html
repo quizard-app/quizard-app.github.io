@@ -1,0 +1,100 @@
+<ion-content [fullscreen]="true">
+  @if (r(); as r) {
+    <div class="screen res-screen">
+      <canvas #confetti class="confetti-canvas"></canvas>
+
+      <div class="result-ring-wrap" #ringWrap>
+        <div class="result-ring">
+          <svg width="172" height="172" viewBox="0 0 172 172">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+            <circle class="rr-bg" cx="86" cy="86" r="76" fill="none" stroke-width="13"/>
+            <circle class="rr-fill" cx="86" cy="86" r="76" fill="none" stroke-width="13" stroke-linecap="round" [attr.stroke-dasharray]="ringC" [attr.stroke-dashoffset]="ringOffset()"/>
+          </svg>
+          <div class="rr-center">
+            <div class="rr-pct">{{ pctDisplay() }}</div>
+            <div class="rr-lbl">{{ r.correct }} of {{ r.total }} correct</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-verdict">
+        <h2>{{ verdict().h }}</h2>
+        <p>{{ r.docName }} · {{ Math.round(r.durationSec) }}s</p>
+      </div>
+
+      @if (objectKeys(r.byType).length > 1) {
+        <div class="section-title">By question type</div>
+        <div class="card breakdown">
+          @for (row of r.byType | keyvalue; track row.key) {
+            <div class="bd-row">
+              <span class="bd-name">{{ metaName(row.key) }}</span>
+              <div class="bd-bar"><div class="bd-fill" [style.width.%]="Math.round((row.value.c / row.value.t) * 100)"></div></div>
+              <span class="bd-score">{{ row.value.c }}/{{ row.value.t }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!r.mistakeMode && (weakCount() > 0 || dueCount() > 0)) {
+        <div class="next-steps">
+          <div class="ns-head"><span [innerHTML]="'sparkles' | ico"></span> What's next?</div>
+          <div class="ns-lines">
+            @if (weakCount() > 0) { <div class="ns-line">You're weak on <b>{{ weakCount() }} term{{ weakCount() === 1 ? '' : 's' }}</b> across your quizzes.</div> }
+            @if (dueCount() > 0) { <div class="ns-line"><b>{{ dueCount() }} review card{{ dueCount() === 1 ? ' is' : 's are' }} due</b> — spaced repetition works best today, not tomorrow.</div> }
+          </div>
+          <div class="ns-actions">
+            @if (weakCount() > 0) { <button class="btn btn-primary ns-btn" (click)="weakReview()"><span [innerHTML]="'target' | ico"></span> Drill my weak spots</button> }
+            @if (dueCount() > 0) { <button class="btn btn-secondary ns-btn" (click)="dueReview()"><span [innerHTML]="'timer' | ico"></span> Review {{ dueCount() }} due card{{ dueCount() === 1 ? '' : 's' }}</button> }
+          </div>
+        </div>
+      }
+
+      @if (suggestion(); as sg) {
+        <button class="also-like" (click)="alsoLike()" data-tooltip="Open this document's reviewer">
+          <span class="al-icon" [innerHTML]="'book' | ico"></span>
+          <span class="al-main">
+            <span class="al-title">You might also like: {{ sg.doc.name }}</span>
+            <span class="al-sub">{{ sg.overlap }} key term{{ sg.overlap === 1 ? '' : 's' }} in common with this quiz</span>
+          </span>
+          <span class="al-go" [innerHTML]="'chevronRight' | ico"></span>
+        </button>
+      }
+
+      <button class="btn btn-secondary" (click)="toggleReview()" style="margin-top:22px;width:100%" data-tooltip="See each question with the correct answer">
+        <span [innerHTML]="'eye' | ico"></span> Review answers
+      </button>
+      <div #reviewPanel class="card" [class.hidden]="!showReview()" style="margin-top:12px;max-height:340px;overflow-y:auto">
+        @for (item of reviewing; track $index; let i = $index) {
+          <div class="review-item">
+            <div class="review-q"><strong [style.color]="item.ok ? 'var(--good)' : 'var(--bad)'">{{ i + 1 }}.</strong> {{ item.prompt }}</div>
+            <div class="review-a" [style.color]="item.ok ? 'var(--good)' : 'var(--bad)'">
+              <span [innerHTML]="(item.ok ? 'check' : 'x') | ico"></span> {{ item.answer }}
+            </div>
+            @if (questions[i]?.explanation) { <div class="review-explain"><div class="explain-box">{{ questions[i].explanation }}</div></div> }
+          </div>
+        }
+      </div>
+      @if (canExplain) {
+        <button class="btn btn-secondary" (click)="explainAll()" [disabled]="explainingAll()" style="margin-top:10px;width:100%" data-tooltip="Ask Gemini to explain every answer">
+          <span [innerHTML]="'sparkles' | ico"></span> {{ explainingAll() ? explainProgress() : 'Explain all answers' }}
+        </button>
+      }
+      <button class="btn btn-secondary" (click)="doExport()" style="margin-top:10px;width:100%" data-tooltip="Save this quiz as Markdown or PDF"><span [innerHTML]="'download' | ico"></span> Export quiz</button>
+      <button class="btn btn-secondary" (click)="share()" style="margin-top:10px;width:100%" data-tooltip="Get a link or QR to send this quiz — no app or key needed"><span [innerHTML]="'share' | ico"></span> Share quiz link</button>
+      <button class="btn btn-primary" (click)="challenge()" style="margin-top:10px;width:100%" data-tooltip="Challenge a friend to beat your score"><span [innerHTML]="'users' | ico"></span> Challenge a friend</button>
+
+      <button class="btn btn-primary" (click)="retake()" style="margin-top:18px;width:100%" [attr.data-tooltip]="r.mistakeMode ? 'Try the mistake review again' : 'Generate a new quiz from the same document'">
+        <span [innerHTML]="'refresh' | ico"></span> {{ r.mistakeMode ? 'Review Again' : 'Retake Quiz' }}
+      </button>
+      @if (r.wrongCount > 0 && !r.mistakeMode && r.docId) {
+        <button class="btn btn-secondary" (click)="reviewMistakes()" style="margin-top:10px;width:100%" data-tooltip="Practice only the questions you got wrong"><span [innerHTML]="'alert' | ico"></span> Review {{ r.wrongCount }} mistake{{ r.wrongCount === 1 ? '' : 's' }}</button>
+      }
+      <button class="btn btn-secondary" (click)="goLibrary()" style="margin-top:10px;width:100%">Back to Library</button>
+    </div>
+  }
+</ion-content>

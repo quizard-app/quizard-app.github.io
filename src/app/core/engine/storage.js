@@ -451,6 +451,7 @@ export async function resolveMistake(docId, term, sentence) {
   await db.delete('mistakes', mistakeId(docId, term, sentence))
 }
 
+/** @param {string | null} [docId] */
 export async function listMistakes(docId = null) {
   const db = await dbPromise
   const accountId = await requireAccount()

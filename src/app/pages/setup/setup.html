@@ -1,0 +1,108 @@
+<ion-content [fullscreen]="true">
+  <header class="back-header">
+    <button class="icon-btn" (click)="back()" data-tooltip="Back" [innerHTML]="'chevronLeft' | ico"></button>
+    <h2>Quiz Setup</h2>
+    <button class="icon-btn" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="themeIcon | ico"></button>
+  </header>
+  @if (doc(); as d) {
+    <div class="screen has-actionbar setup-screen">
+      <div class="setup-hero">
+        <div class="doc-icon {{ d.type }}" [innerHTML]="'fileText' | ico"></div>
+        <div style="min-width:0">
+          <div class="doc-name">{{ d.name }}</div>
+          <div class="doc-meta">{{ typeLabel(d.type) }} · {{ d.wordCount.toLocaleString() }} words</div>
+        </div>
+      </div>
+
+      <div class="section-title">Number of questions</div>
+      <div class="card row" style="padding:13px 16px;border-top:none">
+        <span class="label">Questions</span>
+        <div class="stepper" data-tooltip="How many questions to generate (1–200)">
+          <button (click)="setCount(count - (count > 10 ? 5 : 1))" data-tooltip="Fewer questions">−</button>
+          <span class="val">{{ count }}</span>
+          <button (click)="setCount(count + (count >= 10 ? 5 : 1))" data-tooltip="More questions">+</button>
+        </div>
+      </div>
+      <p class="faint" style="font-size:12px;margin:8px 4px 0">{{ poolHint }}</p>
+
+      <div class="section-title">Question types</div>
+      <div class="type-grid">
+        @for (t of types; track t) {
+          <button class="type-card" [class.on]="mix[t]" (click)="toggleType(t)" [attr.data-tooltip]="tileMetas[t].tip">
+            <div class="t-head"><span [innerHTML]="tileMetas[t].glyph | ico"></span>{{ tileMetas[t].name }}</div>
+            <div class="t-sub">{{ tileMetas[t].sub }}</div>
+            <div class="t-count">{{ perTypeLabel(t) }}</div>
+          </button>
+        }
+      </div>
+
+      @if (detectedTopics.length) {
+        <div class="section-title">Topics in this document</div>
+        <div class="chip-row">
+          <button class="chip" [class.on]="selectedTopics.size === 0" (click)="clearTopics()" data-tooltip="Include every topic in the quiz">All topics</button>
+          @for (t of detectedTopics; track t.title) {
+            <button class="chip" [class.on]="selectedTopics.has(t.title)" (click)="toggleTopic(t.title)" data-tooltip="Focus questions on this topic only">
+              {{ t.title }} @if (t.count) {<span class="chip-count">{{ t.count }}</span>}
+            </button>
+          }
+        </div>
+        <p class="faint" style="font-size:12px;margin:8px 4px 0">
+          {{ selectedTopics.size ? 'Focusing on ' + selectedTopics.size + ' topic' + (selectedTopics.size === 1 ? '' : 's') + ' — other topics are excluded' : 'Questions will cover the whole document' }}
+        </p>
+      }
+
+      <div class="section-title">Difficulty</div>
+      <div class="seg" data-tooltip="Easier = common terms · Harder = rare terms">
+        @for (df of difficulties; track df.id) {
+          <button [class.on]="difficulty === df.id" (click)="setDifficulty(df.id)" [attr.data-tooltip]="df.tip">{{ df.label }}</button>
+        }
+      </div>
+
+      <div class="section-title">Options</div>
+      <div class="card" style="padding:2px 16px;border-top:1px solid var(--border)">
+        <div class="row" data-tooltip="Google Gemini writes complete exam-style questions from the parsed content">
+          <div><div class="label">AI-written questions</div><div class="sub">{{ aiReady ? 'Gemini · built-in relay' : 'Gemini · needs the relay or a key (Settings)' }}</div></div>
+          <div class="switch" [class.on]="aiOn" (click)="toggleAi()" data-tooltip="Toggle AI question writing"></div>
+        </div>
+        <div class="row" data-tooltip="Gemini authors the whole quiz from scratch — why and scenario questions, not just rephrased sentences">
+          <div><div class="label">↳ Full AI authoring</div><div class="sub">AI writes every question from the whole document</div></div>
+          <div class="switch" [class.on]="aiAuthor" (click)="aiAuthor = !aiAuthor" data-tooltip="Toggle full AI authoring"></div>
+        </div>
+        <div class="row" data-tooltip="When on, the next attempt uses a new random order">
+          <div><div class="label">Shuffle questions</div><div class="sub">Randomize order every attempt</div></div>
+          <div class="switch" [class.on]="shuffleOn" (click)="shuffleOn = !shuffleOn" data-tooltip="Toggle shuffling"></div>
+        </div>
+        <div class="row">
+          <div><div class="label">Timer</div><div class="sub">Seconds per question</div></div>
+          <div class="seg" style="grid-auto-columns:auto;width:auto" data-tooltip="Add time pressure per question">
+            @for (s of timers; track s) {
+              <button [class.on]="timerSec === s" (click)="setTimer(s)" style="padding:8px 14px">{{ s === 0 ? 'Off' : s + 's' }}</button>
+            }
+          </div>
+        </div>
+        <div class="row" style="border-bottom:none" data-tooltip="On = brand-new questions each time; Off = identical quiz">
+          <div><div class="label">Fresh questions each attempt</div><div class="sub">Regenerate from the document instead of repeating</div></div>
+          <div class="switch" [class.on]="fresh" (click)="fresh = !fresh" data-tooltip="Toggle fresh generation"></div>
+        </div>
+        <div class="row" style="border-bottom:none" data-tooltip="Weight questions toward terms you've gotten wrong before, across all your quizzes">
+          <div><div class="label">Focus my weak spots</div><div class="sub">Bias generation toward your past mistakes</div></div>
+          <div class="switch" [class.on]="focusWeak" (click)="focusWeak = !focusWeak" data-tooltip="Toggle weakness-aware generation"></div>
+        </div>
+        <div class="row" style="border-bottom:none" data-tooltip="Gemini analyzes page images, diagrams, code & charts; writes questions so you're quizzed on the visuals too">
+          <div><div class="label">Deep visual analysis</div><div class="sub">Questions from diagrams, code & charts</div></div>
+          <div class="switch" [class.on]="deepVisual" (click)="deepVisual = !deepVisual" data-tooltip="Toggle visual analysis"></div>
+        </div>
+      </div>
+
+      <div class="setup-actionbar">
+        <button class="btn btn-primary" style="font-size:15px;padding:15px" (click)="start()" [disabled]="!enabledCount">
+          <span [innerHTML]="'play' | ico"></span> Start Quiz
+        </button>
+        <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="shareQuiz()" data-tooltip="Generate this quiz and get a link to send — no app or key needed to play">
+          <span [innerHTML]="'share' | ico"></span> Share quiz link
+        </button>
+        @if (!enabledCount) { <p class="center faint" style="font-size:12px;margin-top:10px">Select at least one question type</p> }
+      </div>
+    </div>
+  }
+</ion-content>

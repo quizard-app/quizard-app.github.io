@@ -1,0 +1,71 @@
+<ion-content [fullscreen]="true">
+  <header class="back-header">
+    <button class="icon-btn" (click)="goLibrary()" data-tooltip="Back to library" [innerHTML]="'chevronLeft' | ico"></button>
+    <h2>Document</h2>
+    <div class="spacer"></div>
+  </header>
+  @if (doc(); as d) {
+    <div class="screen dd-screen">
+      <div class="setup-hero">
+        <div class="doc-icon {{ d.type }}" [innerHTML]="'fileText' | ico"></div>
+        <div style="min-width:0;flex:1">
+          <div class="doc-name">{{ d.name }}</div>
+          <div class="doc-meta">{{ typeOf(d) }} · {{ d.wordCount.toLocaleString() }} words · {{ fmt(d.createdAt) }}</div>
+        </div>
+        <button class="icon-btn" (click)="focusName()" data-tooltip="Rename document" [innerHTML]="icons.rename"></button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><div class="num">{{ d.attempts || 0 }}</div><div class="lbl">Attempts</div></div>
+        <div class="stat"><div class="num">{{ d.bestScore != null ? d.bestScore + '%' : '—' }}</div><div class="lbl">Best Score</div></div>
+        <div class="stat"><div class="num">{{ (d.topics || []).length }}</div><div class="lbl">Topics</div></div>
+      </div>
+
+      <div class="section-title">Rename</div>
+      <div class="rename-row">
+        <input class="text-input" #nameInput [(ngModel)]="name" aria-label="Document name" maxlength="80" />
+        <button class="btn btn-secondary" (click)="saveName()" data-tooltip="Save new name"><span [innerHTML]="'check' | ico"></span> Save</button>
+      </div>
+
+      <div class="section-title">Organize</div>
+      <label class="field-label" for="folder-input"><span [innerHTML]="'folder' | ico"></span> Folder</label>
+      <input class="text-input" id="folder-input" list="doc-folder-list" [(ngModel)]="folder" maxlength="40" placeholder="None" autocomplete="off" />
+      <datalist id="doc-folder-list">
+        @for (f of folders; track f) { <option [value]="f"></option> }
+      </datalist>
+      <label class="field-label" for="tags-input" style="margin-top:14px"><span [innerHTML]="'tag' | ico"></span> Tags <span style="font-weight:500;color:var(--text-faint)">(comma separated)</span></label>
+      <input class="text-input" id="tags-input" [(ngModel)]="tags" maxlength="120" placeholder="exam, chapter 3" autocomplete="off" />
+      <button class="btn btn-secondary" (click)="saveOrg()" style="margin-top:12px;width:100%"><span [innerHTML]="'check' | ico"></span> Save organization</button>
+
+      @if ((d.topics || []).length) {
+        <div class="section-title">Detected topics</div>
+        <div class="chip-row">
+          @for (t of d.topics; track t.title) {
+            <span class="chip">{{ t.title }} @if (t.count) {<span class="chip-count">{{ t.count }}</span>}</span>
+          }
+        </div>
+      }
+
+      <div class="section-title">Extracted text</div>
+      <div class="card">
+        <div class="preview-box" [style.max-height.px]="showFull ? 420 : 120">{{ previewText }}</div>
+        @if (d.text.length > 400) {
+          <button class="btn btn-secondary" (click)="toggleFull()" style="margin-top:10px;width:100%">
+            {{ showFull ? 'Show less' : 'Show full text (' + d.wordCount.toLocaleString() + ' words)' }}
+          </button>
+        }
+        @if (isArray(d.visualAnalysis) && d.visualAnalysis.length) {
+          <p class="faint" style="font-size:12px;margin:10px 2px 0">{{ d.visualAnalysis.length }} visual{{ d.visualAnalysis.length === 1 ? '' : 's' }} analyzed (diagrams, code & charts cached for quizzes)</p>
+        }
+      </div>
+
+      <button class="btn btn-secondary" (click)="goReviewer()" style="margin-top:20px;width:100%" data-tooltip="Read this document as a study reviewer"><span [innerHTML]="'book' | ico"></span> Open Reviewer</button>
+      <button class="btn btn-secondary" (click)="analyzeVisuals()" [disabled]="analyzing" style="margin-top:10px;width:100%" data-tooltip="Have Gemini look at the pages, diagrams and code so quizzes can ask about the visuals">
+        <span [innerHTML]="'scan' | ico"></span> {{ analyzing ? 'Analyzing…' : 'Analyze visuals' }}
+      </button>
+      <button class="btn btn-secondary" (click)="goFlashcards()" style="margin-top:10px;width:100%" data-tooltip="Study key terms as flip cards"><span [innerHTML]="'shuffle' | ico"></span> Flashcards</button>
+      <button class="btn btn-primary" (click)="goSetup()" style="margin-top:10px"><span [innerHTML]="'play' | ico"></span> Create Quiz</button>
+      <button class="btn btn-danger-ghost" (click)="remove()" style="margin-top:10px;width:100%"><span [innerHTML]="'trash' | ico"></span> Delete document</button>
+    </div>
+  }
+</ion-content>

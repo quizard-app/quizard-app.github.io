@@ -1,0 +1,121 @@
+<ion-content [fullscreen]="true">
+<header class="back-header">
+  <button class="icon-btn" (click)="backToLibrary()" data-tooltip="Back to library" [innerHTML]="'chevronLeft' | ico"></button>
+  <h2>Add Document</h2>
+  <button class="icon-btn" (click)="toggleTheme()" data-tooltip="Switch theme" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
+</header>
+<div class="screen imp-screen">
+  <div class="seg" style="width:100%;margin-bottom:14px">
+    <button [class.on]="stage() === 'drop'" (click)="setMode('drop')"><span [innerHTML]="'upload' | ico"></span> File</button>
+    <button [class.on]="stage() === 'paste'" (click)="setMode('paste')"><span [innerHTML]="'pencil' | ico"></span> Paste</button>
+    <button [class.on]="stage() === 'photo'" (click)="setMode('photo')"><span [innerHTML]="'camera' | ico"></span> Photo</button>
+  </div>
+
+  @if (stage() === 'drop') {
+    <div id="drop-stage">
+      <div class="dropzone" #dropzone [class.dragover]="dragging" (click)="pickFile()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)" data-tooltip="PDF, DOCX, PPTX, TXT or MD — up to 50MB">
+        <div class="dropzone-illust" [innerHTML]="dropArt"></div>
+        <h3>Tap to choose a file</h3>
+        <p>or drag &amp; drop it here</p>
+        <input type="file" #fileInput accept=".pdf,.docx,.pptx,.txt,.md" aria-label="Choose a document file" hidden (change)="onFilePicked($event)" />
+      </div>
+      <div class="fmt-row">
+        <div class="chip-row">
+          @for (f of formats; track f) { <span class="chip on">{{ f }}</span> }
+        </div>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin-top:22px;line-height:1.6">
+        Your file is processed locally on this device.<br />Text is extracted and stored locally.
+      </p>
+    </div>
+  }
+
+  @if (stage() === 'paste') {
+    <div id="paste-stage">
+      <div class="card">
+        <label class="section-title" for="paste-name" style="margin:0 0 8px">Document name</label>
+        <input class="text-input" id="paste-name" maxlength="80" placeholder="e.g. Lecture 4 notes" [(ngModel)]="pasteName" />
+        <label class="section-title" for="paste-area" style="margin:16px 0 8px">Paste your notes or text</label>
+        <textarea id="paste-area" class="text-area" placeholder="Paste the text you want to study here…" rows="10" [(ngModel)]="pasteText"></textarea>
+      </div>
+      <button class="btn btn-primary" id="paste-save" style="margin-top:18px" (click)="savePaste()"><span [innerHTML]="'check' | ico"></span> Save to Library</button>
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="setMode('drop')">Back</button>
+    </div>
+  }
+
+  @if (stage() === 'photo') {
+    <div id="photo-stage">
+      <div class="photo-opts">
+        <button class="photo-opt" (click)="requirePhotoKey(() => photoCapture.click())" data-tooltip="Use your camera">
+          <div class="photo-opt-ico" [innerHTML]="'camera' | ico"></div>
+          <div class="photo-opt-label">Take a photo</div>
+          <div class="photo-opt-sub">single camera shot</div>
+        </button>
+        <button class="photo-opt" (click)="requirePhotoKey(() => photoChoose.click())" data-tooltip="Pick from your gallery">
+          <div class="photo-opt-ico" [innerHTML]="'images' | ico"></div>
+          <div class="photo-opt-label">Choose photos</div>
+          <div class="photo-opt-sub">one or more</div>
+        </button>
+      </div>
+      <input type="file" #photoCapture accept="image/*" capture aria-label="Take a photo" hidden (change)="onPhotoPicked($event, false)" />
+      <input type="file" #photoChoose accept="image/*" multiple aria-label="Choose photos" hidden (change)="onPhotoPicked($event, true)" />
+      <p class="muted" style="font-size:12.5px;margin-top:22px;line-height:1.6">
+        Gemini reads the text from your photo(s),<br />then turns it into a study set. Try a clear, flat shot.
+      </p>
+    </div>
+  }
+
+  @if (stage() === 'progress') {
+    <div id="progress-stage">
+      <h3 class="center" style="margin-top:8px">{{ extractFileName }}</h3>
+      <div class="extract-steps">
+        @for (s of steps; track s.label) {
+          <div class="step-item" [class.active]="s.state === 'active'" [class.done]="s.state === 'done'">
+            <div class="step-dot" [innerHTML]="'check' | ico"></div>
+            <div class="step-label">{{ s.label }}</div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (stage() === 'result') {
+    <div id="result-stage">
+      <div class="card" style="margin-top:10px">
+        <label class="section-title" for="doc-name-input" style="margin:0 0 8px">Document name</label>
+        <input class="text-input" id="doc-name-input" maxlength="80" [(ngModel)]="docName" />
+        <label class="section-title" for="doc-folder-input" style="margin:16px 0 8px"><span [innerHTML]="'folder' | ico"></span> Folder <span style="text-transform:none;font-weight:500;color:var(--text-faint)">(optional)</span></label>
+        <input class="text-input" id="doc-folder-input" list="folder-list" maxlength="40" placeholder="e.g. Biology 101" autocomplete="off" [(ngModel)]="docFolder" />
+        <datalist id="folder-list">
+          @for (f of folders; track f) { <option [value]="f"></option> }
+        </datalist>
+        <label class="section-title" for="doc-tags-input" style="margin:16px 0 8px"><span [innerHTML]="'tag' | ico"></span> Tags <span style="text-transform:none;font-weight:500;color:var(--text-faint)">(comma separated)</span></label>
+        <input class="text-input" id="doc-tags-input" maxlength="120" placeholder="exam, chapter 3, vocab" autocomplete="off" [(ngModel)]="docTags" />
+        <div class="row" style="padding:14px 0 4px">
+          <div><div class="label">Words extracted{{ imageCount ? ' · ' + imageCount + ' image' + (imageCount === 1 ? '' : 's') : '' }}</div></div>
+          <div class="label good-text">{{ wordCount.toLocaleString() }}</div>
+        </div>
+        <div style="padding:4px 0 12px;border-bottom:1px solid var(--border)">
+          @if (tldr) { <div class="tldr-line"><span [innerHTML]="'zap' | ico"></span> {{ tldr }}</div> }
+          @if (topics.length) {
+            <div class="label" style="margin-bottom:8px">Detected topics</div>
+            <div class="chip-row">
+              @for (t of topics.slice(0, 6); track t.title) {
+                <span class="chip">{{ t.title }} <span class="chip-count">{{ t.count }}</span></span>
+              }
+              @if (topics.length > 6) { <span class="chip">+{{ topics.length - 6 }} more</span> }
+            </div>
+          } @else {
+            <div class="sub">No distinct topics detected — questions will cover the whole document.</div>
+          }
+        </div>
+        <label class="section-title" style="margin:16px 0 8px">Preview</label>
+        <div class="preview-box">{{ preview }}</div>
+      </div>
+      <button class="btn btn-primary" id="save-doc-btn" style="margin-top:18px" (click)="saveDoc()"><span [innerHTML]="'check' | ico"></span> Save to Library</button>
+      <button class="btn btn-secondary" id="discard-btn" style="margin-top:10px;width:100%" (click)="discard()">Discard &amp; start over</button>
+    </div>
+  }
+</div>
+
+</ion-content>

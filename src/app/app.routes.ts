@@ -23,11 +23,37 @@ export const routes: Routes = [
     loadComponent: () => import('./tabs/tabs').then(m => m.TabsPage),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'library' },
-      { path: 'library', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Library', milestone: 'M1' } },
+      { path: 'library', loadComponent: () => import('./pages/library/library').then(m => m.LibraryPage) },
       { path: 'history', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Progress', milestone: 'M2' } },
-      { path: 'import', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Add document', milestone: 'M1' } },
+      { path: 'import', loadComponent: () => import('./pages/import/import').then(m => m.ImportPage) },
       { path: 'settings', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Settings', milestone: 'M2' } }
     ]
+  },
+  {
+    path: 'doc/:id',
+    loadComponent: () => import('./pages/docdetail/docdetail').then(m => m.DocDetailPage)
+  },
+  {
+    path: 'doc/:id/setup',
+    loadComponent: () => import('./pages/setup/setup').then(m => m.SetupPage)
+  },
+  {
+    path: 'reviewer/:id',
+    loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage),
+    data: { title: 'Reviewer', milestone: 'M2' }
+  },
+  {
+    path: 'flashcards/:id',
+    loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage),
+    data: { title: 'Flashcards', milestone: 'M2' }
+  },
+  {
+    path: 'quiz',
+    loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
+  },
+  {
+    path: 'results',
+    loadComponent: () => import('./pages/results/results').then(m => m.ResultsPage)
   },
   { path: '**', redirectTo: 'welcome' }
 ];
