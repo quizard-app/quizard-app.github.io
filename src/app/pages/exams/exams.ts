@@ -30,6 +30,7 @@ export class ExamsPage implements OnInit {
   detailBody = signal('');
   buildingPdf = signal(false);
   practiceCount = signal(0);
+  private builtQuiz: any = null;
 
   async ngOnInit() {
     // /exams/:id → detail; /exams → list
@@ -66,7 +67,8 @@ export class ExamsPage implements OnInit {
     this.detailCountdown.set(cd ? `${exam.examDate ? new Date(exam.examDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' : ''}${cd}` : `${realDocs.length} files · ${exam.topics.length} topics`);
     this.detailCd.set(cd);
     this.detailDocs.set(realDocs);
-    this.practiceCount.set(buildExamQuiz(exam, realDocs, docWeak, { count: 15 }).questions.length);
+    this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: 15 });
+    this.practiceCount.set(this.builtQuiz.questions.length);
     const ranked = rankExamTopics(exam, realDocs);
     void ranked;
     const body = `
@@ -101,7 +103,7 @@ export class ExamsPage implements OnInit {
     ]);
     const realDocs = docs.filter(Boolean);
     const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
-    const quiz = buildExamQuiz(exam, realDocs, docWeak, { count: 15 });
+    const quiz = this.builtQuiz || buildExamQuiz(exam, realDocs, docWeak, { count: 15 });
     if (!quiz.questions.length) return;
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
