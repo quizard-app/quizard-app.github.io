@@ -103,6 +103,15 @@ export class TutorialPage implements OnDestroy {
     if (img) { img.src = img.dataset['src'] || ''; img.removeAttribute('data-src'); }
   }
 
+
+  // Ionic page transitions can swallow a navigateByUrl fired mid-animation;
+  // retry until the URL actually changes.
+  private nav(url: string, tries = 8) {
+    this.router.navigateByUrl(url).then(ok => {
+      if (!ok && tries > 0) setTimeout(() => this.nav(url, tries - 1), 250);
+    });
+  }
+
   async finish() {
     if (this.exiting) return;
     this.exiting = true;
@@ -111,7 +120,7 @@ export class TutorialPage implements OnDestroy {
     const doneMap = { ...(loadSettings().tutorialDoneAccounts || {}) };
     if (aid) doneMap[aid] = true;
     saveSettings({ tutorialDone: true, tutorialDoneAccounts: doneMap });
-    this.router.navigateByUrl('/tabs/library');
+    this.nav('/tabs/library');
   }
 
   update() {

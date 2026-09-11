@@ -117,13 +117,22 @@ export class OnboardingPage implements OnDestroy {
     }
   }
 
+
+  // Ionic page transitions can swallow a navigateByUrl fired mid-animation;
+  // retry until the URL actually changes.
+  private nav(url: string, tries = 8) {
+    this.router.navigateByUrl(url).then(ok => {
+      if (!ok && tries > 0) setTimeout(() => this.nav(url, tries - 1), 250);
+    });
+  }
+
   async finish() {
     if (this.exiting) return;
     this.exiting = true;
     saveSettings({ onboarded: true });
     const accounts = await listAccounts();
     const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
-    this.router.navigateByUrl(fresh ? '/accounts?mode=create' : '/tabs/library');
+    this.nav(fresh ? '/accounts?mode=create' : '/tabs/library');
   }
 
   onKey(e: KeyboardEvent) {
