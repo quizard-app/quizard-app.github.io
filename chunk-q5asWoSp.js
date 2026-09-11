@@ -1,1 +1,0 @@
-import{Z as R,qt as tr}from"./main-DR7JKFL6.js";var t=class n{sharedQuiz=tr(null);currentDocId=tr(null);lastAttempt=tr(null);examSession=tr(null);mistakeReview=tr(null);static ɵfac=function(l){return new(l||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{t};
