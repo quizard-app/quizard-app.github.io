@@ -1,12 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { TooltipDirective } from '../../shared/tooltip.directive';
 import { Router, NavigationEnd } from '@angular/router';
-import { IonContent, IonSkeletonText, IonRefresher, IonRefresherContent } from '@ionic/angular';
-import { IonMenuButton } from '@ionic/angular';
+import { IonContent, IonMenuButton } from '@ionic/angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams, saveDeck
+  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams
 } from '../../core/engine/storage.js';
 import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
@@ -27,7 +25,7 @@ const SORTS = [
 
 @Component({
   selector: 'app-library',
-  imports: [IonMenuButton, TooltipDirective, IonContent, IonSkeletonText, IonRefresher, IonRefresherContent, IcoPipe],
+  imports: [IonMenuButton, IonContent, IcoPipe],
   templateUrl: './library.html',
 })
 export class LibraryPage {
@@ -154,12 +152,8 @@ export class LibraryPage {
 
   async removeDeck(deck: any) {
     await deleteDeck(deck.id).catch(() => {});
-    this.decks.update(list => list.filter(d => d.id !== deck.id));
-    // undo toast — the lesson's reversible-destructive pattern
-    this.toast.action('Saved quiz deleted', 'Undo', async () => {
-      await saveDeck(deck).catch(() => {});
-      this.ionViewWillEnter();
-    });
+    this.toast.toast('Saved quiz deleted');
+    this.ionViewWillEnter();
   }
 
   // template helpers for innerHTML art
