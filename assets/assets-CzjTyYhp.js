@@ -1,1 +1,0 @@
-function e(e){return/^(https?:|data:|blob:|capacitor:)/i.test(e)?e:(`/`.endsWith(`/`)?`/`:`//`)+(e.startsWith(`/`)?e.slice(1):e)}export{e as t};
