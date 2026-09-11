@@ -4,9 +4,10 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && npm run copy404",
     "watch": "ng build --watch --configuration development",
-    "test": "vitest run"
+    "test": "vitest run",
+    "copy404": "node -e \"const fs=require('fs');fs.copyFileSync('dist/quizard-ng/browser/index.html','dist/quizard-ng/browser/404.html');console.log('404 synced')\""
   },
   "private": true,
   "packageManager": "npm@11.19.0",
