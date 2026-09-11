@@ -1,6 +1,6 @@
 # Quizard — turn your documents into exams
 
-**Quizard** (a.k.a. QuizForge) is an offline-first study app: drop in the PDFs, slides and notes your teacher sends, and it forges them into quizzes, flashcards and exam-ready reviewers. Built as a vanilla-JS Vite PWA and an Android app via Capacitor.
+**Quizard** (a.k.a. QuizForge) is an offline-first study app: drop in the PDFs, slides and notes your teacher sends, and it forges them into quizzes, flashcards and exam-ready reviewers. Built with **Ionic 8 + Angular** as a PWA, plus an Android app via Capacitor. (The original vanilla-JS version is preserved under `legacy/`.)
 
 > The magic-wielding mascot is not just decoration — the whole app is themed around a wizard who "forges" your documents into quizzes.
 
