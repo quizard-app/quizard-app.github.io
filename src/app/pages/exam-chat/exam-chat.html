@@ -1,0 +1,44 @@
+<ion-content [fullscreen]="true">
+  <header class="back-header">
+    <button class="icon-btn" (click)="backToExams()" data-tooltip="Back to exams" [innerHTML]="'chevronLeft' | ico"></button>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:700">Exam Wizard</div>
+      <div style="font-size:11.5px;color:var(--text-faint)">Paste the announcement · add your files · get ready</div>
+    </div>
+  </header>
+  <div class="screen ec-screen">
+    @if (coverage().topics.length || coverage().missing.length) {
+      <div class="ec-coverage">
+        <div class="ec-cov-head">Exam coverage</div>
+        @for (t of coverage().topics; track $index) {
+          <div class="ec-cov-row" [class.ok]="coveredTopic(t)" [class.missing]="!coveredTopic(t)">
+            <span class="ec-cov-ico">{{ coveredTopic(t) ? '✓' : '⚠' }}</span>
+            <span>{{ t.title || t }}</span>
+          </div>
+        }
+        @if (coverage().missing.length) { <div class="ec-cov-missing">Missing files: {{ coverage().missing.join(', ') }}</div> }
+      </div>
+    }
+    <div class="ec-log" #log>
+      @for (m of messages(); track $index) {
+        <div class="ec-msg" [class.ec-user]="m.role === 'user'" [class.ec-wiz]="m.role === 'wizard'">
+          @if (m.role === 'wizard') { <img class="ec-avatar" [src]="wizImg" alt="" /> }
+          <div class="ec-bubble">{{ m.text }}</div>
+        </div>
+      }
+      @if (typing()) {
+        <div class="ec-msg ec-wiz">
+          <img class="ec-avatar" [src]="wizImg" alt="" />
+          <div class="ec-bubble ec-typing"><span></span><span></span><span></span></div>
+        </div>
+      }
+    </div>
+    <div class="ec-input-row">
+      <button class="icon-btn ec-attach" (click)="openFile()" data-tooltip="Upload a file for this exam" [innerHTML]="'plus' | ico"></button>
+      <input type="file" #fileInput accept=".pdf,.docx,.pptx,.txt,.md" hidden (change)="onFilePicked($event)" />
+      <input type="text" #msgInput class="text-input" placeholder="Tell the wizard about your exam…" aria-label="Message the exam wizard" autocomplete="off" [(ngModel)]="inputValue" (keyup.enter)="send()" />
+      <button class="icon-btn ec-send" aria-label="Send" (click)="send()" data-tooltip="Send" [innerHTML]="'chevronRight' | ico"></button>
+    </div>
+    <button class="btn btn-primary ec-create" [class.hidden]="!readyToCreate()" (click)="create()"><span [innerHTML]="'check' | ico"></span> Create exam</button>
+  </div>
+</ion-content>

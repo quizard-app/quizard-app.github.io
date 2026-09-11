@@ -11,6 +11,8 @@ export class QuizStateService {
   readonly currentDocId = signal<string | null>(null);
   // last attempt summary for the results screen
   readonly lastAttempt = signal<any>(null);
+  // an exam-prep practice session launched from the exam detail screen
+  readonly examSession = signal<{ examId: string; questions: any[]; docName: string } | null>(null);
   // an active mistake/weak/due/master review session
   readonly mistakeReview = signal<{ questions: any[]; docName: string | null } | null>(null);
 }

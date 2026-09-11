@@ -1,0 +1,61 @@
+<ion-content [fullscreen]="true">
+  @if (detailId()) {
+    @if (exam(); as exam) {
+      <header class="back-header">
+        <button class="icon-btn" (click)="backTo()" data-tooltip="Back to exams" [innerHTML]="'chevronLeft' | ico"></button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ exam.title }}</div>
+          <div style="font-size:11.5px;color:var(--text-faint)">{{ detailCountdown() }}</div>
+        </div>
+      </header>
+      <div class="screen ex-screen">
+        <div [innerHTML]="detailBody()"></div>
+        <div class="reader-actions" style="margin-top:8px">
+          <button class="btn btn-primary" [disabled]="!practiceCount()" (click)="startPractice()">
+            <span [innerHTML]="'play' | ico"></span> Practice quiz ({{ practiceCount() }} questions)
+          </button>
+          <button class="btn btn-secondary" [disabled]="buildingPdf()" (click)="exportPdf()" style="margin-top:10px;width:100%">
+            <span [innerHTML]="'download' | ico"></span> {{ buildingPdf() ? 'Building PDF…' : 'Export exam PDF handout' }}
+          </button>
+          <button class="btn btn-danger-ghost" (click)="removeExam()" style="margin-top:10px;width:100%"><span [innerHTML]="'trash' | ico"></span> Delete exam</button>
+        </div>
+      </div>
+    }
+  } @else {
+    <header class="back-header">
+      <button class="icon-btn" (click)="backTo()" data-tooltip="Back" [innerHTML]="'chevronLeft' | ico"></button>
+      <h2>Exams</h2>
+      <button class="icon-btn" (click)="goChat()" data-tooltip="New exam with the wizard" [innerHTML]="'plus' | ico"></button>
+    </header>
+    <div class="screen ex-screen">
+      @if (exams().length) {
+        @for (group of [{ label: 'Upcoming', items: exams().filter(e => (e.status || 'upcoming') === 'upcoming'), past: false }, { label: 'Past', items: exams().filter(e => (e.status || 'upcoming') !== 'upcoming'), past: true }]; track group.label) {
+          @if (group.items.length) {
+            <div class="section-title">{{ group.label }}</div>
+            @for (e of group.items; track e.id) {
+              <button class="doc-card exam-card" [class.exam-past]="group.past" (click)="openExamDetail(e)">
+                <div class="doc-icon exam-ico {{ cdOf(e) === 'today' ? 'urgent' : '' }}" [innerHTML]="'fileText' | ico"></div>
+                <div class="doc-info">
+                  <div class="doc-name">{{ e.title }}</div>
+                  <div class="doc-meta">
+                    @if (cdOf(e) && !group.past) { <span class="exam-countdown {{ cdOf(e) === 'today' ? 'urgent' : '' }}">{{ cdOf(e) }}</span> }
+                    <span>{{ e.docIds?.length || 0 }} file{{ e.docIds?.length === 1 ? '' : 's' }}</span>·
+                    <span>{{ e.topics?.length || 0 }} topic{{ e.topics?.length === 1 ? '' : 's' }}</span>
+                  </div>
+                </div>
+                <span class="al-go" [innerHTML]="'chevronRight' | ico"></span>
+              </button>
+            }
+          }
+        }
+      } @else {
+        <div class="empty-state">
+          <div class="ec-empty-wiz"><img [src]="wizImg" alt="" /></div>
+          <h3>No exams yet</h3>
+          <p>Tell the wizard about your next exam — paste the announcement, upload the files it asks for, and practice across all of them.</p>
+        </div>
+      }
+      <button class="btn btn-primary" style="margin-top:18px;width:100%" (click)="goChat()"><span [innerHTML]="'sparkles' | ico"></span> New exam with the wizard</button>
+    </div>
+  }
+</ion-content>

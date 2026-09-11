@@ -4,7 +4,6 @@ import { listAttempts, listDocs, countMistakes, countDueCards, getWeakTerms } fr
 import { icon } from '../../shared/icons.js';
 import { dayLabel, fmtTime, scorePill } from '../../shared/helpers.js';
 import { emptyProgressArt } from '../../shared/art.js';
-import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { MistakesService } from '../../core/services/mistakes.service';
 
@@ -33,7 +32,7 @@ function calcStreak(attempts: any[]) {
 
 @Component({
   selector: 'app-history',
-  imports: [IonContent, IcoPipe],
+  imports: [IonContent],
   templateUrl: './history.html',
 })
 export class HistoryPage implements OnInit {

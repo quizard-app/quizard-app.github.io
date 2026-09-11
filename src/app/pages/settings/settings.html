@@ -1,0 +1,162 @@
+<ion-content [fullscreen]="true">
+  <header class="back-header">
+    <button class="icon-btn" (click)="router.navigateByUrl('/tabs/library')" [innerHTML]="'chevronLeft' | ico"></button>
+    <h2>Settings</h2>
+    <div class="spacer"></div>
+  </header>
+  <div class="screen set-screen">
+
+    <div class="section-title">Account</div>
+    <div class="settings-group">
+      @if (account; as acc) {
+        <div class="row" style="border-top:none">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="acc-avatar sm" [style.background]="acc.color">{{ acc.name.charAt(0).toUpperCase() }}</span>
+            <div>
+              <div class="label">{{ acc.name }}</div>
+              <div class="sub">{{ acc.pinHash ? 'PIN-protected' : 'No PIN' }} · {{ (accounts.length - 1) ? (accounts.length - 1) + ' other account' + ((accounts.length - 1) === 1 ? '' : 's') : 'only account' }}</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" (click)="switchAccount()" data-tooltip="Change profile"><span [innerHTML]="icons.refresh"></span> Switch</button>
+        </div>
+        <div class="row" style="border-bottom:none">
+          <div><div class="label">Add another profile</div><div class="sub">Separate progress for a family member or classmate</div></div>
+          <button class="icon-btn" (click)="addAccount()" data-tooltip="Create new profile" style="color:var(--text)" [innerHTML]="icons.plus"></button>
+        </div>
+        @if (accounts.length > 1) {
+          <div class="row" style="border-bottom:none">
+            <div><div class="label bad-text">Remove an account</div><div class="sub">Deletes that profile with all its data</div></div>
+            <button class="icon-btn" (click)="removeAccountFlow()" data-tooltip="Remove a profile" style="color:var(--bad)" [innerHTML]="icons.trash"></button>
+          </div>
+        }
+        <div class="row" style="border-bottom:none">
+          <div><div class="label">Log out</div><div class="sub">Back to the profile picker</div></div>
+          <button class="btn btn-secondary" (click)="switchAccount()">Log out</button>
+        </div>
+      } @else {
+        <div class="row"><span class="sub">No active account</span></div>
+      }
+    </div>
+
+    <div class="section-title">Appearance</div>
+    <div class="settings-group">
+      <div class="row" data-tooltip="App color theme — auto-saved locally">
+        <div><div class="label">Theme</div><div class="sub">Follows your choice, saved locally</div></div>
+        <div class="seg" style="grid-auto-columns:auto;width:auto">
+          <button [class.on]="theme() === 'dark'" (click)="ui.setTheme('dark')" data-tooltip="Dark theme — easier on eyes at night">Dark</button>
+          <button [class.on]="theme() === 'light'" (click)="ui.setTheme('light')" data-tooltip="Light theme — bright and clean">Light</button>
+        </div>
+      </div>
+      <div class="row" style="border-bottom:none" data-tooltip="Watch the welcome walkthrough again">
+        <div><div class="label">Replay introduction</div><div class="sub">See the welcome slides shown on first launch</div></div>
+        <button class="btn btn-secondary" (click)="replayIntro()"><span [innerHTML]="icons.refresh"></span> Replay</button>
+      </div>
+      <div class="row" style="border-bottom:none" data-tooltip="Replay the wizard's guided tour of the app">
+        <div><div class="label">Replay wizard tutorial</div><div class="sub">Walk through adding, quizzing and progress again</div></div>
+        <button class="btn btn-secondary" (click)="replayTour()"><span [innerHTML]="icons.refresh"></span> Replay</button>
+      </div>
+      <div class="row" style="border-bottom:none" data-tooltip="Skip the welcome splash and slides — go straight to the app on launch">
+        <div><div class="label">Skip intro on launch</div><div class="sub">Open directly into the app every time</div></div>
+        <div class="switch" [class.on]="s.skipIntro" (click)="setSkipIntro(!s.skipIntro)" data-tooltip="Toggle skip intro"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Wizard voice</div>
+    <div class="settings-group">
+      <div class="row" style="border-bottom:none" data-tooltip="Hear the wizard speak during the guided tour">
+        <div><div class="label">Wizard voice</div><div class="sub">Play the wizard's spoken tips in the tutorial</div></div>
+        <div class="switch" [class.on]="s.wizardVoice !== false" (click)="setWizardVoice(!(s.wizardVoice !== false))" data-tooltip="Toggle wizard voice"></div>
+      </div>
+    </div>
+
+    <div class="section-title">AI question writing</div>
+    <div class="card" style="padding:16px">
+      <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
+        Quizard writes AI questions through its <b>built-in relay</b> — the app rotates several
+        Gemini keys automatically, so quizzes keep generating even when one key hits its limit.
+        Nothing to configure. Optionally, paste your own free key
+        (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>)
+        as a backup: it is stored only on this device and used if the relay keys are ever all busy.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key" autocomplete="off" spellcheck="false" aria-label="Gemini API key"
+          style="flex:1;min-width:180px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text);font-size:13px" [(ngModel)]="keyInput" />
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" style="flex:1;min-width:110px" (click)="saveKey()"><span [innerHTML]="icons.check"></span> Save key</button>
+        <button class="btn btn-secondary" style="flex:1;min-width:110px" (click)="removeKey()"><span [innerHTML]="icons.trash"></span> Remove</button>
+      </div>
+      <div class="row" style="border-bottom:none;margin-bottom:12px" data-tooltip="After answering, tap 'Why?' to get a Gemini explanation of the correct answer">
+        <div><div class="label">Explain answers</div><div class="sub">Show a “Why?” button to explain quiz answers with Gemini</div></div>
+        <div class="seg" style="grid-auto-columns:auto;width:auto">
+          <button [class.on]="explaining" (click)="setExplain(true)" style="padding:8px 14px" data-tooltip="Show explanation button">On</button>
+          <button [class.on]="!explaining" (click)="setExplain(false)" style="padding:8px 14px" data-tooltip="Hide explanation button">Off</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12.5px;line-height:1.5;margin:0 0 12px">
+        Model: <b>gemini-3.5-flash-lite</b> · your key never leaves this device (except to Google).
+      </p>
+      <div style="display:flex;gap:10px;margin-top:4px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-secondary" [disabled]="testing" (click)="testKey()"><span [innerHTML]="'zap' | ico"></span> Test connection</button>
+      </div>
+      <p class="faint" style="font-size:12px;margin-top:10px">{{ keyStatus() }}</p>
+    </div>
+
+    <div class="section-title">Study reminders</div>
+    <div class="settings-group">
+      <div class="row" style="border-bottom:none" data-tooltip="Get reminded to review flashcards that are due for spaced repetition">
+        <div><div class="label">Due-card reminders</div><div class="sub">Daily nudge to review due cards</div></div>
+        <div class="switch" [class.on]="remindersOn" (click)="toggleReminders(!remindersOn)" data-tooltip="Toggle due-card reminders"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Backup &amp; restore</div>
+    <div class="card" style="padding:16px">
+      @if (showNudge) {
+        <div class="backup-nudge">
+          <span class="bn-icon" [innerHTML]="'alert' | ico"></span>
+          <div class="bn-text">
+            <div class="bn-title">{{ lastBackup ? 'Backup is over 30 days old' : 'No backup yet' }}</div>
+            <div class="bn-sub">{{ docCount }} document{{ docCount === 1 ? '' : 's' }} stored only on this device</div>
+          </div>
+        </div>
+      }
+      <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
+        Your data lives only on this device. Export a backup file regularly — if the app is uninstalled or the phone is reset, local data is gone.
+      </p>
+      <button class="btn btn-primary" (click)="exportBackup()" data-tooltip="Download all data as a single JSON file"><span [innerHTML]="icons.download"></span> Export backup (.json)</button>
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="importInput.click()" data-tooltip="Restore from a previously exported backup"><span [innerHTML]="icons.database"></span> Import backup</button>
+      <input type="file" #importInput accept=".json,application/json" aria-label="Import backup file" hidden (change)="onImportPicked($event)" />
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0" />
+      <div class="label" style="margin-bottom:4px">Encrypted backup — safe for your own cloud storage</div>
+      <p class="muted" style="font-size:12.5px;line-height:1.5;margin:0 0 12px">
+        A passphrase-protected backup (AES-GCM). Unreadable without your passphrase,
+        so you can keep it in Google Drive or anywhere — no server, no account.
+      </p>
+      <button class="btn btn-primary" (click)="exportEncrypted()" data-tooltip="Download a passphrase-encrypted backup"><span [innerHTML]="icons.lock"></span> Encrypted backup</button>
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="encImportInput.click()" data-tooltip="Restore from an encrypted backup file"><span [innerHTML]="icons.database"></span> Restore encrypted backup</button>
+      <input type="file" #encImportInput accept=".json,application/json" aria-label="Import encrypted backup file" hidden (change)="onEncImportPicked($event)" />
+      <p class="faint" style="font-size:12px;margin-top:12px">{{ usageLine() }}</p>
+    </div>
+
+    <div class="section-title">Danger zone</div>
+    <div class="card" style="border-color:var(--bad-border)">
+      <button class="btn btn-danger-ghost" style="width:100%" (click)="eraseAll()" data-tooltip="Permanently delete all documents, quizzes, history and mistakes — cannot be undone"><span [innerHTML]="icons.trash"></span> Erase all data</button>
+      <p class="faint" style="font-size:11.5px;margin-top:10px;text-align:center">Documents, quizzes, history and mistakes — permanently.</p>
+    </div>
+
+    <div class="section-title">About</div>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="mark" style="width:38px;height:38px;border-radius:11px;background:var(--text);display:grid;place-items:center;color:var(--bg)" [innerHTML]="icons.logo"></span>
+        <div>
+          <div class="label">Quizard v{{ version }} · Ionic + Angular</div>
+          <div class="sub">Your documents never leave this device · AI polish via Google Gemini (optional)</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" style="flex:1;min-width:140px" (click)="clearCache()" data-tooltip="Delete all cached files and reload — useful if something is broken"><span [innerHTML]="icons.trash"></span> Clear cache &amp; reload</button>
+      </div>
+    </div>
+  </div>
+</ion-content>

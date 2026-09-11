@@ -26,7 +26,7 @@ export const routes: Routes = [
       { path: 'library', loadComponent: () => import('./pages/library/library').then(m => m.LibraryPage) },
       { path: 'history', loadComponent: () => import('./pages/history/history').then(m => m.HistoryPage) },
       { path: 'import', loadComponent: () => import('./pages/import/import').then(m => m.ImportPage) },
-      { path: 'settings', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Settings', milestone: 'M2' } }
+      { path: 'settings', loadComponent: () => import('./pages/settings/settings').then(m => m.SettingsPage) }
     ]
   },
   {
@@ -52,6 +52,14 @@ export const routes: Routes = [
   {
     path: 'results',
     loadComponent: () => import('./pages/results/results').then(m => m.ResultsPage)
+  },
+  {
+    path: 'exams',
+    loadChildren: () => import('./pages/exams/exams.routes').then(m => m.EXAMS_ROUTES)
+  },
+  {
+    path: 'exam-chat',
+    loadComponent: () => import('./pages/exam-chat/exam-chat').then(m => m.ExamChatPage)
   },
   { path: '**', redirectTo: 'welcome' }
 ];

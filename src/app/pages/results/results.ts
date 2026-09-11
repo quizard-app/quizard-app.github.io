@@ -11,6 +11,7 @@ import { exportQuiz } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
+import { ShareService } from '../../core/services/share.service';
 import { MistakesService } from '../../core/services/mistakes.service';
 
 @Component({
@@ -23,6 +24,7 @@ export class ResultsPage implements OnInit {
   private toast = inject(ToastService);
   private qs = inject(QuizStateService);
   private mistakes = inject(MistakesService);
+  private shareSvc = inject(ShareService);
   readonly Math = Math;
   readonly objectKeys = Object.keys;
 
@@ -195,8 +197,8 @@ export class ResultsPage implements OnInit {
     if (!ok) this.toast.toast('Nothing to export');
   }
 
-  share() { this.toast.toast('Share link arrives in M3 of the migration'); }
-  challenge() { this.toast.toast('Challenge a friend arrives in M3 of the migration'); }
+  share() { const r = this.r(); this.shareSvc.show({ title: r.docName, questions: r.questions, timerSec: r.cfg?.timerSec || 0, mode: 'quiz' }); }
+  challenge() { const r = this.r(); this.shareSvc.show({ title: r.docName, questions: r.questions, timerSec: r.cfg?.timerSec || 0, mode: 'challenge', score: { percent: r.percent, correct: r.correct, total: r.total } }); }
 
   retake() {
     const r = this.r();

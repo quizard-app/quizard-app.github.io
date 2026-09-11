@@ -145,6 +145,18 @@ export class QuizPage implements OnInit, OnDestroy {
       return;
     }
 
+    // exam-prep practice session
+    if (qs.examSession()) {
+      const examSession = qs.examSession()!;
+      qs.examSession.set(null);
+      const session = examSession.questions;
+      this.session = session;
+      this.doc = null; this.cfg = { timerSec: 0, count: session.length };
+      this.st = { questions: session, index: 0, correct: 0, answers: [], startTime: Date.now(), examMode: true, examId: examSession.examId, docName: examSession.docName || 'Exam Prep' };
+      this.beginAttempt();
+      return;
+    }
+
     // shared deck (library "saved quizzes" / share links)
     if (qs.sharedQuiz()) {
       const shared = qs.sharedQuiz()!;
