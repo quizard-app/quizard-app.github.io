@@ -1,0 +1,14 @@
+var u=null;async function m(r){if(!u){u=await import(`./chunk-n9hAJdDb2.js`);let o=(await import(`./chunk-DAV39HBz.js`)).default;u.GlobalWorkerOptions.workerSrc=o}let t=await r.arrayBuffer(),e=u.getDocument({data:t,isEvalSupported:!1,disableFontFace:!0,useSystemFonts:!0}),i=await e.promise,n=[],c=i.numPages;for(let o=1;o<=c;o++){let l=await i.getPage(o),p=await l.getTextContent(),s=``;for(let f of p.items)f.str&&(s&&!s.endsWith(` `)&&!f.str.startsWith(` `)&&(s+=` `),s+=f.str,f.hasEOL&&(s+=`
+`));n.push(s.trim()),l.cleanup()}await e.destroy();let a=n.filter(Boolean).join(`
+
+`);if(!a.trim())throw new Error(`No selectable text found. This PDF may be a scanned image.`);return`PDF document, ${c} page${c>1?`s`:``}.
+
+`+a}async function x(r){let t=(await import(`./chunk-xcSV1glY.js`)).default,e=await r.arrayBuffer(),n=(await t.extractRawText({arrayBuffer:e})).value||``;if(!n.trim())throw new Error(`This document appears to be empty.`);return n}var d=null;function y(r){return r.replace(/&lt;/g,`<`).replace(/&gt;/g,`>`).replace(/&quot;/g,`"`).replace(/&apos;/g,`'`).replace(/&#(\d+);/g,(t,e)=>String.fromCharCode(parseInt(e,10))).replace(/&amp;/g,`&`)}async function w(r){d||(d=(await import(`./chunk-DUNRvK5x2.js`)).default);let t=await r.arrayBuffer(),e=await d.loadAsync(t),i=Object.keys(e.files).filter(a=>/^ppt\/slides\/slide\d+\.xml$/.test(a)).sort((a,o)=>{return parseInt(a.match(/slide(\d+)\.xml/)[1],10)-parseInt(o.match(/slide(\d+)\.xml/)[1],10)});if(!i.length)throw new Error(`No slides found in this presentation.`);let n=[];for(let a of i){let p=(await e.files[a].async(`string`)).split(`</a:p>`).map(s=>[...s.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(g=>y(g[1])).join(``).trim()).filter(Boolean);p.length&&n.push(p.join(`
+`))}let c=n.join(`
+
+`);if(!c.trim())throw new Error(`Could not find any text in these slides.`);return`Presentation with ${n.length} slide${n.length>1?`s`:``}.
+
+`+c}function P(r){let t=r.toLowerCase().split(`.`).pop();return t===`pdf`?`pdf`:t===`docx`?`docx`:t===`pptx`?`pptx`:t===`txt`?`txt`:t===`md`||t===`markdown`?`md`:null}async function F(r){let t=P(r.name);if(!t)throw new Error(`Unsupported file type. Please use PDF, DOCX, PPTX, TXT or MD files.`);let e;return t===`txt`||t===`md`?(e=await r.text(),t===`md`&&(e=e.replace(/^#{1,6}\s+/gm,``).replace(/\*\*([^*]+)\*\*/g,`$1`).replace(/\*([^*]+)\*/g,`$1`).replace(/`([^`]+)`/g,`$1`).replace(/\[([^\]]+)\]\([^)]*\)/g,`$1`))):e=await{pdf:m,docx:x,pptx:w}[t](r),e=e.replace(/(\w)-\n(\w)/g,`$1$2`).replace(/[ \t]+/g,` `).replace(/ ?\n ?/g,`
+`).replace(/\n{3,}/g,`
+
+`).trim(),{type:t,text:e}}export{P as n,F as t};
