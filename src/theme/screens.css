@@ -927,7 +927,7 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
   position: sticky; top: 0; z-index: 20;
   /* solid glass (no backdrop-filter): blur on a sticky bar can blank the whole
      page while scrolling on some GPUs */
-  background: var(--glass-solid);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   margin: 0 calc(var(--pad-x) * -1); padding: 0 var(--pad-x);
 }

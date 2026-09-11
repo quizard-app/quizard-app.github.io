@@ -1,10 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { TooltipDirective } from '../../shared/tooltip.directive';
 import { Router, NavigationEnd } from '@angular/router';
-import { IonContent } from '@ionic/angular';
+import { IonContent, IonSkeletonText, IonRefresher, IonRefresherContent } from '@ionic/angular';
+import { IonMenuButton } from '@ionic/angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import {
-  listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams
+  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams, saveDeck
 } from '../../core/engine/storage.js';
 import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
@@ -25,7 +27,7 @@ const SORTS = [
 
 @Component({
   selector: 'app-library',
-  imports: [IonContent, IcoPipe],
+  imports: [IonMenuButton, TooltipDirective, IonContent, IonSkeletonText, IonRefresher, IonRefresherContent, IcoPipe],
   templateUrl: './library.html',
 })
 export class LibraryPage {
@@ -41,6 +43,7 @@ export class LibraryPage {
   readonly account = this.ui.account;
   readonly sorts = SORTS;
 
+  loading = signal(true);
   docs = signal<any[]>([]);
   decks = signal<any[]>([]);
   nextExam = signal<any>(null);
@@ -91,6 +94,11 @@ export class LibraryPage {
   }
 
   async ionViewWillEnter() {
+    if (!this.ui.account()) {
+      const id = getActiveAccountId() || localStorage.getItem('quizard-active-account');
+      if (id) this.ui.account.set(await getAccount(id) || null);
+    }
+    this.loading.set(true);
     const docs = await listDocs();
     this.docs.set(docs);
     this.decks.set(await listDecks().catch(() => []));
@@ -99,9 +107,15 @@ export class LibraryPage {
     this.folders.set(deriveFolders(docs));
     this.tags.set(deriveTags(docs));
     this.sort.set(loadSettings().sortDocs || 'recent');
+    this.loading.set(false);
   }
 
   ngOnInit() { this.ionViewWillEnter(); }
+
+  async refresh(ev: Event) {
+    await this.ionViewWillEnter();
+    (ev as CustomEvent).detail?.complete?.();
+  }
 
   countdown(exam: any) { return countdownLabel(exam.examDate); }
   typeOf(doc: any) { return typeLabel(doc.type); }
@@ -139,10 +153,13 @@ export class LibraryPage {
   }
 
   async removeDeck(deck: any) {
-    if (!await this.confirm.confirm('Delete saved quiz?', 'This saved quiz and its results will be removed.')) return;
     await deleteDeck(deck.id).catch(() => {});
-    this.toast.toast('Saved quiz deleted');
-    this.ionViewWillEnter();
+    this.decks.update(list => list.filter(d => d.id !== deck.id));
+    // undo toast — the lesson's reversible-destructive pattern
+    this.toast.action('Saved quiz deleted', 'Undo', async () => {
+      await saveDeck(deck).catch(() => {});
+      this.ionViewWillEnter();
+    });
   }
 
   // template helpers for innerHTML art

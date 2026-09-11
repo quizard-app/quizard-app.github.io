@@ -23,7 +23,7 @@ html[data-theme='dark'] {
   --ion-border-color: var(--border);
   --ion-item-background: var(--surface);
   --ion-toolbar-background: var(--bg);
-  --ion-tab-bar-background: transparent;
+  --ion-tab-bar-background: var(--surface);
 }
 
 html[data-theme='light'] {
@@ -34,7 +34,7 @@ html[data-theme='light'] {
   --ion-border-color: var(--border);
   --ion-item-background: var(--surface);
   --ion-toolbar-background: var(--bg);
-  --ion-tab-bar-background: transparent;
+  --ion-tab-bar-background: var(--surface);
 }
 
 /* ── Global reduced motion ──

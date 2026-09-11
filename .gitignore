@@ -32,3 +32,4 @@ android/keystore.properties
 relay/.dev.vars
 legacy/android/keystore.properties
 legacy/android/.idea
+.angular/
