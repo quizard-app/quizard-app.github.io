@@ -1,0 +1,65 @@
+<ion-content [fullscreen]="true">
+  @if (doc(); as d) {
+    <header class="back-header">
+      <button class="icon-btn" (click)="back()" data-tooltip="Back" [innerHTML]="'chevronLeft' | ico"></button>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div>
+        <div style="font-size:11.5px;color:var(--text-faint)">{{ typeLabel(d.type) }} · {{ d.wordCount.toLocaleString() }} words</div>
+      </div>
+      <div class="font-controls" style="display:flex;gap:4px">
+        <button class="icon-btn text-btn" (click)="fontMinus()" data-tooltip="Smaller text">A−</button>
+        <button class="icon-btn text-btn" (click)="fontPlus()" data-tooltip="Larger text">A+</button>
+      </div>
+    </header>
+    <div class="screen rev-screen">
+      <div class="review-toggle">
+        <div class="seg" style="width:100%">
+          <button [class.on]="view() === 'summary'" (click)="setView('summary')" style="flex:1"><span [innerHTML]="'book' | ico"></span> Reviewer</button>
+          @if (hasImages()) {
+            <button [class.on]="view() === 'gallery'" (click)="setView('gallery')" style="flex:1"><span [innerHTML]="'fileText' | ico"></span> Gallery</button>
+          }
+          <button [class.on]="view() === 'full'" (click)="setView('full')" style="flex:1"><span [innerHTML]="'listChecks' | ico"></span> Full text</button>
+        </div>
+      </div>
+      <div class="tts-bar" [class.hidden]="!ttsSupported">
+        @if (ttsState() !== 'playing') {
+          <button class="icon-btn" (click)="togglePlay()" data-tooltip="Read aloud — in the wizard's voice" [innerHTML]="'play' | ico"></button>
+        } @else {
+          <button class="icon-btn" (click)="pauseTts()" data-tooltip="Pause" [innerHTML]="'timer' | ico"></button>
+        }
+        @if (ttsState() !== 'idle') {
+          <button class="icon-btn" (click)="stopTts()" data-tooltip="Stop" [innerHTML]="'x' | ico"></button>
+        }
+        <div class="tts-rate">
+          <span class="faint" style="font-size:11px">Speed</span>
+          <input type="range" min="0.8" max="1.5" step="0.1" [value]="ttsRate" (input)="onRate($event)" aria-label="Read-aloud speed" />
+        </div>
+      </div>
+      <div class="find-bar" [class.hidden]="!findVisible()">
+        <input type="search" class="text-input" placeholder="Find in document…" aria-label="Find in document" autocomplete="off" [(ngModel)]="findQuery" (input)="runFind()" (keydown)="onFindKey($event)" />
+        <span class="faint">{{ findCount() }}</span>
+      </div>
+      <article class="reader summary-mode" id="review-content" #content [innerHTML]="contentHtml()"></article>
+      <div class="reader-actions">
+        <button class="btn btn-primary" (click)="quizMe()"><span [innerHTML]="'play' | ico"></span> Quiz me on this</button>
+        <button class="btn btn-primary" (click)="exportPdf()" style="margin-top:10px;width:100%" data-tooltip="Download this reviewer as a formatted PDF handout"><span [innerHTML]="'download' | ico"></span> Export PDF handout</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:10px">
+          <button class="btn btn-secondary" (click)="exportMd()" data-tooltip="Download the study sheet as Markdown"><span [innerHTML]="'download' | ico"></span> Export .md</button>
+          <button class="btn btn-secondary" (click)="print()" data-tooltip="Open a printable study sheet"><span [innerHTML]="'print' | ico"></span> Print sheet</button>
+        </div>
+      </div>
+    </div>
+    <div class="img-viewer" [class.hidden]="!viewerOpen()" (click)="closeViewer()">
+      <div class="iv-zoom-bar">
+        <button class="iv-zoom" aria-label="Zoom out" (click)="ivOut(); $event.stopPropagation()" [innerHTML]="'minus' | ico"></button>
+        <button class="iv-zoom" aria-label="Reset zoom" (click)="ivReset(); $event.stopPropagation()" [innerHTML]="'refresh' | ico"></button>
+        <button class="iv-zoom" aria-label="Zoom in" (click)="ivIn(); $event.stopPropagation()" [innerHTML]="'plus' | ico"></button>
+      </div>
+      <button class="iv-close" (click)="closeViewer()" [innerHTML]="'x' | ico"></button>
+      <button class="iv-nav iv-prev" (click)="stepViewer(-1)" [innerHTML]="'chevronLeft' | ico"></button>
+      <img #viewerImg alt="Viewing image" />
+      <button class="iv-nav iv-next" (click)="stepViewer(1)" [innerHTML]="'chevronRight' | ico"></button>
+      <div class="iv-caption">{{ viewerCaption() }}</div>
+    </div>
+  }
+</ion-content>

@@ -192,5 +192,5 @@ export class SetupPage implements OnInit {
     this.toast.toast('Share link arrives with the results screen port (M3)');
   }
 
-  back() { this.router.navigateByUrl('/doc/' + this.doc().id); }
+  back() { this.router.navigateByUrl('/tabs/library'); }
 }

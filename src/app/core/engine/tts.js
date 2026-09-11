@@ -244,6 +244,7 @@ function speakLocal(textList, { rate = 1 } = {}) {
 }
 
 /* ── Public API ── */
+/** @param {string[]} textList @param {{ rate?: number, onindex?: (i: number) => void, onend?: () => void }} opts */
 export async function speak(textList, { rate = 1, onindex = null, onend = null } = {}) {
   stop()
   stopped = false

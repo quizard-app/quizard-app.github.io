@@ -1,0 +1,114 @@
+<ion-content [fullscreen]="true">
+  <header class="app-header">
+    <div class="brand"><span class="mark" [innerHTML]="iconFor('logo')"></span>Progress</div>
+    <button class="icon-btn" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="iconFor(ui.theme() === 'dark' ? 'sun' : 'moon')"></button>
+  </header>
+  <div class="screen hist-screen">
+    <div class="stats-row">
+      <div class="stat"><div class="num">{{ streak() }}</div><div class="lbl">Day Streak</div></div>
+      <div class="stat"><div class="num">{{ attempts().length }}</div><div class="lbl">Quizzes</div></div>
+      <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
+    </div>
+
+    @if (dueCount()) {
+      <div class="card" style="padding:14px 16px;margin-bottom:14px;border-color:var(--accent-border);background:var(--accent-soft)">
+        <div class="row" style="border-bottom:none">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--accent-strong);display:flex" [innerHTML]="iconFor('zap')"></span>
+            <div>
+              <div class="label">{{ dueCount() }} card{{ dueCount() === 1 ? '' : 's' }} due for review</div>
+              <div class="sub">Spaced repetition — review them before you forget</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startDueReview()"><span [innerHTML]="iconFor('refresh')"></span> Start spaced review</button>
+      </div>
+    }
+
+    <div class="card" style="padding:14px 16px;margin-bottom:14px">
+      <div class="row" style="border-bottom:none">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="color:{{ mistakeCount() ? 'var(--warn)' : 'var(--good)' }};display:flex" [innerHTML]="iconFor(mistakeCount() ? 'alert' : 'check')"></span>
+          <div>
+            <div class="label">{{ mistakeCount() }} mistake{{ mistakeCount() === 1 ? '' : 's' }} in the bank</div>
+            <div class="sub">{{ mistakeCount() ? 'Questions you got wrong — review them until they stick' : 'Nothing to review. Keep it up!' }}</div>
+          </div>
+        </div>
+      </div>
+      @if (mistakeCount()) {
+        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startMistakeReview()" data-tooltip="Practice the questions you previously got wrong"><span [innerHTML]="iconFor('refresh')"></span> Review all mistakes</button>
+      }
+    </div>
+
+    @if (weakTerms().length) {
+      <div class="card" style="padding:14px 16px;margin-bottom:14px">
+        <div class="row" style="border-bottom:none">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--bad);display:flex" [innerHTML]="iconFor('target')"></span>
+            <div>
+              <div class="label">{{ weakTerms().length }} weak term{{ weakTerms().length === 1 ? '' : 's' }} tracked</div>
+              <div class="sub">Questions are weighted toward the terms you miss most often</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startWeakReview()" data-tooltip="Review your weakest terms first"><span [innerHTML]="iconFor('target')"></span> Review weak spots</button>
+      </div>
+    }
+
+    @if (docCount()) {
+      <div class="card" style="padding:14px 16px;margin-bottom:14px;border-color:var(--accent-border);background:var(--accent-soft)">
+        <div class="row" style="border-bottom:none">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--accent-strong);display:flex" [innerHTML]="iconFor('sparkles')"></span>
+            <div>
+              <div class="label">Master review</div>
+              <div class="sub">One mixed session across all {{ docCount() }} document{{ docCount() === 1 ? '' : 's' }} — due cards, fresh questions, old mistakes</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startMasterReview()" data-tooltip="Interleaved review across your whole library"><span [innerHTML]="iconFor('sparkles')"></span> Start master review</button>
+      </div>
+    }
+
+    <div [innerHTML]="trendHtml()"></div>
+
+    @if (studied().length) {
+      <div class="section-title">Document mastery</div>
+      <div class="card breakdown">
+        @for (d of studied().slice(0, 6); track d.id) {
+          <div class="bd-row">
+            <span class="bd-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">{{ d.name }}</span>
+            <div class="bd-bar"><div class="bd-fill" [style.width.%]="d.bestScore ?? 0" [style.background]="pctColor(d.bestScore ?? 0)"></div></div>
+            <span class="bd-score">{{ bestOf(d) }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (!attempts().length) {
+      <div class="empty-state">
+        <div class="empty-illust" [innerHTML]="emptyArt"></div>
+        <h3>No progress yet</h3>
+        <p>Take your first quiz and your streak, scores and mastery will appear here.</p>
+      </div>
+    }
+
+    @if (groups().length) {
+      <div class="section-title">Recent activity</div>
+      @for (g of groups(); track g.day) {
+        <div class="history-day">
+          @for (a of g.items; track a.id) {
+            <div class="history-item">
+              <div class="hi-icon" [style.color]="pctColor(a.percent >= 50 ? 80 : 30)" [style.background]="a.percent >= 50 ? 'var(--good-bg)' : 'var(--bad-bg)'" [innerHTML]="hiIcon(a)"></div>
+              <div class="hi-main">
+                <div class="hi-name">{{ a.docName }}</div>
+                <div class="hi-meta">{{ fmtTime(a.date) }} · {{ a.correct }}/{{ a.total }} correct · {{ Math.round(a.durationSec) }}s</div>
+              </div>
+              <span class="score-pill {{ pillOf(a.percent) }}">{{ a.percent }}%</span>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</ion-content>

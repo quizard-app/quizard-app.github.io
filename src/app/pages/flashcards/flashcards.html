@@ -1,0 +1,55 @@
+<ion-content [fullscreen]="true">
+  @if (tooFew()) {
+    <header class="back-header">
+      <button class="icon-btn" (click)="backToDoc()" [innerHTML]="'chevronLeft' | ico"></button>
+      <h2>Flashcards</h2>
+      <div class="spacer"></div>
+    </header>
+    <div class="screen">
+      <div class="empty-state">
+        <div class="art" [innerHTML]="icons.sparkles"></div>
+        <h3>Not enough terms</h3>
+        <p>This document doesn't have enough distinct key terms to build flashcards. Try a longer, text-rich document.</p>
+      </div>
+    </div>
+  } @else if (doc(); as d) {
+    <header class="back-header">
+      <button class="icon-btn" (click)="backToDoc()" data-tooltip="Exit flashcards" [innerHTML]="icons.x"></button>
+      <h2>Flashcards</h2>
+      @if (!done()) { <span class="q-counter">{{ progressLabel }}</span> }
+    </header>
+    <div class="screen fc-screen">
+      @if (done()) {
+        <div class="empty-state" style="padding-top:80px">
+          <div class="art" [innerHTML]="icons.trophy"></div>
+          <h3>Deck complete!</h3>
+          <p>You reviewed all {{ deck.length }} flashcards from “{{ d.name }}”.</p>
+          <button class="btn btn-primary" style="max-width:200px;margin:0 auto" (click)="restart()"><span [innerHTML]="icons.refresh"></span> Study again</button>
+          <button class="btn btn-secondary" style="max-width:200px;margin:10px auto 0" (click)="backToDoc()">Back to document</button>
+        </div>
+      } @else {
+        <div class="fc-progress-track"><div class="progress-fill" [style.width.%]="progressPct"></div></div>
+        <div class="fc-stage">
+          <button class="fc-card" (click)="flip()" data-tooltip="Tap to flip">
+            <div class="fc-inner" [class.flipped]="flipped">
+              <div class="fc-face fc-front">
+                <span class="fc-hint">TERM</span>
+                <div class="fc-front-text">{{ currentCard?.front }}</div>
+                <span class="fc-tap">Tap to flip</span>
+              </div>
+              <div class="fc-face fc-back">
+                <span class="fc-hint">CONTEXT</span>
+                <div class="fc-back-text">{{ currentCard?.back }}</div>
+              </div>
+            </div>
+          </button>
+        </div>
+        <div class="fc-controls">
+          <button class="btn fc-btn-again" (click)="advance(false)" data-tooltip="Review this card later"><span [innerHTML]="icons.refresh"></span> Again</button>
+          <button class="btn btn-primary fc-btn-got" (click)="advance(true)" data-tooltip="I knew this one"><span [innerHTML]="icons.check"></span> Got it</button>
+        </div>
+        <p class="center faint" style="font-size:12px;margin-top:14px">{{ deck.length }} cards from “{{ d.name }}”</p>
+      }
+    </div>
+  }
+</ion-content>

@@ -24,7 +24,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'library' },
       { path: 'library', loadComponent: () => import('./pages/library/library').then(m => m.LibraryPage) },
-      { path: 'history', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Progress', milestone: 'M2' } },
+      { path: 'history', loadComponent: () => import('./pages/history/history').then(m => m.HistoryPage) },
       { path: 'import', loadComponent: () => import('./pages/import/import').then(m => m.ImportPage) },
       { path: 'settings', loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage), data: { title: 'Settings', milestone: 'M2' } }
     ]
@@ -39,13 +39,11 @@ export const routes: Routes = [
   },
   {
     path: 'reviewer/:id',
-    loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage),
-    data: { title: 'Reviewer', milestone: 'M2' }
+    loadComponent: () => import('./pages/reviewer/reviewer').then(m => m.ReviewerPage)
   },
   {
     path: 'flashcards/:id',
-    loadComponent: () => import('./pages/placeholder/placeholder').then(m => m.PlaceholderPage),
-    data: { title: 'Flashcards', milestone: 'M2' }
+    loadComponent: () => import('./pages/flashcards/flashcards').then(m => m.FlashcardsPage)
   },
   {
     path: 'quiz',
