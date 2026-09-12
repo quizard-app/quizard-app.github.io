@@ -1,0 +1,11 @@
+{
+  "appId": "app.quizforge",
+  "appName": "Quizard",
+  "webDir": "dist/quizard-ng/browser",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

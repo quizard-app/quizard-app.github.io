@@ -33,3 +33,5 @@ relay/.dev.vars
 legacy/android/keystore.properties
 legacy/android/.idea
 .angular/
+Quizard-v2.0.apk
+android/app/quizard-release.keystore
