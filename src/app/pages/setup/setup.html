@@ -19,7 +19,7 @@
         <span class="label">Questions</span>
         <div class="stepper" data-tooltip="How many questions to generate (1–200)">
           <button id="count-minus" (click)="setCount(count - (count > 10 ? 5 : 1))" data-tooltip="Fewer questions">−</button>
-          <span class="val">{{ count }}</span>
+          <span class="val" id="count-val">{{ count }}</span>
           <button id="count-plus" (click)="setCount(count + (count >= 10 ? 5 : 1))" data-tooltip="More questions">+</button>
         </div>
       </div>

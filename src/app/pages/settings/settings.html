@@ -124,7 +124,7 @@
       <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
         Your data lives only on this device. Export a backup file regularly — if the app is uninstalled or the phone is reset, local data is gone.
       </p>
-      <button class="btn btn-primary" (click)="exportBackup()" data-tooltip="Download all data as a single JSON file"><span [innerHTML]="icons.download"></span> Export backup (.json)</button>
+      <button class="btn btn-primary" id="export-btn" (click)="exportBackup()" data-tooltip="Download all data as a single JSON file"><span [innerHTML]="icons.download"></span> Export backup (.json)</button>
       <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="importInput.click()" data-tooltip="Restore from a previously exported backup"><span [innerHTML]="icons.database"></span> Import backup</button>
       <input type="file" #importInput accept=".json,application/json" aria-label="Import backup file" hidden (change)="onImportPicked($event)" />
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0" />
