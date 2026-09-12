@@ -36,6 +36,8 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:4200',
   'http://localhost:4301',
   'http://127.0.0.1:4301',
+  'http://localhost:4302',
+  'http://127.0.0.1:4302',
   'https://localhost'
 ])
 

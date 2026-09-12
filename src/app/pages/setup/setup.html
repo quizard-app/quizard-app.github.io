@@ -18,9 +18,9 @@
       <div class="card row" style="padding:13px 16px;border-top:none">
         <span class="label">Questions</span>
         <div class="stepper" data-tooltip="How many questions to generate (1–200)">
-          <button (click)="setCount(count - (count > 10 ? 5 : 1))" data-tooltip="Fewer questions">−</button>
+          <button id="count-minus" (click)="setCount(count - (count > 10 ? 5 : 1))" data-tooltip="Fewer questions">−</button>
           <span class="val">{{ count }}</span>
-          <button (click)="setCount(count + (count >= 10 ? 5 : 1))" data-tooltip="More questions">+</button>
+          <button id="count-plus" (click)="setCount(count + (count >= 10 ? 5 : 1))" data-tooltip="More questions">+</button>
         </div>
       </div>
       <p class="faint" style="font-size:12px;margin:8px 4px 0">{{ poolHint }}</p>

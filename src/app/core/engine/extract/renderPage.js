@@ -8,7 +8,7 @@ let workerUrl = null
 async function getPdfjs() {
   if (pdfjsLib) return pdfjsLib
   pdfjsLib = await import('pdfjs-dist')
-  if (!workerUrl) workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
+  workerUrl = 'pdf.worker.min.mjs'
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
   return pdfjsLib
 }
