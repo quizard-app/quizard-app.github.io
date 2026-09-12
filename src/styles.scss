@@ -10,3 +10,28 @@ body {
 
 button, input, select, textarea { font: inherit; }
 img { display: block; max-width: 100%; }
+
+/* ── Restore the shell side padding (the vanilla #app had it; the Ionic
+   port lost it, which made every screen stretch edge-to-edge) ── */
+ion-content {
+  --padding-start: var(--pad-x);
+  --padding-end: var(--pad-x);
+}
+
+/* ── Wide screens: cap line length and float the tab bar ── */
+@media (min-width: 1100px) {
+  .lib-screen { max-width: 1120px; margin-inline: auto; }
+}
+@media (min-width: 768px) {
+  ion-tab-bar {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 560px;
+    width: calc(100% - 24px);
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+  }
+}
