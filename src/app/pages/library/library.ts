@@ -1,7 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
+import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import {
   getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams
@@ -49,6 +48,7 @@ export class LibraryPage {
   tags = signal<string[]>([]);
 
   query = signal('');
+  private searchTimer: any = null;
   sort = signal<string>('recent');
   folderFilter = signal<string | null>(null);
   tagFilter = signal<string | null>(null);
@@ -79,17 +79,7 @@ export class LibraryPage {
     return arr;
   });
 
-  constructor() {
-    // re-run load whenever this tab becomes active
-    const router = this.router;
-    const active = toSignal(router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map(e => e.urlAfterRedirects),
-      startWith(router.url)
-    ));
-    // load once; tab re-entry re-runs via ionViewWillEnter-equivalent below
-    void active;
-  }
+
 
   async ionViewWillEnter() {
     if (!this.ui.account()) {
@@ -127,6 +117,11 @@ export class LibraryPage {
   }
 
   setFolder(f: string | null) { this.folderFilter.set(f || null); }
+
+  searchNow(value: string) {
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.query.set(value.trim()), 120);
+  }
   setTag(t: string | null) { this.tagFilter.set(t || null); }
 
   openDoc(doc: any) { this.router.navigate(['/doc', doc.id]); }

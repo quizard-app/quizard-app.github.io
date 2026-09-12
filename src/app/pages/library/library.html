@@ -35,7 +35,7 @@
         <div class="stat"><div class="num">{{ avg() != null ? avg() + '%' : '—' }}</div><div class="lbl">Best Avg</div></div>
       </div>
       <div class="lib-tools">
-        <input class="text-input" type="search" placeholder="Search documents…" aria-label="Search documents" autocomplete="off" [value]="query()" (input)="query.set($any($event.target).value.trim())" />
+        <input class="text-input" type="search" placeholder="Search documents…" aria-label="Search documents" autocomplete="off" [value]="query()" (input)="searchNow($any($event.target).value)" />
         <div class="seg">
           @for (s of sorts; track s.id) {
             <button [class.on]="sort() === s.id" (click)="setSort(s.id)" [attr.data-tooltip]="'Sort by ' + s.label.toLowerCase()">{{ s.label }}</button>
