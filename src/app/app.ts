@@ -11,7 +11,11 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
 })
 export class App {
+  // inject() runs here, inside the component's injection context — calling it
+  // inside the afterNextRender callback instead throws NG0203.
+  private preload = inject(IdlePreloadService);
+
   constructor() {
-    afterNextRender(() => inject(IdlePreloadService).start());
+    afterNextRender(() => this.preload.start());
   }
 }
