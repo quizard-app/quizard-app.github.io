@@ -19,7 +19,7 @@ export class MistakesService {
     // root direction Ionic restores the frozen old quiz page instead of
     // starting the new session.
     this.navCtrl.setDirection('root', false);
-    this.router.navigateByUrl('/quiz');
+    this.router.navigateByUrl('/quiz-review');
   }
 
   async startMistakeReview(docId?: string) {

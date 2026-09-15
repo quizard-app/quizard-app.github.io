@@ -200,7 +200,10 @@ export class ResultsPage implements OnInit {
   retake() {
     const r = this.r();
     if (r.mistakeMode) this.router.navigateByUrl('/tabs/library');
-    else this.router.navigateByUrl('/quiz');
+    else {
+      this.navCtrl.setDirection('root', false);
+      this.router.navigateByUrl('/quiz-review');
+    }
   }
 
   reviewMistakes() { this.mistakes.startMistakeReview(this.r().docId ?? undefined); }
