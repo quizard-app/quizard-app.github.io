@@ -1,0 +1,1 @@
+import{K as R,Tn as yn}from"./chunk-CgpyYsh3.js";var t=class n{sharedQuiz=yn(null);currentDocId=yn(null);lastAttempt=yn(null);examSession=yn(null);mistakeReview=yn(null);static ɵfac=function(l){return new(l||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{t};
