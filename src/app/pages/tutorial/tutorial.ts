@@ -91,6 +91,8 @@ export class TutorialPage implements OnDestroy {
   constructor() {
     preloadAudioAround(0);
     setupAudioUnlock();
+    // Slide 0 never goes through update(), so kick off its narration here.
+    setTimeout(() => playAudio(SLIDES[0].mp3), 350);
   }
 
   ngOnDestroy() { stopAudio(); }

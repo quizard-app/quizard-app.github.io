@@ -166,9 +166,27 @@ describe('quiz export for new types', () => {
       { type: 'except', stem: 'All of the following are true EXCEPT:', options: ['A true one', 'Another true one', 'A third true one', 'The false one'], answerIndex: 3 },
       { type: 'multi', stem: 'Select TWO correct statements.', options: ['Right one', 'Wrong one', 'Right two', 'Wrong two', 'Wrong three'], answerIndices: [0, 2] }
     ])
-    expect(md).toContain('[EXCEPT]')
-    expect(md).toContain('[SELECT TWO]')
-    expect(md).toContain('The false one')
-    expect(md).toContain('Right one · Right two')
+    expect(md).toContain('### Multiple Choice — Except')
+    expect(md).toContain('### Multiple Choice — Select Two')
+    expect(md).toContain('**Directions:**')
+    expect(md).toContain('D. The false one')
+    expect(md).toContain('A · C')
+  })
+
+  it('formats mcq quizzes in the classic school layout', () => {
+    const md = buildQuizMarkdown('Test', [
+      { type: 'mcq', stem: 'What is the primary purpose of an operating system?', options: ['To create presentations', 'To manage hardware and software resources', 'To browse the internet', 'To edit images'], answerIndex: 1 },
+      { type: 'mcq', stem: 'Which of the following is a programming language?', options: ['HTML', 'CSS', 'Python', 'HTTP'], answerIndex: 2 },
+      { type: 'tf', statement: 'The CPU is the brain of the computer.', answer: true }
+    ])
+    expect(md).toContain('### Multiple Choice')
+    expect(md).toContain('**Directions:** Read each question carefully. Choose the letter of the best answer.')
+    expect(md).toContain('**1. What is the primary purpose of an operating system?**')
+    expect(md).toContain('B. To manage hardware and software resources')
+    expect(md).toContain('**2. Which of the following is a programming language?**')
+    expect(md).toContain('C. Python')
+    expect(md).toContain('**Answer:** B')
+    expect(md).toContain('### True or False')
+    expect(md).toContain('**3. The CPU is the brain of the computer.**')
   })
 })

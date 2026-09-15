@@ -23,6 +23,20 @@ function optionLetters(n) {
   return 'ABCDEFGH'.slice(0, n).split('')
 }
 
+// Classic school-quiz sections. Questions are grouped by type, numbered
+// continuously, and every section opens with a Directions line.
+const QUIZ_SECTIONS = [
+  { type: 'mcq', title: 'Multiple Choice', directions: 'Read each question carefully. Choose the letter of the best answer.' },
+  { type: 'except', title: 'Multiple Choice — Except', directions: 'Read each question carefully. Choose the letter of the statement that is NOT true.' },
+  { type: 'multi', title: 'Multiple Choice — Select Two', directions: 'Read each question carefully. Choose the letters of the TWO correct answers.' },
+  { type: 'tf', title: 'True or False', directions: 'Read each statement carefully. Write T if the statement is true and F if it is false.' },
+  { type: 'fib', title: 'Fill in the Blank', directions: 'Choose the word or phrase that best completes each statement.' },
+  { type: 'id', title: 'Identification', directions: 'Read each description carefully. Identify the term being described.' },
+  { type: 'short', title: 'Short Answer', directions: 'Read each question carefully. Answer in a word or a short phrase.' },
+  { type: 'matching', title: 'Matching Type', directions: 'Match each term to its definition. Write the letter of your choice on the blank.' },
+  { type: 'ordering', title: 'Ordering', directions: 'Arrange the items in the correct order from first to last.' }
+]
+
 export function buildSummaryMarkdown(doc) {
   const summary = summarizeDoc(doc.text)
   const out = [`# ${doc.name}`, '', `_Study sheet · generated ${stamp()}_`, '']
@@ -42,53 +56,76 @@ export function buildSummaryMarkdown(doc) {
 
 export function buildQuizMarkdown(docName, questions, review) {
   const out = [`# Quiz — ${docName}`, '', `_Generated ${stamp()}_`, '']
-  questions.forEach((q, i) => {
-    const prompt = q.statement || q.stem || q.clue || q.prompt || ''
-    if (q.type === 'matching') {
-      out.push(`**${i + 1}. [MATCHING]** ${q.prompt || 'Match each term to its definition'}`)
-      ;(q.pairs || []).forEach(p => out.push(`   - ${p.left} → ${p.right}`))
-      out.push('**Answer:** match the pairs above')
+  let n = 0
+
+  for (const section of QUIZ_SECTIONS) {
+    const qs = questions.filter(q => q.type === section.type)
+    if (!qs.length) continue
+
+    out.push(`### ${section.title}`, '')
+    out.push(`**Directions:** ${section.directions}`, '')
+
+    for (const q of qs) {
+      n++
+      const i = questions.indexOf(q)
       const rev = review?.[i]
-      if (rev && !rev.ok && rev.chosen != null) out.push(`_Your attempt: ${rev.chosen}_`)
+
+      if (q.type === 'matching') {
+        out.push(`**${n}.** ${q.prompt || 'Match each term to its definition'}`)
+        out.push('')
+        const letters = optionLetters((q.pairs || []).length)
+        out.push('| Term | Answer |', '| --- | --- |')
+        ;(q.pairs || []).forEach((p, k) => out.push(`| ${p.left} | ${letters[k]}. ${p.right} |`))
+        out.push('')
+      } else if (q.type === 'ordering') {
+        out.push(`**${n}.** ${q.prompt || 'Put the steps in the correct order'}`)
+        out.push('')
+        ;(q.shuffled || q.steps || []).forEach((s, k) => out.push(`${'ABCDEFGH'[k]}. ${s}`))
+        out.push('')
+      } else {
+        const prompt = q.statement || q.stem || q.clue || q.prompt || ''
+        out.push(`**${n}. ${prompt}**`)
+        out.push('')
+        let opts = null
+        if (q.type === 'mcq' || q.type === 'except' || q.type === 'multi' || q.type === 'fib') opts = q.options || q.choices
+        else if (q.type === 'tf') opts = ['True', 'False']
+        if (opts) {
+          const letters = optionLetters(opts.length)
+          opts.forEach((o, k) => out.push(`${letters[k]}. ${o}`))
+          out.push('')
+        }
+      }
+
+      const answer = q.type === 'id' || q.type === 'short'
+        ? q.answer
+        : q.type === 'tf'
+          ? String(q.answer)
+          : q.type === 'multi'
+            ? (q.answerIndices || []).map(k => 'ABCDEFGH'[k]).filter(x => x).join(' · ')
+            : q.type === 'matching'
+              ? (q.pairs || []).map((p, k) => `${'ABCDEFGH'[k]}. ${p.right}`).join(' · ')
+              : q.type === 'ordering'
+                ? (q.steps || []).map((s, k) => `${k + 1}. ${s}`).join(' → ')
+                : 'ABCDEFGH'[q.answerIndex] + '. ' + ((q.options ?? q.choices)?.[q.answerIndex] ?? '')
+      out.push(`**Answer:** ${answer ?? '(ungraded)'}`)
+      if (rev && !rev.ok && rev.chosen != null) out.push(`_Your answer: ${rev.chosen}_`)
       out.push('')
-      return
     }
-    if (q.type === 'ordering') {
-      out.push(`**${i + 1}. [ORDERING]** ${q.prompt || 'Put the steps in the correct order'}`)
-      ;(q.steps || []).forEach((s, k) => out.push(`   ${k + 1}. ${s}`))
-      out.push('**Answer:** the numbered order above')
-      const rev = review?.[i]
-      if (rev && !rev.ok && rev.chosen != null) out.push(`_Your attempt: ${rev.chosen}_`)
-      out.push('')
-      return
-    }
-    const typeLabel = q.type === 'id' ? 'IDENTIFY'
-      : q.type === 'tf' ? 'TRUE/FALSE'
-      : q.type === 'fib' ? 'FILL BLANK'
-      : q.type === 'short' ? 'SHORT ANSWER'
-      : q.type === 'except' ? 'EXCEPT'
-      : q.type === 'multi' ? 'SELECT TWO'
-      : 'MULTIPLE CHOICE'
-    out.push(`**${i + 1}. [${typeLabel}]** ${prompt}`)
-    let opts = null
-    if (q.type === 'mcq' || q.type === 'fib' || q.type === 'except' || q.type === 'multi') opts = q.options || q.choices
-    else if (q.type === 'tf') opts = ['True', 'False']
-    if (opts) {
-      const letters = optionLetters(opts.length)
-      opts.forEach((o, k) => out.push(`   ${letters[k]}. ${o}`))
-    }
-    const answer = q.type === 'id' || q.type === 'short'
-      ? q.answer
-      : q.type === 'tf'
-        ? String(q.answer)
-        : q.type === 'multi'
-          ? (q.answerIndices || []).map(k => (q.options || [])[k]).filter(Boolean).join(' · ')
-          : (q.options ?? q.choices)?.[q.answerIndex]
-    out.push(`**Answer:** ${answer ?? '(ungraded)'}`)
+  }
+
+  // any type without a declared section (safety net so nothing is dropped)
+  const covered = new Set(QUIZ_SECTIONS.map(s => s.type))
+  const rest = questions.filter(q => !covered.has(q.type))
+  for (const q of rest) {
+    n++
+    const i = questions.indexOf(q)
+    out.push(`**${n}. ${q.statement || q.stem || q.clue || q.prompt || ''}**`, '')
+    out.push(`**Answer:** ${q.answer ?? (q.options ?? q.choices)?.[q.answerIndex] ?? '(ungraded)'}`, '')
     const rev = review?.[i]
     if (rev && !rev.ok && rev.chosen != null) out.push(`_Your answer: ${rev.chosen}_`)
     out.push('')
-  })
+  }
+
   out.push('---', '_Exported from Quizard_', '')
   return out.join('\n')
 }
