@@ -1,1 +1,0 @@
-import{B as R,zt as tr}from"./main-YOO6XWTJ.js";var a=class n{currentDocId=tr(null);lastAttempt=tr(null);examSession=tr(null);mistakeReview=tr(null);static ɵfac=function(o){return new(o||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{a as t};

@@ -1,7 +1,7 @@
 {
   "name": "Quizard",
   "short_name": "Quizard",
-  "description": "Turn your PDF, PPTX and DOCX documents into exam-style practice quizzes.",
+  "description": "Turn your PDF, PPTX and DOCX documents into quizzes. Offline, private, 100% local.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

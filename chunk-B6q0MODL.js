@@ -1,0 +1,1 @@
+import{B as R,kt as nr}from"./main-RFYRKJUV.js";var a=class n{currentDocId=nr(null);lastAttempt=nr(null);examSession=nr(null);mistakeReview=nr(null);static ɵfac=function(o){return new(o||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{a as t};
