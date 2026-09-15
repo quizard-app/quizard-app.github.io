@@ -149,19 +149,26 @@ export class ExamChatPage implements OnInit, OnDestroy {
 
   async create() {
     if (!this.draft.readyToCreate || this.busy) return;
-    const exam = {
-      id: 'exam-' + Date.now().toString(36),
-      title: this.draft.examTitle || 'Exam Prep',
-      examDate: this.draft.examDate ? new Date(this.draft.examDate + 'T23:59:59').getTime() : undefined,
-      createdAt: Date.now(),
-      announcement: this.conversation.find(m => m.role === 'user')?.text || '',
-      docIds: this.draft.matchedDocIds,
-      topics: this.draft.topics,
-      status: 'upcoming'
-    };
-    await saveExam(exam as any);
-    this.toast.toast(`Exam "${exam.title}" created ✓`);
-    this.router.navigate(['/exams', exam.id]);
+    this.busy = true;
+    try {
+      const exam = {
+        id: 'exam-' + Date.now().toString(36),
+        title: this.draft.examTitle || 'Exam Prep',
+        examDate: this.draft.examDate ? new Date(this.draft.examDate + 'T23:59:59').getTime() : undefined,
+        createdAt: Date.now(),
+        announcement: this.conversation.find(m => m.role === 'user')?.text || '',
+        docIds: this.draft.matchedDocIds,
+        topics: this.draft.topics,
+        status: 'upcoming'
+      };
+      await saveExam(exam as any);
+      this.toast.toast(`Exam "${exam.title}" created ✓`);
+      this.router.navigate(['/exams', exam.id]);
+    } catch {
+      this.toast.toast('Could not save the exam — please try again.', true);
+    } finally {
+      this.busy = false;
+    }
   }
 
   backToExams() { this.router.navigateByUrl('/exams'); }

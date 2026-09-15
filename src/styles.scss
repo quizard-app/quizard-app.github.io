@@ -1,6 +1,9 @@
 /* Quizard global styles (Ionic brings its own per-component defaults) */
 html { scroll-behavior: smooth; }
 
+/* Utility: toggled via Angular [class.hidden] bindings */
+.hidden { display: none !important; }
+
 body {
   font-family: var(--font-sans);
   background: var(--bg);
