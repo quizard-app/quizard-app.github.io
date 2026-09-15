@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { encodeShare, decodeShare, buildQuizPayload, buildChallengePayload, linkFromEncoded } from '../src/app/core/engine/share.js'
+import { encodeShare, decodeShare, buildQuizPayload, buildChallengePayload, linkFromEncoded, payloadFromHash, consumeShareHash } from '../src/app/core/engine/share.js'
 
 const sample = {
   v: 1,
@@ -27,6 +27,34 @@ describe('share encode/decode', () => {
 
   it('throws on a non-quiz string', async () => {
     await expect(decodeShare('hello world')).rejects.toThrow()
+  })
+})
+
+describe('inbound share links (recipient flow)', () => {
+  it('payloadFromHash returns null when the hash carries no quiz token', async () => {
+    expect(await payloadFromHash('')).toBeNull()
+    expect(await payloadFromHash('#/tabs/library')).toBeNull()
+    expect(await payloadFromHash('#quiz=')).toBeNull()
+  })
+
+  it('payloadFromHash decodes the token out of a full share URL', async () => {
+    const payload = buildChallengePayload('Q', [
+      { type: 'mcq', stem: 'Pick one.', options: ['a', 'b'], answerIndex: 0 }
+    ], { name: 'Sam', percent: 80, correct: 8, total: 10 })
+    const url = linkFromEncoded(await encodeShare(payload))
+    const hash = '#' + url.split('#')[1]
+    const dec = await payloadFromHash(hash)
+    expect(dec.t).toBe('Q')
+    expect(dec.q).toHaveLength(1)
+    expect(dec.c).toEqual({ n: 'Sam', p: 80, c: 8, t: 10 })
+  })
+
+  it('payloadFromHash rejects a corrupted token (broken link, not empty link)', async () => {
+    await expect(payloadFromHash('#quiz=qf1:AAAA-corrupted-!!!')).rejects.toThrow()
+  })
+
+  it('consumeShareHash is a safe no-op without a DOM', () => {
+    expect(() => consumeShareHash()).not.toThrow()
   })
 })
 

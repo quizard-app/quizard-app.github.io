@@ -121,6 +121,23 @@ function shareBase() {
   return ''
 }
 
+// Extract + decode the quiz payload baked into a location hash like
+// "#quiz=qf1:…". Returns null when the hash carries no quiz token.
+// Throws the decodeShare error when a token is present but undecodable,
+// so callers can tell "no link" apart from "broken link".
+export async function payloadFromHash(hash) {
+  const m = String(hash || '').match(/quiz=([^&]+)/)
+  if (!m) return null
+  return decodeShare(decodeURIComponent(m[1]))
+}
+
+// Remove the quiz token from the URL so a refresh doesn't re-trigger it.
+export function consumeShareHash() {
+  if (typeof location === 'undefined' || typeof history === 'undefined') return
+  if (!/[#&]quiz=/.test(location.hash)) return
+  history.replaceState(null, '', location.pathname + location.search)
+}
+
 export function linkFromEncoded(encoded) {
   return shareBase() + '#quiz=' + encoded
 }

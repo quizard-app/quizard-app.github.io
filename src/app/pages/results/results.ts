@@ -204,7 +204,7 @@ export class ResultsPage implements OnInit {
     const r = this.r();
     if (r.mistakeMode) this.router.navigateByUrl('/tabs/library');
     else if (r.shared) {
-      this.qs.sharedQuiz.set({ title: r.docName, questions: r.questions, cfg: r.cfg });
+      this.qs.sharedQuiz.set({ title: r.docName, questions: r.questions, cfg: r.cfg, challenge: r.challenge || null });
       this.router.navigateByUrl('/quiz');
     } else this.router.navigateByUrl('/quiz');
   }

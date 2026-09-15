@@ -6,7 +6,7 @@ import {
   getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake,
   gradeSrsItem, getImageById, loadSettings, saveAttempt
 } from '../../core/engine/storage.js';
-import { generateQuiz, TYPE_META } from '../../core/engine/quizgen.js';
+import { generateQuiz, TYPE_META, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions } from '../../core/engine/quiz-ai.js';
 import { explainAnswer } from '../../core/engine/explain.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
@@ -163,7 +163,7 @@ export class QuizPage implements OnInit, OnDestroy {
       qs.sharedQuiz.set(null);
       session = shared.questions;
       cfg = { timerSec: shared.cfg?.timerSec || 0, count: session.length };
-      st = { questions: session, index: 0, correct: 0, answers: [], startTime: Date.now(), shared: true, docName: shared.title || 'Shared Quiz' };
+      st = { questions: session, index: 0, correct: 0, answers: [], startTime: Date.now(), shared: true, docName: shared.title || 'Shared Quiz', challenge: shared.challenge || null };
       this.session = session; this.doc = null; this.cfg = cfg; this.st = st;
       this.beginAttempt();
       return;
@@ -173,6 +173,9 @@ export class QuizPage implements OnInit, OnDestroy {
     if (!doc) { this.router.navigateByUrl('/tabs/library'); return; }
     cfg = this.configs()[doc.id];
     if (!cfg) { this.router.navigate(['/doc', doc.id, 'setup']); return; }
+    // Always 4-option multiple choice — pin the mix so a config saved before
+    // MCQ-only (or a stale one in localStorage) can't reintroduce other types.
+    cfg = { ...cfg, mix: { ...MCQ_ONLY_MIX } };
 
     this.doc = doc; this.cfg = cfg;
 
@@ -194,7 +197,7 @@ export class QuizPage implements OnInit, OnDestroy {
         gen = generateQuiz(doc, cfg);
         if (cfg.difficulty === 'adaptive' && !gen.error && gen.questions.length) {
           const per = Math.max(2, Math.ceil(cfg.count / 3));
-          const poolMix: any = { mcq: true, tf: true, fib: true, id: true, except: !!cfg.mix.except, multi: !!cfg.mix.multi };
+          const poolMix: any = { ...MCQ_ONLY_MIX };
           const pools: Record<string, any[]> = {};
           for (const tier of ['easy', 'medium', 'hard'] as const) {
             const r = generateQuiz(doc, { ...cfg, count: per, difficulty: tier, mix: poolMix, fixedSeed: (gen.seed ^ (tier === 'easy' ? 0x51ab : tier === 'medium' ? 0x9e37 : 0x77aa)) >>> 0 });

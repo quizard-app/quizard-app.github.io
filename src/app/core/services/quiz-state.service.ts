@@ -6,7 +6,7 @@ import { Injectable, signal } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class QuizStateService {
   // set when playing a saved/shared deck
-  readonly sharedQuiz = signal<{ title: string; questions: any[]; cfg: any } | null>(null);
+  readonly sharedQuiz = signal<{ title: string; questions: any[]; cfg: any; challenge?: any } | null>(null);
   // the document the quiz was built from (null for shared decks)
   readonly currentDocId = signal<string | null>(null);
   // last attempt summary for the results screen
