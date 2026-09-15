@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listDecks, deleteDeck, listExams
+  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams
 } from '../../core/engine/storage.js';
 import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
@@ -14,7 +14,6 @@ import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
-import { QuizStateService } from '../../core/services/quiz-state.service';
 
 const SORTS = [
   { id: 'recent', label: 'Recent' },
@@ -32,7 +31,6 @@ export class LibraryPage {
   ui = inject(UiStateService);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
-  private quizState = inject(QuizStateService);
 
   readonly icoLog = icon('logo');
   readonly heroImg = assetUrl('wizard/wizard-studying.jpg');
@@ -42,7 +40,6 @@ export class LibraryPage {
 
   loading = signal(true);
   docs = signal<any[]>([]);
-  decks = signal<any[]>([]);
   nextExam = signal<any>(null);
   folders = signal<string[]>([]);
   tags = signal<string[]>([]);
@@ -89,7 +86,6 @@ export class LibraryPage {
     this.loading.set(true);
     const docs = await listDocs();
     this.docs.set(docs);
-    this.decks.set(await listDecks().catch(() => []));
     const exams = await listExams().catch(() => []);
     this.nextExam.set(exams.find((e: any) => (e.status || 'upcoming') === 'upcoming') || null);
     this.folders.set(deriveFolders(docs));
@@ -137,17 +133,6 @@ export class LibraryPage {
     if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for <b>${doc.name}</b> will be removed.`)) return;
     await deleteDoc(doc.id);
     this.toast.toast('Document deleted');
-    this.ionViewWillEnter();
-  }
-
-  playDeck(deck: any) {
-    this.quizState.sharedQuiz.set({ title: deck.name, questions: deck.questions, cfg: deck.cfg || { timerSec: 0 } });
-    this.router.navigateByUrl('/quiz');
-  }
-
-  async removeDeck(deck: any) {
-    await deleteDeck(deck.id).catch(() => {});
-    this.toast.toast('Saved quiz deleted');
     this.ionViewWillEnter();
   }
 

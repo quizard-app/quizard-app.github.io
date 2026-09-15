@@ -50,10 +50,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
   },
   {
-    path: 'shared',
-    loadComponent: () => import('./pages/shared/shared').then(m => m.SharedPage)
-  },
-  {
     path: 'results',
     loadComponent: () => import('./pages/results/results').then(m => m.ResultsPage)
   },

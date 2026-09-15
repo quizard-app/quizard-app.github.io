@@ -23,7 +23,7 @@ import { QuizStateService } from '../../core/services/quiz-state.service';
 interface QuizState {
   questions: any[]; index: number; correct: number; answers: any[]; startTime: number;
   resumed?: boolean; mistakeMode?: boolean; examMode?: boolean; examId?: string;
-  shared?: boolean; docName?: string; adaptive?: boolean; challenge?: any;
+  docName?: string; adaptive?: boolean;
 }
 
 function configKey(cfg: any) {
@@ -157,18 +157,6 @@ export class QuizPage implements OnInit, OnDestroy {
       return;
     }
 
-    // shared deck (library "saved quizzes" / share links)
-    if (qs.sharedQuiz()) {
-      const shared = qs.sharedQuiz()!;
-      qs.sharedQuiz.set(null);
-      session = shared.questions;
-      cfg = { timerSec: shared.cfg?.timerSec || 0, count: session.length };
-      st = { questions: session, index: 0, correct: 0, answers: [], startTime: Date.now(), shared: true, docName: shared.title || 'Shared Quiz', challenge: shared.challenge || null };
-      this.session = session; this.doc = null; this.cfg = cfg; this.st = st;
-      this.beginAttempt();
-      return;
-    }
-
     doc = await getDoc(qs.currentDocId() || '');
     if (!doc) { this.router.navigateByUrl('/tabs/library'); return; }
     cfg = this.configs()[doc.id];
@@ -227,7 +215,7 @@ export class QuizPage implements OnInit, OnDestroy {
   private async beginAttempt() {
     const st = this.st;
     st.startTime = Date.now();
-    this.adaptiveOn = this.cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode && !st.shared;
+    this.adaptiveOn = this.cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode;
 
     if (loadSettings().aiExplain !== false && hasApiKey()) {
       explainQuestions(this.session).catch(() => {});
@@ -545,8 +533,8 @@ export class QuizPage implements OnInit, OnDestroy {
       docId: this.doc?.id || null,
       docName: st.docName || this.doc?.name,
       correct: st.correct, total: this.total, percent, durationSec, wrongCount,
-      mistakeMode: !!st.mistakeMode, shared: !!st.shared, examMode: !!st.examMode,
-      challenge: st.challenge || null, cfg: { timerSec: this.cfg?.timerSec || 0 },
+      mistakeMode: !!st.mistakeMode, examMode: !!st.examMode,
+      cfg: { timerSec: this.cfg?.timerSec || 0 },
       byType, review,
       questions: this.session.map(q => ({ ...q }))
     });

@@ -27,22 +27,6 @@
         <p>{{ r.docName }} · {{ Math.round(r.durationSec) }}s</p>
       </div>
 
-      @if (r.challenge) {
-        <div class="card challenge-compare">
-          <div class="cc-row" [class.win]="r.percent >= r.challenge.p">
-            <span class="cc-who"><span [innerHTML]="'sparkles' | ico"></span> You</span>
-            <div class="cc-bar"><div class="cc-fill you" [style.width.%]="r.percent"></div></div>
-            <span class="cc-score">{{ r.percent }}%</span>
-          </div>
-          <div class="cc-row" [class.win]="r.challenge.p > r.percent">
-            <span class="cc-who"><span [innerHTML]="'users' | ico"></span> {{ r.challenge.n || 'Friend' }}</span>
-            <div class="cc-bar"><div class="cc-fill them" [style.width.%]="r.challenge.p"></div></div>
-            <span class="cc-score">{{ r.challenge.p }}%</span>
-          </div>
-          <p class="cc-note">{{ r.percent >= r.challenge.p ? 'You matched or beat the challenge!' : (r.challenge.n || 'Friend') + ' is still ahead — try again!' }}</p>
-        </div>
-      }
-
       @if (objectKeys(r.byType).length > 1) {
         <div class="section-title">By question type</div>
         <div class="card breakdown">
@@ -101,8 +85,6 @@
         </button>
       }
       <button class="btn btn-secondary" (click)="doExport()" style="margin-top:10px;width:100%" data-tooltip="Save this quiz as Markdown or PDF"><span [innerHTML]="'download' | ico"></span> Export quiz</button>
-      <button class="btn btn-secondary" (click)="share()" style="margin-top:10px;width:100%" data-tooltip="Get a link or QR to send this quiz — no app or key needed"><span [innerHTML]="'share' | ico"></span> Share quiz link</button>
-      <button class="btn btn-primary" (click)="challenge()" style="margin-top:10px;width:100%" data-tooltip="Challenge a friend to beat your score"><span [innerHTML]="'users' | ico"></span> Challenge a friend</button>
 
       <button class="btn btn-primary" (click)="retake()" style="margin-top:18px;width:100%" [attr.data-tooltip]="r.mistakeMode ? 'Try the mistake review again' : 'Generate a new quiz from the same document'">
         <span [innerHTML]="'refresh' | ico"></span> {{ r.mistakeMode ? 'Review Again' : 'Retake Quiz' }}

@@ -7,12 +7,11 @@ import { hasApiKey, hasRelay } from '../../core/engine/gemini.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
 import type { SafeHtml } from '@angular/platform-browser';
-import { TYPE_META, MCQ_ONLY_MIX, estimateAvailable, generateQuiz } from '../../core/engine/quizgen.js';
+import { TYPE_META, MCQ_ONLY_MIX, estimateAvailable } from '../../core/engine/quizgen.js';
 import { detectTopics } from '../../core/engine/topics.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
-import { ShareService } from '../../core/services/share.service';
 import { ToastService } from '../../core/services/toast.service';
 
 // Quizzes are always 4-option multiple choice — the other formats the engine
@@ -51,7 +50,6 @@ export class SetupPage implements OnInit {
   ui = inject(UiStateService);
   private quizState = inject(QuizStateService);
   private toast = inject(ToastService);
-  private shareSvc = inject(ShareService);
 
   doc = signal<any>(null);
   typeLabel = typeLabel;
@@ -189,18 +187,7 @@ export class SetupPage implements OnInit {
     }
     this.saveConfig(doc.id, cfg);
     this.quizState.currentDocId.set(doc.id);
-    this.quizState.sharedQuiz.set(null);
     this.router.navigateByUrl('/quiz');
-  }
-
-  async shareQuiz() {
-    const doc = this.doc();
-    if (!doc) return;
-    const cfg = { count: this.count, mix: { ...this.mix }, difficulty: this.difficulty, shuffle: this.shuffleOn, timerSec: this.timerSec, fresh: this.fresh, topics: [...this.selectedTopics], ai: false, focusWeak: this.focusWeak, deepVisual: false };
-    let gen = null;
-    try { gen = generateQuiz(doc, cfg as any); } catch {}
-    if (!gen || !gen.questions || !gen.questions.length) { this.toast.toast('Not enough content to build a shareable quiz', true); return; }
-    this.shareSvc.show({ title: doc.name, questions: gen.questions, timerSec: cfg.timerSec, mode: 'quiz' });
   }
 
   back() { this.router.navigateByUrl('/tabs/library'); }

@@ -444,38 +444,6 @@ html[data-theme='dark'] .stepper button { color: var(--accent); }
 .order-ans.correct { border-color: var(--good); background: var(--good-bg); color: var(--good); }
 .order-ans.wrong { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
 
-/* ── Saved-quiz deck card ── */
-.doc-icon.saved { background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent-border); }
-.deck-card .doc-actions { gap: 8px; }
-
-/* ── Modal (share / challenge) ── */
-.modal-mask {
-  position: fixed; inset: 0; z-index: 95;
-  background: rgba(9, 7, 26, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  display: grid; place-items: center; padding: 20px; animation: fadeIn 0.18s ease;
-}
-.modal {
-  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  width: 100%; max-width: 410px; padding: 24px; box-shadow: var(--shadow-lg);
-  animation: pop 0.24s cubic-bezier(0.16, 1.4, 0.3, 1);
-}
-.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.modal-head h3 { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
-.share-field { display: block; margin-top: 14px; }
-.share-field > span { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
-.qr-wrap {
-  margin: 18px auto 6px; width: 210px; height: 210px; padding: 14px;
-  background: #fff; border-radius: var(--radius-md); display: grid; place-items: center;
-  box-shadow: var(--shadow-sm);
-}
-.qr-wrap svg { width: 100%; height: 100%; }
-.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
-.modal-actions .btn { flex: 1; }
-@media (max-width: 767px) {
-  .modal-mask { align-items: end; padding: 0; }
-  .modal { max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
-}
-
 /* ── Confirm modal ── */
 .confirm-mask {
   position: fixed; inset: 0; z-index: 98;
@@ -501,18 +469,6 @@ html[data-theme='dark'] .stepper button { color: var(--accent); }
   .confirm-mask { align-items: end; padding: 0; }
   .confirm-modal { max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 }
-
-/* ── Challenge compare (results) ── */
-.challenge-compare { margin-top: 20px; padding: 18px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border); }
-.cc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.cc-who { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; min-width: 92px; color: var(--text-dim); }
-.cc-bar { flex: 1; height: 10px; border-radius: var(--radius-pill); background: var(--border); overflow: hidden; }
-.cc-fill { height: 100%; border-radius: var(--radius-pill); }
-.cc-fill.you { background: var(--grad-accent); }
-.cc-fill.them { background: var(--text-faint); }
-.cc-score { font-size: 13px; font-weight: 700; min-width: 40px; text-align: right; }
-.cc-row.win .cc-score { color: var(--good); }
-.cc-note { font-size: 13px; color: var(--text-dim); margin: 6px 0 0; text-align: center; }
 
 /* ── Library filters ── */
 .lib-filters { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }

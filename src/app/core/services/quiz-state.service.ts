@@ -1,13 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 
 // Carries quiz-session payloads between screens (the vanilla app kept these
-// on ctx.state): shared/deck quiz about to play, the active session, and the
-// doc being configured.
+// on ctx.state): the active session, and the doc being configured.
 @Injectable({ providedIn: 'root' })
 export class QuizStateService {
-  // set when playing a saved/shared deck
-  readonly sharedQuiz = signal<{ title: string; questions: any[]; cfg: any; challenge?: any } | null>(null);
-  // the document the quiz was built from (null for shared decks)
+  // the document the quiz was built from
   readonly currentDocId = signal<string | null>(null);
   // last attempt summary for the results screen
   readonly lastAttempt = signal<any>(null);

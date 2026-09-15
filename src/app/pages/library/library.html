@@ -7,7 +7,7 @@
       <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
     </div>
   </header>
-  <div class="screen lib-screen" [class.screen-center]="!docs().length && !decks().length">
+  <div class="screen lib-screen" [class.screen-center]="!docs().length">
     @if (nextExam(); as exam) {
       <button class="exam-card exam-card-lib" (click)="openExamDetail(exam)">
         <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
@@ -103,32 +103,7 @@
       <p class="center faint" style="padding:32px 0;font-size:13px">No documents match “{{ query() }}”.</p>
     }
 
-    @if (decks().length) {
-      <div class="section-title">Saved quizzes</div>
-      <p class="faint" style="font-size:12px;margin:0 4px 10px">Quizzes you saved from shared links — play them anytime, no link needed.</p>
-      <div class="doc-list">
-        @for (dk of decks(); track dk.id) {
-          <div class="doc-card deck-card stagger" (click)="playDeck(dk)" data-tooltip="Open saved quiz">
-            <div class="doc-icon saved" [innerHTML]="'layers' | ico"></div>
-            <div class="doc-info">
-              <div class="doc-name">{{ dk.name }}</div>
-              <div class="doc-meta">
-                <span>{{ dk.questions.length }} questions</span>
-                <span>·</span>
-                <span>{{ dateOf(dk.updatedAt || dk.createdAt) }}</span>
-                @if (dk.source) { <span class="doc-folder">{{ dk.source }}</span> }
-              </div>
-            </div>
-            <div class="doc-actions">
-              <button class="btn btn-primary deck-play" (click)="playDeck(dk); $event.stopPropagation()" data-tooltip="Play this saved quiz"><span [innerHTML]="'play' | ico"></span> Play</button>
-              <button class="icon-btn deck-del" aria-label="Delete" (click)="removeDeck(dk); $event.stopPropagation()" data-tooltip="Delete saved quiz" [innerHTML]="'trash' | ico"></button>
-            </div>
-          </div>
-        }
-      </div>
-    }
-
-    @if (!docs().length && !decks().length) {
+    @if (!docs().length) {
       <div class="empty-state">
         <div class="empty-illust" [innerHTML]="emptyArtHtml"></div>
         <h3>No documents yet</h3>
