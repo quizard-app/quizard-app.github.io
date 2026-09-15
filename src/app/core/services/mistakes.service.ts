@@ -24,6 +24,7 @@ export class MistakesService {
 
   async startMistakeReview(docId?: string) {
     const mistakes = await listMistakes(docId);
+    console.log('[QZ] startMistakeReview: found', mistakes.length, 'mistakes for doc', docId);
     if (!mistakes.length) { this.toast.toast('No mistakes to review — great job! 🎉'); return; }
     const docIds = [...new Set(mistakes.map(m => m.docId))];
     const docTerms = new Map();

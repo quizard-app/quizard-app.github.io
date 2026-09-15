@@ -61,5 +61,9 @@ export const routes: Routes = [
     path: 'exam-chat',
     loadComponent: () => import('./pages/exam-chat/exam-chat').then(m => m.ExamChatPage)
   },
+  {
+    path: 'quiz-review',
+    loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
+  },
   { path: '**', redirectTo: 'welcome' }
 ];

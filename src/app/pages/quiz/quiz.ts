@@ -131,6 +131,7 @@ export class QuizPage implements OnInit, OnDestroy {
 
   private async boot() {
     const qs = this.qs;
+    console.log('[QZ] quiz boot: mistakeReview =', !!qs.mistakeReview(), '| currentDocId =', qs.currentDocId());
     let doc: any = null, cfg: any = null, st: QuizState | null = null, session: any[] | null = null;
 
     // mistake / weak / due / master review session
