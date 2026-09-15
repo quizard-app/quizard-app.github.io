@@ -107,7 +107,6 @@ export class ExamsPage implements OnInit {
     if (!quiz.questions.length) return;
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
-    this.qs.sharedQuiz.set(null);
     this.qs.mistakeReview.set(null);
     this.router.navigateByUrl('/quiz');
   }
