@@ -5,23 +5,24 @@ export const MCQ_RULES = [
   'You are an exam writer. Create exam questions STRICTLY from the study content given below.',
   'Ground every question ONLY in its source sentence. Never invent facts.',
   'NEVER reference, quote, or ask about document titles, section headings, chapter names, unit numbers, page numbers, figure/table lists, or a table of contents.',
-  'Write like a professional exam paper (e.g. a teacher-training assessment). Each mcq must be a full comprehension question, not a fill-in-the-blank of the source sentence:',
-  '  - Ask WHY something matters ("Why is effective classroom management important?"), WHAT it is ("What are lesson plans?"), HOW it is done, or WHAT ONE SHOULD DO in a realistic scenario drawn from the source material ("You are teaching a lesson and a student does not understand. What do you do?").',
-  '  - The stem may paraphrase and reword the source sentence — do NOT copy it verbatim, and do NOT leave a blank in it.',
-  '  - Every option must be a COMPLETE, self-contained answer (a full sentence or a specific phrase), never a lone term.',
+  'Write like a professional exam paper: each item is ONE direct, specific multiple-choice question of exactly the kind a teacher prints on a test — "What is the primary purpose of an operating system?", "Which of the following is a programming language?", "What does CPU stand for?", "Which protocol is commonly used to access web pages?".',
+  '  - Ask WHAT something is, WHY it matters, HOW it works, or WHICH option fits. Name the subject of the question explicitly so the question is unambiguous.',
+  '  - The stem may paraphrase and reword the source sentence — do NOT copy it verbatim.',
+  '  - NEVER write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   '  - Exactly ONE option is the best answer; the question must be answerable from the source sentence alone.',
-  'The 3 wrong options are the most important part of the question:',
-  '  - Each must be a SPECIFIC, believable answer a student could realistically confuse with the correct one.',
-  '  - Each must belong to the SAME subject/topic as the source sentence. Do NOT use generic, out-of-domain, absurd, or joke options.',
-  '  - You are given "related terms from this document" for each item — these are real concepts drawn from the source material. Weave them into plausible but WRONG answer sentences whenever possible; they must be specific to THIS document, never generic or invented.',
+  'The four options are the most important part of the question:',
+  '  - Give exactly 4 options in total: "correct" (the best answer) plus exactly 3 "wrong" options.',
+  '  - Every option must be a SHORT, concrete phrase — 2 to 8 words (about 60 characters maximum), like the choices on a printed exam ("To browse the internet", "Python", "Central Processing Unit").',
+  '  - NEVER write a full sentence as an option, and never mix a one-word option with a long phrase.',
+  '  - Each wrong option must be a SPECIFIC, believable answer a student could realistically confuse with the correct one.',
+  '  - Each wrong option must belong to the SAME subject/topic as the source sentence. Do NOT use generic, out-of-domain, absurd, or joke options.',
+  '  - You are given "related terms from this document" for each item — these are real concepts drawn from the source material. Use them as wrong options whenever possible; they must be specific to THIS document, never generic or invented.',
   '  - Never use filler such as "none of the above", "all of the above", "option 1/2/3", "I don\'t know", placeholders, or the word "example".',
   '  - None of the wrong options may equal or contain the correct answer.',
-  '  - Make all four options PARALLEL in length and form, like a teacher would list them on an exam. All four are complete sentences of similar length (roughly 5-20 words each). Never mix a one-word option with sentence-length options, and keep no option dramatically longer or shorter than the others.',
+  '  - Make all four options PARALLEL in length and form, like a teacher would list them on an exam (roughly 2-8 words each). Keep no option dramatically longer or shorter than the others.',
   '  - The wrong options should be PLAUSIBLE and distinct from one another (not near-duplicates or synonyms of each other), so a student must actually reason rather than spot the odd one out.',
   '  - When the question is about a procedure, rule, or best practice ("What is the best way to…"), rank real alternatives from the document: the correct option states the recommended practice, the wrong options state practices that are less effective, outdated, or misread from the same material.',
-  'For id: write ONE clue of max 25 words describing the answer without using it or close variants.',
-  'For short: write ONE direct question ("What is X?" / "Define X.") whose answer is a short phrase EXACTLY equal to the given answer. Keep the answer to a single key term or short phrase.',
-  'Reply ONLY with a JSON array. Each item uses "i" (the index) and "kind" ("mcq"/"id"/"short"). For mcq also include "correct": the full best-answer option rephrased from the source sentence (complete sentence or specific phrase, same length/style as the wrong options — NOT just the bare term). Examples:\n  [{"i":0,"kind":"mcq","stem":"Why is effective classroom management important?","correct":"It helps teachers to keep students organized, orderly, focused and academically productive.","wrong":["It helps to reduce costs and thereby benefit the school\'s overall budget.","It creates a bond between pupils and the teacher."]},\n   {"i":1,"kind":"id","clue":"..."},\n   {"i":2,"kind":"short","prompt":"What is ...?","answer":"..."}]. Include every index.'
+  'Reply ONLY with a JSON array. Every item uses "i" (the index) and "kind":"mcq", plus "stem" (the direct question), "correct" (the full text of the best option) and "wrong" (exactly 3 short wrong options). Include every index. Example: [{"i":0,"kind":"mcq","stem":"What is the primary purpose of an operating system?","correct":"To manage computer hardware and software resources","wrong":["To browse the internet","To edit images","To create presentations"]}]'
 ].join('\n')
 
 // Rules for identification clues (kept separate for reuse).
@@ -111,16 +112,16 @@ export const DOC_VISUAL_RULES = [
 // It receives the structured elements (with imageIndex/page/kind/label/content)
 // and may attach a question to a specific element via imageIndex.
 export const VISUAL_Q_RULES = [
-  'You are an exam writer. Write quiz questions grounded in the provided visual element analysis of a study document.',
+  'You are an exam writer. Write multiple-choice quiz questions grounded in the provided visual element analysis of a study document.',
   'Each element has imageIndex, page, kind, label and content (verbatim for code/equations, described for others).',
-  'Write questions that require understanding the element when that adds value. For a code element ask for its OUTPUT, RESULT, or BEHAVIOUR. For a diagram/chart/table ask what it shows, illustrates, or implies.',
-  'Auto-choose the best format per question:',
-  '  - "mcq": a question with exactly 3 wrong options (specific, on-topic, no filler words).',
-  '  - Keep the 3 wrong options PARALLEL in length and form to the correct answer (short phrases of similar size, like a teacher would write), and make them plausible and distinct from each other.',
-  '  - "short": a direct question with a short phrase answer.',
+  'Write ONE direct, specific question that requires understanding the element when that adds value. For a code element ask for its OUTPUT, RESULT, or BEHAVIOUR. For a diagram/chart/table ask what it shows, illustrates, or implies.',
+  'Every question is multiple choice with EXACTLY 4 options: "correct" plus exactly 3 specific, on-topic, filler-free "wrong" options.',
+  '  - Each option is a SHORT, concrete phrase of 2 to 8 words (about 60 characters maximum) — never a full sentence.',
+  '  - Keep the 4 options PARALLEL in length and form (short phrases of similar size, like a teacher would write on an exam), and make the wrong options plausible and distinct from each other.',
+  '  - Never write a fill-in-the-blank or "Complete the statement:" stem — ask a direct question instead.',
   'When the question depends on seeing the visual, set "imageIndex" to that element\'s index; otherwise omit it.',
   'Never mention the document title, chapter, section heading, or slide/page number in the wording.',
-  'Reply ONLY with a JSON array of objects. mcq: {"imageIndex":N,"kind":"mcq","stem":"...","correct":"...","wrong":["...","...","..."]}. short: {"imageIndex":N,"kind":"short","prompt":"...","answer":"..."}.'
+  'Reply ONLY with a JSON array of objects: {"imageIndex":N,"kind":"mcq","stem":"...","correct":"...","wrong":["...","...","..."]}.'
 ].join('\n')
 
 export function visualQuestionPrompt(elements, weakHint) {
@@ -189,15 +190,17 @@ export function explainBatchPrompt(items) {
 export const AUTHOR_RULES = [
   'You are an exam writer. Author ORIGINAL exam questions STRICTLY grounded in the numbered source sentences below.',
   'For EACH numbered source sentence, write ONE exam-style question a teacher would put on a real test.',
-  'Vary the cognitive level: mix recall ("What is…"), comprehension ("Why…", "How…"), and application/scenario questions ("A student is… What should they do?").',
+  'Ask WHAT something is, WHY it matters, HOW it works, or WHICH option fits — direct, specific, unambiguous questions of the kind a teacher prints on a test: "What is the primary purpose of an operating system?", "Which of the following is a programming language?", "What does CPU stand for?".',
+  'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   'Ground every question ONLY in its own source sentence — never invent facts, and never blend material from other sentences.',
   'Each item MUST cite its source: "src" is the number of the sentence it is based on.',
-  'For "mcq": "stem" (a complete question, never a fill-in-the-blank), "correct" (the best answer, a complete sentence or specific phrase), "wrong" (exactly 3 specific, believable, on-topic distractors, parallel in length and form to the correct answer).',
-  'For "short": "prompt" (a direct question) and "answer" (a short key phrase).',
+  'Every question is multiple choice: "stem" (the direct question), "correct" (the best answer) and "wrong" (exactly 3 wrong options).',
+  '  - Each option is a SHORT, concrete phrase of 2 to 8 words (about 60 characters maximum) — never a full sentence.',
+  '  - Keep all four options parallel in length and grammar, and make the wrong options specific, believable, on-topic and distinct from each other.',
   'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
   'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers.',
   'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
-  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"...","correct":"...","wrong":["...","...","..."]},{"src":1,"kind":"short","prompt":"...","answer":"..."}]'
+  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"What is the primary purpose of an operating system?","correct":"To manage computer hardware and software resources","wrong":["To browse the internet","To edit images","To create presentations"]}]'
 ].join('\n')
 
 export function authorQuizPrompt(group, weakHint) {

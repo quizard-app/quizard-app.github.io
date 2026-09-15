@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { listMistakes, getDoc, listDueCards, getWeakTerms, listDocs } from '../engine/storage.js';
 import { keyTerms } from '../engine/textproc.js';
-import { buildMistakeQuestions, generateQuiz } from '../engine/quizgen.js';
+import { buildMistakeQuestions, generateQuiz, MCQ_ONLY_MIX } from '../engine/quizgen.js';
 import { ToastService } from './toast.service';
 import { QuizStateService } from './quiz-state.service';
 
@@ -89,7 +89,7 @@ export class MistakesService {
     if (due.length) questions.push(...buildMistakeQuestions(due.slice(0, 8), docTerms));
     const perDoc = 3;
     const pools = docs.map(d => {
-      const r = generateQuiz(d, { count: perDoc, mix: { mcq: true, tf: true, fib: true, id: true }, difficulty: 'medium', shuffle: true });
+      const r = generateQuiz(d, { count: perDoc, mix: { ...MCQ_ONLY_MIX }, difficulty: 'medium', shuffle: true });
       return (r.questions || []).map((q: any) => ({ ...q, meta: { ...(q.meta || {}), docId: d.id } }));
     });
     for (let i = 0; i < perDoc; i++) {

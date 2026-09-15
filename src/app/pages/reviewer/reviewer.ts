@@ -6,7 +6,7 @@ import { getDoc, listDocImages, loadSettings, saveSettings, upsertSrsFromMistake
 import { detectTopics } from '../../core/engine/topics.js';
 import { sentences } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
-import { generateQuiz } from '../../core/engine/quizgen.js';
+import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { speak, pause, resume, stop, isSupported } from '../../core/engine/tts.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
@@ -140,7 +140,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
         if (def) keyTermDefs.push({ term, def });
       }
     }
-    const q = generateQuiz(doc, { count: 6, mix: { mcq: true, tf: true, fib: true, id: true, matching: true, ordering: true }, difficulty: 'medium', shuffle: false, fixedSeed: 7 });
+    const q = generateQuiz(doc, { count: 6, mix: { ...MCQ_ONLY_MIX }, difficulty: 'medium', shuffle: false, fixedSeed: 7 });
     const reviewQs = (q.questions || []).filter((x: any) => x.type !== 'short');
     this.nlp = {
       sents, topics, summary, sections, keyTermDefs, reviewQs,

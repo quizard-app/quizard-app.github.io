@@ -7,7 +7,7 @@ import { hasApiKey, hasRelay } from '../../core/engine/gemini.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
 import type { SafeHtml } from '@angular/platform-browser';
-import { TYPE_META, estimateAvailable, generateQuiz } from '../../core/engine/quizgen.js';
+import { TYPE_META, MCQ_ONLY_MIX, estimateAvailable, generateQuiz } from '../../core/engine/quizgen.js';
 import { detectTopics } from '../../core/engine/topics.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -15,7 +15,9 @@ import { QuizStateService } from '../../core/services/quiz-state.service';
 import { ShareService } from '../../core/services/share.service';
 import { ToastService } from '../../core/services/toast.service';
 
-const ALL_TYPES = ['mcq', 'tf', 'fib', 'id', 'matching', 'ordering', 'short', 'except', 'multi'];
+// Quizzes are always 4-option multiple choice — the other formats the engine
+// can build are not offered, so the mix is pinned to MCQ_ONLY_MIX.
+const ALL_TYPES = ['mcq'];
 
 function typeGlyph(t: string) {
   return { mcq: 'listChecks', tf: 'check', fib: 'fileText', id: 'target', matching: 'gitCompare', ordering: 'listOrdered', short: 'edit', except: 'x', multi: 'plus' }[t] || 'fileText';
@@ -94,7 +96,8 @@ export class SetupPage implements OnInit {
 
     const saved = this.loadConfig(doc.id);
     this.count = saved.count;
-    this.mix = { ...saved.mix };
+    // Ignore any mix saved before MCQ-only (or still sitting in localStorage).
+    this.mix = { ...MCQ_ONLY_MIX };
     this.difficulty = saved.difficulty;
     this.shuffleOn = saved.shuffle;
     this.timerSec = saved.timerSec;
@@ -113,7 +116,7 @@ export class SetupPage implements OnInit {
   private defaultConfig() {
     return {
       count: 10,
-      mix: { mcq: true, tf: true, fib: true, id: true, matching: false, ordering: false, short: false, except: false, multi: false },
+      mix: { ...MCQ_ONLY_MIX },
       difficulty: 'medium', shuffle: false, timerSec: 0, fresh: true,
       topics: [] as string[], ai: true, aiAuthor: false, focusWeak: false, deepVisual: true
     };

@@ -83,6 +83,11 @@ export function buildMistakeQuestions(mistakes, docTerms) {
   }).filter(Boolean)
 }
 
+// The product ships one question format: a 4-option multiple-choice question
+// (A-D) with a direct, document-specific stem and short concrete options.
+// Every quiz entry point uses this mix so no other type can leak in.
+export const MCQ_ONLY_MIX = { mcq: true }
+
 export const TYPE_META = {
   mcq: { name: 'Multiple Choice', short: 'MCQ' },
   tf: { name: 'True or False', short: 'T/F' },

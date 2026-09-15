@@ -25,7 +25,7 @@
       </div>
       <p class="faint" style="font-size:12px;margin:8px 4px 0">{{ poolHint }}</p>
 
-      <div class="section-title">Question types</div>
+      <div class="section-title">Question format</div>
       <div class="type-grid">
         @for (t of types; track t) {
           <button class="type-card" [class.on]="mix[t]" (click)="toggleType(t)" [attr.data-tooltip]="tileMetas[t].tip">

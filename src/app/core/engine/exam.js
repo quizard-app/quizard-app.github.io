@@ -3,10 +3,11 @@
 // carries meta.docId for cross-doc mistake banking), then merged with a
 // deterministic shuffle seeded from the exam id.
 
-import { generateQuiz } from './quizgen.js'
+import { generateQuiz, MCQ_ONLY_MIX } from './quizgen.js'
 import { detectTopics } from './topics.js'
 
-const EXAM_MIX = { mcq: true, tf: true, fib: true, id: true, matching: true, ordering: true, except: true, multi: true }
+// Exam practice uses the same single format as every other quiz: 4-option MCQ.
+const EXAM_MIX = { ...MCQ_ONLY_MIX }
 
 /**
  * @param {import('./db-types.js').Exam} exam
