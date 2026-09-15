@@ -1,1 +1,0 @@
-import{Jt as nr,z as R}from"./chunk-BKZZBKh1.js";var t=class n{sharedQuiz=nr(null);currentDocId=nr(null);lastAttempt=nr(null);examSession=nr(null);mistakeReview=nr(null);static ɵfac=function(l){return new(l||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{t};
