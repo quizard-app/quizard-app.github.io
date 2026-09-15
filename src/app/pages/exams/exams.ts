@@ -10,6 +10,7 @@ import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
+import { NavController } from '@ionic/angular';
 
 @Component({
   selector: 'app-exams',
@@ -22,6 +23,7 @@ export class ExamsPage implements OnInit {
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
   private qs = inject(QuizStateService);
+  private navCtrl = inject(NavController);
 
   readonly wizImg = assetUrl('wizard/wizard-thinking.jpg');
   detailId = signal<string | null>(null);
@@ -109,6 +111,7 @@ export class ExamsPage implements OnInit {
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
     this.qs.mistakeReview.set(null);
+    this.navCtrl.setDirection('root', false);
     this.router.navigateByUrl('/quiz');
   }
 

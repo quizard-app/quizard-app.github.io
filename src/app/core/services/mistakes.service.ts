@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { NavController } from '@ionic/angular';
 import { listMistakes, getDoc, listDueCards, getWeakTerms, listDocs } from '../engine/storage.js';
 import { keyTerms } from '../engine/textproc.js';
 import { buildMistakeQuestions, generateQuiz, MCQ_ONLY_MIX } from '../engine/quizgen.js';
@@ -9,10 +10,17 @@ import { QuizStateService } from './quiz-state.service';
 @Injectable({ providedIn: 'root' })
 export class MistakesService {
   private router = inject(Router);
+  private navCtrl = inject(NavController);
   private toast = inject(ToastService);
   private qs = inject(QuizStateService);
 
-  private go() { this.router.navigateByUrl('/quiz'); }
+  private go() {
+    // /quiz is often already in the page stack (results -> review): without a
+    // root direction Ionic restores the frozen old quiz page instead of
+    // starting the new session.
+    this.navCtrl.setDirection('root', false);
+    this.router.navigateByUrl('/quiz');
+  }
 
   async startMistakeReview(docId?: string) {
     const mistakes = await listMistakes(docId);

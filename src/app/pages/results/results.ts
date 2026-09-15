@@ -11,6 +11,7 @@ import { exportQuiz } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
+import { NavController } from '@ionic/angular';
 import { MistakesService } from '../../core/services/mistakes.service';
 
 @Component({
@@ -22,6 +23,7 @@ export class ResultsPage implements OnInit {
   private router = inject(Router);
   private toast = inject(ToastService);
   private qs = inject(QuizStateService);
+  private navCtrl = inject(NavController);
   private mistakes = inject(MistakesService);
   readonly Math = Math;
   readonly objectKeys = Object.keys;
