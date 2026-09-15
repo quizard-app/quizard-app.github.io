@@ -297,6 +297,41 @@ export async function exportExamPdf(exam, docs) {
     })
   }
 
+  // Add exam questions in the classic quiz format
+  if (exam.questions && exam.questions.length) {
+    rule()
+    text('Exam Questions', { size: 13, bold: true, color: '#5b3df5' })
+    const section = { type: 'mcq', title: 'Multiple Choice', directions: 'Read each question carefully. Choose the letter of the best answer.' }
+    text(`Directions: ${section.directions}`, { size: 11, bold: true, gap: 2 })
+    for (const q of exam.questions) {
+      need(30)
+      const n = exam.questions.indexOf(q) + 1
+      const prompt = q.statement || q.stem || q.clue || q.prompt || ''
+      text(`${n}. ${prompt}`, { size: 11, bold: true, gap: 2 })
+      text('', { gap: 2 })
+      let opts = null
+      if (q.type === 'mcq' || q.type === 'except' || q.type === 'multi' || q.type === 'fib') opts = q.options || q.choices
+      else if (q.type === 'tf') opts = ['True', 'False']
+      if (opts) {
+        const letters = optionLetters(opts.length)
+        opts.forEach((o, k) => text(`${letters[k]}. ${o}`, { size: 10, color: '#475069', indent: 12, gap: 1 }))
+        text('', { gap: 2 })
+      }
+      const answer = q.type === 'id' || q.type === 'short'
+        ? q.answer
+        : q.type === 'tf'
+          ? String(q.answer)
+          : q.type === 'multi'
+            ? (q.answerIndices || []).map(k => 'ABCDEFGH'[k]).filter(x => x).join(' · ')
+            : q.type === 'matching'
+              ? (q.pairs || []).map((p, k) => `${'ABCDEFGH'[k]}. ${p.right}`).join(' · ')
+            : q.type === 'ordering'
+              ? (q.steps || []).map((s, k) => `${k + 1}. ${s}`).join(' → ')
+              : 'ABCDEFGH'[q.answerIndex] + '. ' + ((q.options ?? q.choices)?.[q.answerIndex] ?? '')
+      text(`Answer: ${answer ?? '(ungraded)'}`, { size: 10, bold: true, color: '#0f9d6a', indent: 12, gap: 8 })
+    }
+  }
+
   rule()
   text(`Generated ${stamp()} · exported from Quizard`, { size: 9, color: '#868ea8' })
 

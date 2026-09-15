@@ -30,6 +30,7 @@ export class ExamsPage implements OnInit {
   detailBody = signal('');
   buildingPdf = signal(false);
   practiceCount = signal(0);
+  questionCount = signal(20);
   private builtQuiz: any = null;
 
   async ngOnInit() {
@@ -52,7 +53,7 @@ export class ExamsPage implements OnInit {
   openExamDetail(exam: any) { this.router.navigate(['/exams', exam.id]); }
   backTo() { this.router.navigateByUrl(this.detailId() ? '/exams' : '/tabs/library'); }
 
-  private async loadDetail(examId: string) {
+  private   async loadDetail(examId: string) {
     const exam = await getExam(examId);
     if (!exam) { this.router.navigateByUrl('/exams'); return; }
     this.exam.set(exam);
@@ -67,7 +68,7 @@ export class ExamsPage implements OnInit {
     this.detailCountdown.set(cd ? `${exam.examDate ? new Date(exam.examDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' : ''}${cd}` : `${realDocs.length} files · ${exam.topics.length} topics`);
     this.detailCd.set(cd);
     this.detailDocs.set(realDocs);
-    this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: 15 });
+    this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
     this.practiceCount.set(this.builtQuiz.questions.length);
     const ranked = rankExamTopics(exam, realDocs);
     void ranked;
@@ -103,7 +104,7 @@ export class ExamsPage implements OnInit {
     ]);
     const realDocs = docs.filter(Boolean);
     const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
-    const quiz = this.builtQuiz || buildExamQuiz(exam, realDocs, docWeak, { count: 15 });
+    const quiz = this.builtQuiz || buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
     if (!quiz.questions.length) return;
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
@@ -117,9 +118,22 @@ export class ExamsPage implements OnInit {
     this.buildingPdf.set(true);
     try {
       const docs = (await Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null)))).filter(Boolean);
-      await exportExamPdf(exam, docs);
+      const [due, weak] = await Promise.all([
+        listDueCards(60).catch(() => []),
+        getWeakTerms(null).catch(() => [])
+      ]);
+      const realDocs = docs.filter(Boolean);
+      const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
+      console.log('Exporting PDF with question count:', this.questionCount());
+      const quiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
+      console.log('Generated quiz with', quiz.questions.length, 'questions');
+      const examWithQuestions = { ...exam, questions: quiz.questions };
+      await exportExamPdf(examWithQuestions, docs);
       this.toast.toast('Exam PDF downloaded ✓');
-    } catch { this.toast.toast('Could not build the PDF', true); }
+    } catch (error) {
+      console.error('PDF export error:', error);
+      this.toast.toast('Could not build the PDF', true);
+    }
     this.buildingPdf.set(false);
   }
 

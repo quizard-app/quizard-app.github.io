@@ -11,6 +11,10 @@
       <div class="screen ex-screen">
         <div [innerHTML]="detailBody()"></div>
         <div class="reader-actions" style="margin-top:8px">
+          <div class="question-count-input">
+            <label>Number of questions:</label>
+            <input type="number" class="text-input" [value]="questionCount()" (input)="questionCount.set($event.target.valueAsNumber)" min="1" max="100" placeholder="Enter number of questions">
+          </div>
           <button class="btn btn-primary" [disabled]="!practiceCount()" (click)="startPractice()">
             <span [innerHTML]="'play' | ico"></span> Practice quiz ({{ practiceCount() }} questions)
           </button>
