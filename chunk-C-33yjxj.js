@@ -1,0 +1,1 @@
+import{H as Sb,U as Sl,pt as g}from"./main-YOO6XWTJ.js";import{t as k}from"./chunk-DA1_yFTB.js";var c=class i{sanitizer=g(Sb);cache=new Map;transform(t){return this.cache.has(t)||this.cache.set(t,this.sanitizer.bypassSecurityTrustHtml(k(t))),this.cache.get(t)}static ɵfac=function(p){return new(p||i)};static ɵpipe=Sl({name:`ico`,type:i,pure:!0})};export{c as t};
