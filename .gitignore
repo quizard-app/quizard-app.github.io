@@ -35,3 +35,7 @@ legacy/android/.idea
 .angular/
 Quizard-v2.0.apk
 android/app/quizard-release.keystore
+
+# GUI test working material
+gui-test-screenshots/
+.gui-test/

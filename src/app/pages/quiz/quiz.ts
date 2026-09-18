@@ -550,7 +550,10 @@ export class QuizPage implements OnInit, OnDestroy {
     this.revokeImages();
     if (this.doc) delete this.cachedQuiz[this.doc.id];
     this.clearResumeState();
-    this.router.navigateByUrl('/tabs/library');
+    // exam practice belongs to its exam plan — return there, not to the library
+    const examId = this.st?.examId;
+    if (examId) this.router.navigateByUrl('/exams/' + examId);
+    else this.router.navigateByUrl('/tabs/library');
   }
 
   openViewer(src: string) {

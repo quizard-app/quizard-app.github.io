@@ -23,6 +23,8 @@ export interface Doc {
   createdAt: number
   bestScore: number | null
   attempts: number
+  // AI reviewer cache (reviewer-ai.js) — shape is validated at runtime there
+  reviewerAI?: unknown
 }
 
 export interface DocMeta extends Omit<Doc, 'text' | 'original' | 'visualAnalysis'> {}

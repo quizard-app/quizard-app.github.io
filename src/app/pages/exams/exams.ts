@@ -43,6 +43,30 @@ export class ExamsPage implements OnInit {
     else await this.loadList();
   }
 
+  // The input drives BOTH the practice quiz and the PDF handout, so a change
+  // rebuilds the cached quiz instead of only affecting the export.
+  setQuestionCount(n: number) {
+    const count = Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 100) : this.questionCount();
+    this.questionCount.set(count);
+    const exam = this.exam();
+    if (!exam) { this.practiceCount.set(count); return; }
+    this.rebuildQuiz();
+  }
+
+  private async rebuildQuiz() {
+    const exam = this.exam();
+    if (!exam) return;
+    const [docs, due, weak] = await Promise.all([
+      Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null))),
+      listDueCards(60).catch(() => []),
+      getWeakTerms(null).catch(() => [])
+    ]);
+    const realDocs = docs.filter(Boolean);
+    const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
+    this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
+    this.practiceCount.set(this.builtQuiz.questions.length);
+  }
+
   private async loadList() {
     const exams = await listExams();
     this.exams.set(exams);

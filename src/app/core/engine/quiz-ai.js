@@ -433,6 +433,9 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   // Top sentences from across the document; one question authored per
   // sentence so coverage spreads instead of clustering.
   const material = ranked.slice(0, Math.max(Math.min(cfg.count * 3, 60), 12))
+  // Real concepts from the document so the model's distractors stay in-family
+  // (phishing variants pair with phishing variants, not with random nouns).
+  const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
   const BATCH = 6
   const optionRng = mulberry32(hashString(String(doc.id)))
   const out = []
@@ -442,8 +445,8 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
     const group = material.slice(g, g + BATCH).map((s, k) => ({ i: k, text: s.text }))
     let arr = null
     try {
-      arr = extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint), {
-        maxOutputTokens: 1024 + 320 * group.length, temperature: 0.7
+      arr = extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
+        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7
       }))
     } catch (err) {
       if (!firstErr) firstErr = err
@@ -492,14 +495,27 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
 }
 
 // Anti-hallucination guard for authored questions: the question + answer
-// must share at least two content words (4+ chars) with the source sentence
-// they claim to be based on.
+// must share at least two content words with the source sentence they claim
+// to be based on. Scenario stems paraphrase heavily ("the decision is
+// explainable" vs "explain decisions"), so morphological cousins count:
+// exact match, a shared stem after suffix stripping, or a ≥5-char prefix
+// (decision/decisions, explain/explainable, manage/management).
 export function grounded(text, source) {
-  const toks = s => new Set((String(s).toLowerCase().match(/[a-z0-9]{4,}/g) || []))
-  const a = toks(text)
-  const b = toks(source)
+  const toks = s => new Set(String(s).toLowerCase().match(/[a-z0-9]{4,}/g) || [])
+  const base = w => {
+    const st = w.replace(/(ies|ves|es|ed|ing|s)$/, '')
+    return st.length >= 4 ? st : w
+  }
+  const a = [...toks(text)].map(base)
+  const b = [...toks(source)].map(base)
   let hits = 0
-  for (const w of a) if (b.has(w)) hits++
+  for (const w of new Set(a)) {
+    if (b.includes(w)) { hits++; continue }
+    for (const v of b) {
+      const min = Math.min(w.length, v.length)
+      if (min >= 5 && (w.startsWith(v.slice(0, min)) || v.startsWith(w.slice(0, min)))) { hits++; break }
+    }
+  }
   return hits >= 2
 }
 
@@ -543,6 +559,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const ranked = scoreSentences(sentences(text), termFreq(text))
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
+  const termBank = keyTerms(stripHeadings(doc.text)).slice(0, 40).map(r => r.term)
 
   const pick = ranked.slice(0, Math.min(ranked.length, Math.max(cfg.count * 2, 12)))
   const groups = []
@@ -559,8 +576,8 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
     onProgress(out.length, cfg.count)
     let raw = null
     try {
-      raw = await chatJSON(authorQuizPrompt(groups[g], weakHint), {
-        maxOutputTokens: 3000, temperature: 0.5, timeoutMs: 60000
+      raw = await chatJSON(authorQuizPrompt(groups[g], weakHint, termBank), {
+        maxOutputTokens: 3600, temperature: 0.5, timeoutMs: 60000
       })
     } catch { continue }
     for (const it of (extractJSONArray(raw) || [])) {
@@ -576,7 +593,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         if (stem.length > 300 || isBanned(stem) || wrong.some(w => isBanned(w))) continue
         const all = [correct, ...wrong]
         if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
-        if (new RegExp('\b' + escapeRegExp(correct) + '\b', 'i').test(stem)) continue
+        if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
         const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
         const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
         if (answerIndex === -1) continue

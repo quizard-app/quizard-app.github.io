@@ -21,6 +21,18 @@
           <button [class.on]="view() === 'full'" (click)="setView('full')" style="flex:1"><span [innerHTML]="'listChecks' | ico"></span> Full text</button>
         </div>
       </div>
+      @if (view() === 'summary' && aiState() === 'ready') {
+        <div class="ai-mode-toggle">
+          <button type="button" [class.on]="aiMode()" (click)="setAiMode(true)"><span [innerHTML]="'sparkles' | ico"></span> AI reviewer</button>
+          <button type="button" [class.on]="!aiMode()" (click)="setAiMode(false)">Quick notes</button>
+        </div>
+      }
+      @if (view() === 'summary' && aiState() === 'generating') {
+        <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Quick notes shown meanwhile.</div>
+      }
+      @if (view() === 'summary' && aiState() === 'error') {
+        <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button></div>
+      }
       <div class="tts-bar" [class.hidden]="!ttsSupported">
         @if (ttsState() !== 'playing') {
           <button class="icon-btn" (click)="togglePlay()" data-tooltip="Read aloud — in the wizard's voice" [innerHTML]="'play' | ico"></button>

@@ -6,6 +6,7 @@ import { getDoc, listDocImages, loadSettings, saveSettings, upsertSrsFromMistake
 import { detectTopics } from '../../core/engine/topics.js';
 import { sentences } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
+import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.js';
 import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { speak, pause, resume, stop, isSupported } from '../../core/engine/tts.js';
 import { icon } from '../../shared/icons.js';
@@ -54,6 +55,11 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   ttsSupported = isSupported();
   ttsState = signal<'idle' | 'playing' | 'paused'>('idle');
   ttsRate = 1;
+  // AI reviewer (reviewer-ai.js): forged from the uploaded file, cached on the doc
+  aiReviewer = signal<any>(null);
+  aiState = signal<'idle' | 'generating' | 'ready' | 'error'>('idle');
+  aiMode = signal(true);
+  private aiTried = false;
   findVisible = signal(false);
   findCount = signal('');
 
@@ -79,16 +85,22 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
     const doc = await getDoc(id);
     if (!doc) { this.router.navigateByUrl('/tabs/library'); return; }
     this.doc.set(doc);
+    if ((doc.reviewerAI as any)?.parts?.length) {
+      this.aiReviewer.set(doc.reviewerAI);
+      this.aiState.set('ready');
+    }
     const settings = loadSettings();
     this.scale = settings.readerScale || 1;
     const view = (settings.reviewerView === 'gallery' ? 'summary' : settings.reviewerView) || 'summary';
     this.view.set(view);
     this.ttsRate = settings.ttsRate || 1;
+    this.aiMode.set(settings.reviewerAiMode !== false);
     const images = await listDocImages(doc.id);
     this.galleryImages = images || [];
     this.hasImages.set(!!images?.length);
     // the article element renders one CD tick after the doc signal — defer
     setTimeout(() => this.applyView(), 0);
+    void this.tryGenerateAi();
   }
 
   ngAfterViewInit() {
@@ -275,6 +287,43 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
 
   private trust(html: string) { return this.sanitizer.bypassSecurityTrustHtml(html); }
 
+  // ── AI reviewer: Gemini writes the exam-style reviewer from the uploaded file ──
+  private aiReviewHtml(): string {
+    return reviewerToHtml(this.aiReviewer(), (s: string) => this.esc(s));
+  }
+
+  private async tryGenerateAi() {
+    if (this.aiTried || this.aiState() === 'ready') return;
+    this.aiTried = true;
+    const doc = this.doc();
+    if (!doc?.text || String(doc.text).trim().length < 300) return;
+    this.aiState.set('generating');
+    const res = await ensureAIReviewer(doc);
+    if (res.reviewer) {
+      this.aiReviewer.set(res.reviewer);
+      this.aiState.set('ready');
+    } else if (res.error !== 'not_enough_content') {
+      this.aiState.set('error');
+    } else {
+      this.aiState.set('idle');
+      return;
+    }
+    if (this.view() === 'summary') this.applyView();
+  }
+
+  retryAi() {
+    if (this.aiState() === 'generating') return;
+    this.aiTried = false;
+    this.aiState.set('idle');
+    void this.tryGenerateAi();
+  }
+
+  setAiMode(v: boolean) {
+    this.aiMode.set(v);
+    saveSettings({ reviewerAiMode: v });
+    if (this.view() === 'summary') this.applyView();
+  }
+
   private applyView() {
     this.stopTts();
     const view = this.view();
@@ -300,7 +349,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       return;
     }
     if (view === 'summary') {
-      this.contentHtml.set(this.trust(this.summaryHtml()));
+      this.contentHtml.set(this.trust(this.aiMode() && this.aiReviewer() ? this.aiReviewHtml() : this.summaryHtml()));
       content.classList.add('summary-mode');
       if (fc) fc.style.visibility = 'hidden';
     } else {
@@ -465,6 +514,10 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   }
 
   togglePlay() {
+    if (this.view() === 'summary' && this.aiMode() && this.aiState() === 'ready') {
+      this.toast.toast('Read-aloud works on Quick notes and Full text');
+      return;
+    }
     if (this.ttsActive) { resume(); this.ttsState.set('playing'); return; }
     const targets = this.nlp ? this.nlp.readTargets[this.view() === 'full' ? 'full' : 'summary'] : [];
     if (!targets || !targets.length) { this.toast.toast('Nothing to read in this view'); return; }

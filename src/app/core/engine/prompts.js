@@ -6,6 +6,7 @@ export const MCQ_RULES = [
   'Ground every question ONLY in its source sentence. Never invent facts.',
   'NEVER reference, quote, or ask about document titles, section headings, chapter names, unit numbers, page numbers, figure/table lists, or a table of contents.',
   'Write like a professional exam paper: each item is ONE direct, specific multiple-choice question of exactly the kind a teacher prints on a test — "What is the primary purpose of an operating system?", "Which of the following is a programming language?", "What does CPU stand for?", "Which protocol is commonly used to access web pages?".',
+  '  - PREFER a SCENARIO stem when the source sentence describes a rule, principle, process, attack, or definition: describe a short concrete situation (1-3 sentences: "An employee receives…", "A company detects…", "A developer discovers…") and ask which concept/principle/type/step applies. Vary the actors across questions; the stem must never name the correct answer.',
   '  - Ask WHAT something is, WHY it matters, HOW it works, or WHICH option fits. Name the subject of the question explicitly so the question is unambiguous.',
   '  - The stem may paraphrase and reword the source sentence — do NOT copy it verbatim.',
   '  - NEVER write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
@@ -187,25 +188,41 @@ export function explainBatchPrompt(items) {
 // original exam-style questions straight from numbered source sentences.
 // Each item cites its source sentence ("src") so the caller can validate the
 // grounding; validators + the heading ban list keep it honest.
+// Style bar: real exams lead with SCENARIO items — a concrete situation the
+// student resolves by identifying which concept from the source applies —
+// with process-order and plain definition questions as minority styles.
 export const AUTHOR_RULES = [
-  'You are an exam writer. Author ORIGINAL exam questions STRICTLY grounded in the numbered source sentences below.',
-  'For EACH numbered source sentence, write ONE exam-style question a teacher would put on a real test.',
-  'Ask WHAT something is, WHY it matters, HOW it works, or WHICH option fits — direct, specific, unambiguous questions of the kind a teacher prints on a test: "What is the primary purpose of an operating system?", "Which of the following is a programming language?", "What does CPU stand for?".',
-  'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
+  'You are an exam writer for a study app. Author ORIGINAL exam questions STRICTLY grounded in the numbered source sentences below.',
+  'For EACH numbered source sentence, write ONE exam-style question a teacher would put on a real exam.',
+  'STYLE — MOST questions must be SCENARIO questions, not bare definitions:',
+  '  - Describe a short, concrete situation (1-3 sentences) in which a person, company, or system runs into the concept, then ask which concept/principle/type/step from the source applies.',
+  '  - Vary the actors and settings across questions (a developer, an employee, a bank customer, an IT admin, a company, a student...) so consecutive items never feel identical.',
+  '  - The situation must clearly match ONLY the correct answer — the stem must never name or contain it.',
+  '  - When the source describes an ordered procedure, write process questions too: "In the whistleblowing process, what should happen before external disclosure?", "Which step comes next?"',
+  '  - A plain definition question is acceptable only when the sentence cannot support a scenario.',
+  'Examples of the target style (note the scenario stem and the same-family options):',
+  '  - {"src":0,"kind":"mcq","stem":"An AI system makes an important decision affecting a person. Which principle requires that the decision be understandable or explainable?","correct":"Explicability","wrong":["Beneficence","Autonomy","Justice"]}',
+  '  - {"src":1,"kind":"mcq","stem":"An employee receives a highly personalized email pretending to be from the CEO asking for an urgent transfer of money. Which attack is most specifically described?","correct":"Whaling","wrong":["Smishing","Vishing","Quishing"]}',
   'Ground every question ONLY in its own source sentence — never invent facts, and never blend material from other sentences.',
   'Each item MUST cite its source: "src" is the number of the sentence it is based on.',
-  'Every question is multiple choice: "stem" (the direct question), "correct" (the best answer) and "wrong" (exactly 3 wrong options).',
-  '  - Each option is a SHORT, concrete phrase of 2 to 8 words (about 60 characters maximum) — never a full sentence.',
-  '  - Keep all four options parallel in length and grammar, and make the wrong options specific, believable, on-topic and distinct from each other.',
+  'Every question is multiple choice: "stem" (the situation plus the question), "correct" (the best answer) and "wrong" (exactly 3 wrong options).',
+  '  - Each option is a SHORT, concrete phrase of 1 to 8 words (ideally a term of the subject) — never a full sentence.',
+  '  - All four options must belong to the SAME family of concepts as the correct answer (other items from the same list, category, or chapter of the subject) so the item genuinely tests recognition.',
+  '  - Keep all four options parallel in length and form, and make the wrong options specific, believable and distinct from each other.',
+  '  - When "concepts from this document" are provided, use them as wrong options whenever they fit the family — never invent generic filler.',
   'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
-  'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers.',
+  'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
+  'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
   'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
-  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"What is the primary purpose of an operating system?","correct":"To manage computer hardware and software resources","wrong":["To browse the internet","To edit images","To create presentations"]}]'
+  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An AI system makes an important decision affecting a person. Which principle requires that the decision be understandable or explainable?","correct":"Explicability","wrong":["Beneficence","Autonomy","Justice"]}]'
 ].join('\n')
 
-export function authorQuizPrompt(group, weakHint) {
+export function authorQuizPrompt(group, weakHint, terms) {
   const lines = group.map(s => `[${s.i}] ${s.text}`).join('\n')
   let prompt = AUTHOR_RULES + '\n\nSource sentences:\n' + lines
+  if (terms && terms.length) {
+    prompt += '\n\nConcepts from this document (use these as wrong options where they fit the same family): ' + terms.join(', ')
+  }
   if (weakHint) prompt += '\n\n' + weakHint
   return prompt
 }

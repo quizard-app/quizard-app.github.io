@@ -42,10 +42,10 @@
         <input class="text-input pin-input" id="acc-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••" aria-label="Enter 4-digit PIN" autocomplete="off" [(ngModel)]="pin" (input)="onPinInput()" />
         <input class="text-input pin-input" id="acc-pin2" type="tel" inputmode="numeric" maxlength="4" placeholder="repeat" aria-label="Repeat 4-digit PIN" autocomplete="off" [(ngModel)]="pinConfirm" (input)="onPinInput()" />
       </div>
-      <p class="faint" style="font-size:12px;margin-top:6px">{{ pinHint }}</p>
+      <p class="acc-hint">{{ pinHint }}</p>
 
-      <button class="btn btn-primary" style="margin-top:20px" (click)="create()"><span [innerHTML]="icons.check"></span> Create account</button>
-      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="back()">Back</button>
+      <button class="btn btn-primary acc-create" (click)="create()"><span [innerHTML]="icons.check"></span> Create account</button>
+      <button class="btn btn-secondary acc-back" (click)="back()">Back</button>
     </div>
   </div>
 }
