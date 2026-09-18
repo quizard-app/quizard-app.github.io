@@ -1,0 +1,1 @@
+import{At as nr,V as R}from"./main-Z5M6GG2J.js";var a=class n{currentDocId=nr(null);lastAttempt=nr(null);examSession=nr(null);mistakeReview=nr(null);static ɵfac=function(o){return new(o||n)};static ɵprov=R({token:n,factory:n.ɵfac,providedIn:`root`})};export{a as t};
