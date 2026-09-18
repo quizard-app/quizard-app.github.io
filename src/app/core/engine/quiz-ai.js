@@ -25,6 +25,24 @@ function blobToDataUrlLocal(blob) {
   })
 }
 
+// Run async task factories with limited concurrency. AI authoring fires
+// several batch prompts at once — this keeps the wall time at roughly
+// ceil(batches / limit) × one call instead of summing every call, while
+// staying under the relay's rate limits.
+async function runPool(factories, limit) {
+  const results = new Array(factories.length)
+  let next = 0
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, factories.length)) }, async () => {
+    while (next < factories.length) {
+      const i = next++
+      try { results[i] = await factories[i]().then(r => ({ ok: true, r })) }
+      catch (e) { results[i] = { ok: false, err: e } }
+    }
+  })
+  await Promise.all(workers)
+  return results.map(r => (r && r.ok) ? r.r : new Error(r?.err?.message || 'batch_failed'))
+}
+
 // Shrink large stored slide images before uploading to Gemini so the multimodal
 // round stays fast and cheap (stored images can be multi-MB PNGs).
 async function blobToDataUrlShrunk(blob, maxDim = 1280, quality = 0.8) {
@@ -308,13 +326,28 @@ export async function generateQuizAI(doc, cfg, onProgress) {
   let done = base.questions.length - queue.length
   onProgress?.(done, base.questions.length)
 
+  // The visual round (render pages → one multimodal analysis → question
+  // authoring) shares no state with the text batches, so its entire latency
+  // hides behind the polish calls instead of stacking after them.
+  const visualPromise = cfg.deepVisual !== false
+    ? ensureVisualAnalysis(doc)
+        .then(analysis => analysis && analysis.elements?.length
+          ? authorVisualQuestions(doc, analysis.elements, isBanned, weakHint).catch(() => [])
+          : [])
+        .catch(() => [])
+    : Promise.resolve([])
+
   const optionRng = mulberry32((base.seed ^ 0x7a3f1d9b) >>> 0)
   const results = new Map()
   const BATCH = 6
-  for (let g = 0; g < queue.length; g += BATCH) {
-    const group = queue.slice(g, g + BATCH)
-    try {
-      const gen = await generateBatch(group, relatedFor, weakHint)
+  const batches = []
+  for (let g = 0; g < queue.length; g += BATCH) batches.push(queue.slice(g, g + BATCH))
+  const batchOut = await runPool(batches.map(group => () => generateBatch(group, relatedFor, weakHint)), 3)
+  batchOut.forEach((gen, bi) => {
+    const group = batches[bi]
+    if (gen instanceof Error) {
+      if (!aiNote) aiNote = classifyAIError(gen)
+    } else {
       group.forEach(([q, i]) => {
         const genItem = gen.get(i)
         if (!genItem) return
@@ -331,12 +364,10 @@ export async function generateQuizAI(doc, cfg, onProgress) {
           results.set(i, { ...q, prompt: genItem.prompt, answer: genItem.answer })
         }
       })
-    } catch (err) {
-      if (!aiNote) aiNote = classifyAIError(err)
     }
     done = Math.min(base.questions.length, done + group.length)
     onProgress?.(done, base.questions.length)
-  }
+  })
 
   let polishedCount = 0
   const out = base.questions.map((q, i) => {
@@ -346,19 +377,8 @@ export async function generateQuizAI(doc, cfg, onProgress) {
     return next
   })
 
-  // Visual (multimodal) questions. Gemini "sees" the document once (cached on
-  // the doc); GLM authors the actual questions every run. Covers code listings,
-  // diagrams, charts, tables — anything that needs the visual to be answerable.
-  // Best-effort: any failure just yields fewer questions.
   let imageQuestions = []
-  if (cfg.deepVisual !== false) {
-    try {
-      const analysis = await ensureVisualAnalysis(doc)
-      if (analysis && analysis.elements.length) {
-        imageQuestions = await authorVisualQuestions(doc, analysis.elements, isBanned, weakHint)
-      }
-    } catch { /* visual round is best-effort */ }
-  }
+  try { imageQuestions = (await visualPromise) || [] } catch { /* visual round is best-effort */ }
 
   let final = out
   if (imageQuestions.length) final = final.concat(imageQuestions)
@@ -421,11 +441,11 @@ export async function gradeShortAnswer(userAnswer, q) {
 }
 
 // Full AI authoring: Gemini writes exam-style questions (recall +
-// comprehension + scenario) straight from numbered source sentences, one
-// batch of sentences per call. Every item must cite its source ("src") and
-// share content words with it — anything ungrounded, off-ban-list, or
-// malformed is rejected. Returns { questions, error } where error records
-// the first batch failure (null when every call succeeded).
+// comprehension + scenario) straight from numbered source sentences, authored
+// in parallel batches (see AUTHOR_BATCH/AUTHOR_POOL). Every item must cite its
+// source ("src") and share content words with it — anything ungrounded, off-
+// ban-list, or malformed is rejected. Returns { questions, error } where error
+// records the first batch failure (null when every call succeeded).
 async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const text = stripHeadings(doc.text)
   const ranked = scoreSentences(sentences(text), termFreq(text))
@@ -436,23 +456,14 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   // Real concepts from the document so the model's distractors stay in-family
   // (phishing variants pair with phishing variants, not with random nouns).
   const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
-  const BATCH = 6
   const optionRng = mulberry32(hashString(String(doc.id)))
   const out = []
   const seen = new Set()
   let firstErr = null
-  for (let g = 0; g < material.length && out.length < cfg.count; g += BATCH) {
-    const group = material.slice(g, g + BATCH).map((s, k) => ({ i: k, text: s.text }))
-    let arr = null
-    try {
-      arr = extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
-        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7
-      }))
-    } catch (err) {
-      if (!firstErr) firstErr = err
-      /* this batch yields nothing; keep the rest */
-    }
-    for (const row of Array.isArray(arr) ? arr : []) {
+  onProgress?.(0, cfg.count)
+
+  const takeRows = (arr, group) => {
+    for (const row of (Array.isArray(arr) ? arr : [])) {
       if (out.length >= cfg.count) break
       const src = Number(row?.src)
       if (!Number.isInteger(src) || src < 0 || src >= group.length) continue
@@ -490,6 +501,29 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
       }
     }
     onProgress?.(Math.min(cfg.count, out.length), cfg.count)
+  }
+
+  const authGroup = async (group) => {
+    try {
+      return extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
+        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7
+      })) || []
+    } catch (err) {
+      if (!firstErr) firstErr = err
+      return []
+    }
+  }
+
+  const groups = []
+  for (let i = 0; i < material.length; i += AUTHOR_BATCH) {
+    groups.push(material.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text })))
+  }
+  const firstWave = Math.min(groups.length, Math.max(1, Math.ceil(cfg.count / AUTHOR_BATCH)))
+  const waveRows = await runPool(groups.slice(0, firstWave).map(g => () => authGroup(g)), AUTHOR_POOL)
+  waveRows.forEach((rows, i) => takeRows(rows, groups[i]))
+
+  for (let g = firstWave; g < groups.length && out.length < cfg.count; g++) {
+    takeRows(await authGroup(groups[g]), groups[g])
   }
   return { questions: out, error: firstErr }
 }
@@ -554,17 +588,24 @@ export async function explainQuestions(questions) {
 // the result can be validated against real text; malformed, ungrounded or
 // heading-touched items are dropped. When this yields too few questions the
 // caller chains into the polish/built-in path.
+//
+// Speed: batches of AUTHOR_BATCH sentences are authored in parallel waves of
+// AUTHOR_POOL calls — a 20-question quiz drops from ~7 serial round trips to
+// ~2 parallel ones.
+const AUTHOR_BATCH = 10
+const AUTHOR_POOL = 3
+
 export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const text = stripHeadings(doc.text)
   const ranked = scoreSentences(sentences(text), termFreq(text))
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
-  const termBank = keyTerms(stripHeadings(doc.text)).slice(0, 40).map(r => r.term)
+  const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
 
   const pick = ranked.slice(0, Math.min(ranked.length, Math.max(cfg.count * 2, 12)))
   const groups = []
-  for (let i = 0; i < pick.length; i += 6) {
-    groups.push(pick.slice(i, i + 6).map((s, k) => ({ i: i + k, text: s.text })))
+  for (let i = 0; i < pick.length; i += AUTHOR_BATCH) {
+    groups.push(pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text })))
   }
   const weakHint = Array.isArray(cfg.weakTerms) && cfg.weakTerms.length
     ? 'Lean toward these terms the student struggles with: ' +
@@ -572,17 +613,13 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
     : ''
 
   const out = []
-  for (let g = 0; g < groups.length && out.length < cfg.count; g++) {
-    onProgress(out.length, cfg.count)
-    let raw = null
-    try {
-      raw = await chatJSON(authorQuizPrompt(groups[g], weakHint, termBank), {
-        maxOutputTokens: 3600, temperature: 0.5, timeoutMs: 60000
-      })
-    } catch { continue }
-    for (const it of (extractJSONArray(raw) || [])) {
+  const seen = new Set()
+  onProgress(0, cfg.count)
+
+  const takeRows = (rows, group) => {
+    for (const it of (Array.isArray(rows) ? rows : [])) {
       if (out.length >= cfg.count) break
-      const src = groups[g][Number(it?.src)] || groups[g][0]
+      const src = group[Number(it?.src)] || group[0]
       const sentence = src ? src.text : ''
       if (!sentence) continue
       if (it.kind === 'mcq') {
@@ -597,15 +634,39 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
         const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
         if (answerIndex === -1) continue
+        if (seen.has(stem.toLowerCase())) continue
+        seen.add(stem.toLowerCase())
         out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct } })
       } else if (it.kind === 'short') {
         const prompt = clean(it.prompt)
         const answer = clean(it.answer)
         if (!prompt || !answer || prompt.length > 300 || isBanned(prompt)) continue
+        if (seen.has(prompt.toLowerCase())) continue
+        seen.add(prompt.toLowerCase())
         out.push({ type: 'short', prompt, answer, meta: { sentence, term: answer } })
       }
     }
+    onProgress(out.length, cfg.count)
   }
+
+  const authGroup = async (group) => {
+    const raw = await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
+    })
+    return extractJSONArray(raw) || []
+  }
+
+  // First wave: the minimum number of batches that can cover the requested
+  // count, fired in parallel. Only top up sequentially when a batch under-
+  // delivered (rejected stems, grounding misses).
+  const firstWave = Math.min(groups.length, Math.max(1, Math.ceil(cfg.count / AUTHOR_BATCH)))
+  const waveRows = await runPool(groups.slice(0, firstWave).map(g => () => authGroup(g)), AUTHOR_POOL)
+  waveRows.forEach((rows, i) => takeRows(rows, groups[i]))
+
+  for (let g = firstWave; g < groups.length && out.length < cfg.count; g++) {
+    takeRows(await authGroup(groups[g]), groups[g])
+  }
+
   return {
     questions: out,
     error: out.length ? null : 'not_enough_content',
