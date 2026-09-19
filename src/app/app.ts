@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular';
+import { SwUpdate } from '@angular/service-worker';
+import { filter } from 'rxjs';
 import { IdlePreloadService } from './core/services/idle-preload.service';
 import { afterNextRender } from '@angular/core';
 
@@ -17,8 +19,30 @@ export class App {
   // inject() runs here, inside the component's injection context — calling it
   // inside the afterNextRender callback instead throws NG0203.
   private preload = inject(IdlePreloadService);
+  private swUpdate = inject(SwUpdate, { optional: true });
 
   constructor() {
     afterNextRender(() => this.preload.start());
+    // Apply app updates on the FIRST reload: when the service worker detects a
+    // new version it downloads it, we activate immediately and reload once.
+    // Without this, users need two manual refreshes (or never see updates).
+    if (this.swUpdate?.isEnabled) {
+      this.swUpdate.versionUpdates
+        .pipe(filter(e => e.type === 'VERSION_READY'))
+        .subscribe(() => {
+          this.swUpdate!.activateUpdate().then(updated => {
+            if (updated && !sessionStorage.getItem('ngsw-just-updated')) {
+              sessionStorage.setItem('ngsw-just-updated', '1');
+              document.location.reload();
+            }
+          });
+        });
+      this.swUpdate.unrecoverable.subscribe(() => {
+        sessionStorage.removeItem('ngsw-just-updated');
+        if (confirm('The app updated in the background and needs a reload. Reload now?')) {
+          document.location.reload();
+        }
+      });
+    }
   }
 }

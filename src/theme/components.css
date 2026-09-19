@@ -350,6 +350,13 @@ html[data-theme='dark'] .stepper button { color: var(--accent); }
 .empty-state h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
 .empty-state p { font-size: 14px; color: var(--text-dim); max-width: 320px; margin: 0 auto 24px; line-height: 1.6; }
 
+/* Injected icon SVGs carry only a viewBox (no width/height), so without a
+   size rule they render at container width — viewport-wide on desktop. */
+.art { display: flex; justify-content: center; margin: 0 auto 16px; color: var(--accent); }
+.art svg { width: 56px; height: 56px; }
+/* safety net: no injected icon may ever overflow its container */
+svg { max-width: 100%; }
+
 /* Vertically centers a screen's content between header and bottom nav */
 .screen.screen-center {
   min-height: calc(100dvh - var(--header-h) - var(--nav-h));
