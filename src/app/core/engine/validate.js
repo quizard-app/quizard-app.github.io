@@ -39,6 +39,21 @@ export function makeBannedCheckerFromTitles(docName, titles) {
 // distractors specific and on-topic instead of filler or nonsense.
 export const FILLER_RE = /^(none|all) of (the )?above$|^(option|choice)\s*\d+$|^(i ?d ?k|idk|unknown|unsure|n\/?a|none|\?+|lorem ipsum|example|placeholder|test|thing|stuff|something)$/i
 
+// Slides often carry raw code/markup lines; they make terrible quiz sources.
+// A sentence that is mostly symbols or carries code tokens is skipped.
+export function looksLikeCode(s) {
+  const text = String(s || '')
+  if (!text) return true
+  const symbols = (text.match(/[{}<>=;@/\\`|#$_*[\]]/g) || []).length
+  if (symbols / text.length > 0.08) return true
+  return /\b(import|export|const|function|return|async|await|class|extends|constructor)\b|=>|<\/?[a-z][a-z-]*>|^\s*\/{2,}|style=|\(\)|\[\s*i?\w*\s*\]/i.test(text)
+}
+
+// Fill-in-the-blank stems are banned by the prompt; enforce it too.
+export function isBlankStem(s) {
+  return /_{2,}|\bcomplete the statement\b/i.test(String(s || ''))
+}
+
 // Validate one generated mcq row against its source term.
 // Returns normalized { stem, wrong } or null when the item must be rejected.
 export function validateGeneratedMcq(row, term) {

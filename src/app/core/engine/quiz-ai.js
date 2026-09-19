@@ -14,7 +14,9 @@ import {
   validateGeneratedMcq,
   validateGeneratedClue,
   validateGeneratedShort,
-  escapeRegExp
+  escapeRegExp,
+  looksLikeCode,
+  isBlankStem
 } from './validate.js'
 
 function blobToDataUrlLocal(blob) {
@@ -598,7 +600,8 @@ const AUTHOR_POOL = 3
 
 export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const text = stripHeadings(doc.text)
-  const ranked = scoreSentences(sentences(text), termFreq(text))
+  // code/markup lines from slides make garbage question sources — drop them
+  const ranked = scoreSentences(sentences(text), termFreq(text)).filter(s => !looksLikeCode(s.text))
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
   const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
@@ -628,7 +631,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         const correct = clean(it.correct)
         const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
         if (!stem || !correct || wrong.length !== 3) continue
-        if (stem.length > 300 || isBanned(stem) || wrong.some(w => isBanned(w))) continue
+        if (stem.length > 300 || isBlankStem(stem) || isBanned(stem) || wrong.some(w => isBanned(w))) continue
         const all = [correct, ...wrong]
         if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
         if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
@@ -699,7 +702,8 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
   for (const doc of docs) {
     const raw = doc.text || ''
     const text = stripHeadings(raw)
-    const ranked = scoreSentences(sentences(text), termFreq(text))
+    // drop code/markup lines from slides — they make garbage question sources
+    const ranked = scoreSentences(sentences(text), termFreq(text)).filter(s => !looksLikeCode(s.text))
     if (ranked.length < 4) continue
     const { membership } = detectTopics(raw)
     const rawEntries = [...membership.entries()]
@@ -764,7 +768,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       const correct = clean(it.correct)
       const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
       if (!stem || !correct || wrong.length !== 3) continue
-      if (stem.length > 300 || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
+      if (stem.length > 300 || isBlankStem(stem) || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
       const all = [correct, ...wrong]
       if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
       if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
