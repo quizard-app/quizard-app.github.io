@@ -1115,6 +1115,7 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 
 /* ── Onboarding ── */
 .onb-wrap {
+  width: 100%; /* flex item inside ion-page: without this it sizes to max-content (560px) and overflows phones */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -1726,6 +1727,7 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 
 /* ── Tutorial slide deck ── */
 .tut-wrap {
+  width: 100%; /* flex item inside ion-page: without this it sizes to max-content (560px) and overflows phones */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -1799,6 +1801,11 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
   display: block;
   object-fit: contain;
 }
+
+/* short phones: shrink the framed screenshot (keeps aspect + ring alignment)
+   so the title/description below never get pushed out of view */
+@media (max-height: 720px) { .tut-phone { max-width: 272px; } }
+@media (max-height: 640px) { .tut-phone { max-width: 240px; } }
 
 /* ── Highlight ring overlay ── */
 .tut-highlight-ring {
