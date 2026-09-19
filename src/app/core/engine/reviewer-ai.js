@@ -164,6 +164,7 @@ export function sanitizeReviewer(raw) {
     : []
   const finalReview = Array.isArray(raw.finalReview) ? raw.finalReview.map(clean).filter(Boolean) : []
   return {
+    v: 2, // schema version — v1 caches (no sub-terms/ID drills) regenerate once
     title: clean(raw.title) || 'Exam Reviewer',
     intro: clean(raw.intro) || '',
     parts,
@@ -193,8 +194,12 @@ function chunkText(text) {
 // Generate (or return the cached) AI reviewer for a document.
 // Returns { reviewer, cached } or { error }.
 export async function ensureAIReviewer(doc) {
-  if (Array.isArray(doc.reviewerAI) ? doc.reviewerAI.length : doc.reviewerAI?.parts?.length) {
-    return { reviewer: doc.reviewerAI, cached: true }
+  const cached = doc.reviewerAI
+  const cachedOk = Array.isArray(cached) ? cached.length : cached?.parts?.length
+  // v2 = the hand-made format (sub-terms, ID drills, final review). v1 caches
+  // fall through and regenerate once with the new prompt.
+  if (cachedOk && cached.v === 2) {
+    return { reviewer: cached, cached: true }
   }
 
   const source = String(doc.text || '').trim()
