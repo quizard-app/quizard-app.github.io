@@ -46,7 +46,11 @@ export function looksLikeCode(s) {
   if (!text) return true
   const symbols = (text.match(/[{}<>=;@/\\`|#$_*[\]]/g) || []).length
   if (symbols / text.length > 0.08) return true
-  return /\b(import|export|const|function|return|async|await|class|extends|constructor)\b|=>|<\/?[a-z][a-z-]*>|^\s*\/{2,}|style=|\(\)|\[\s*i?\w*\s*\]/i.test(text)
+  if (/\b(import|export|const|function|return|async|await|class|extends|constructor)\b|=>|<\/?[a-z][a-z-]*>|^\s*\/{2,}|style=|\(\)|\[\s*i?\w*\s*\]/i.test(text)) return true
+  // slide chrome: letter-spaced caps ("P A R T 2") or footer dot separators
+  if (/(^|\s)[A-Z](\s[A-Z]){2,}(\s|$)/.test(text)) return true
+  if ((text.match(/·/g) || []).length >= 2) return true
+  return false
 }
 
 // Fill-in-the-blank stems are banned by the prompt; enforce it too.

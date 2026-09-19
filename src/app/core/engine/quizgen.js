@@ -46,6 +46,7 @@
 
 import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr } from './textproc.js'
 import { detectTopics } from './topics.js'
+import { looksLikeCode } from './validate.js'
 import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption } from './questionForms.js'
 
 /**
@@ -189,7 +190,8 @@ export function generateQuiz(doc, config) {
   const text = stripHeadings(doc.text)
   const sents = sentences(text)
   const tf = termFreq(text)
-  const ranked = scoreSentences(sents, tf)
+  // code/markup lines and slide chrome make garbage question sources — drop them
+  const ranked = scoreSentences(sents, tf).filter(s => !looksLikeCode(s.text))
   const terms = keyTerms(text)
 
   if (!terms.length || ranked.length < 3) {
