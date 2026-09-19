@@ -14,13 +14,16 @@ import { chatJSON } from './gemini.js'
 
 const MAX_CHARS_PER_CHUNK = 42000
 
-// Structured output contract — mirrors the quality bar of a hand-made reviewer.
-const RULES = `You are an expert exam reviewer writer. Read the DOCUMENT and produce a complete exam reviewer in strict JSON — the kind a top student would write by hand.
+// Structured output contract — mirrors the quality bar of a hand-made reviewer:
+// emoji-headed sections, 🔹 sub-terms with "Meaning:" lines, ⭐⭐⭐ importance
+// markers, comparison tables, IMPORTANT/MEMORY callouts, arrow mnemonics,
+// 📝 identification drills and a 🎯 one-minute final review.
+const RULES = `You are an expert exam reviewer writer. Read the DOCUMENT and produce a complete exam reviewer in strict JSON — the kind a top student would write by hand to cram from.
 
 Return JSON with exactly this shape:
 {
-  "title": "Main Subject & Main Subject — Exam Reviewer",
-  "intro": "1-2 sentences: what the document covers overall, e.g. 'It covers two major sessions: X and Y.'",
+  "title": "Main Subject — Exam Reviewer",
+  "intro": "1-2 sentences: what the document covers overall.",
   "parts": [
     {
       "title": "SHORT THEME IN CAPS",
@@ -28,19 +31,33 @@ Return JSON with exactly this shape:
         {
           "num": 1,
           "heading": "Section name",
+          "stars": 3,
           "mustKnow": "VERY exam-worthy | Important | Good to know",
           "definition": "Term = one-line meaning that opens the section",
           "explanation": "2-4 sentences of plain-English explanation.",
+          "terms": [
+            { "term": "Sub-term name", "meaning": "Meaning: one clear line.", "bullets": ["detail — short note", "detail — short note"], "memory": "Utilitarianism = Results" }
+          ],
           "bullets": ["Term — what it is", "Term — what it is"],
           "steps": ["Step name — what happens", "Step name — what happens"],
           "table": { "headers": ["Col A", "Col B"], "rows": [["a1", "b1"], ["a2", "b2"]] },
-          "important": "The one caveat students get wrong, e.g. 'Legal ≠ automatically ethical.'",
-          "example": "One concrete example or scenario from the document.",
-          "memory": "Mnemonic or memory trick, e.g. 'Kant = Rules/Duty' or 'R W D E I C A'",
-          "examClue": "Likely exam phrase → answer, e.g. '\"greatest number\" → Utilitarianism; \"veil of ignorance\" → Rawls'"
+          "mnemonic": "Recognize → Gather → Identify → Consider → Generate → Evaluate → Act → Reflect",
+          "important": "The one caveat students get wrong, e.g. 'Something can be legal but unethical.'",
+          "example": "One concrete IT scenario from the document.",
+          "memory": "Mnemonic like 'Kant = Rules/Duty' or 'U-D-V-S-R'",
+          "examClue": "Likely exam phrase → answer, e.g. '\"greatest number\" → Utilitarianism'"
         }
       ]
     }
+  ],
+  "idQuestions": [
+    { "clue": "Personal or cultural beliefs about right and wrong", "answer": "Morality" },
+    { "clue": "Framework consisting of Privacy, Accuracy, Property, and Accessibility", "answer": "PAPA" }
+  ],
+  "finalReview": [
+    "Morality = What I/our culture believe is right",
+    "Utilitarianism = Outcome",
+    "8 Steps = Recognize → Gather → Identify → Consider → Generate → Evaluate → Act → Reflect"
   ],
   "highYield": [
     { "label": "Topic name", "items": ["thing to memorize", "Step A → Step B → Step C"] }
@@ -52,17 +69,20 @@ Every field except num and heading is optional (use null or omit it), but a stro
 RULES:
 1. Cover EVERY major topic in the document, roughly in source order — do not skip or merge away content.
 2. Group sections into 4-10 PARTS. A part's "title" is the short theme in CAPS only — never write the word 'PART' or a numeral, the app adds "PART <roman>" itself.
-3. Number sections continuously across all parts (1, 2, 3, ...).
-4. When a section introduces a concept, open it with "definition" in the exact form "Term = meaning".
-5. Use "bullets" for families of similar items (malware types, phishing variants, agencies, benefits): "Term — what it is", with the bold-worthy term first and an em dash before the description.
-6. Use "steps" for ordered processes (decision procedures, kill chain, incident response, sequences the exam asks to memorize): "Step name — what happens".
-7. Use "table" whenever concepts contrast (frameworks, morality vs ethics vs law, organizations and their fields, attacks and the CIA property they break).
-8. "important" is the trap or caveat worth flagging ("Legal ≠ automatically ethical"). "example" is one concrete scenario from the document.
-9. "memory" is a mnemonic ("Kant = Rules/Duty", "R W D E I C A", "People + Knowledge + Credentials + Clout"). "examClue" maps the exact phrase the exam will use to the answer with → arrows.
-10. Mark the most testable sections "mustKnow": "VERY exam-worthy" (say this for the topics the document emphasizes), "Important", or "Good to know".
-11. "highYield" is the last-minute memorization sheet: one entry per big topic, items as short as possible, arrow chains for ordered sequences.
-12. Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
-13. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
+3. Number sections continuously across all parts (1, 2, 3, ...). Put "stars": 3 on the sections the exam will hammer (core lists, theories, models), 2 for supporting ones, omit for filler.
+4. When a section introduces several related concepts (morality/ethics/law, the five theories, PAPA letters, attack types), use "terms": one entry per concept with "meaning" ("Meaning: ..."), optional "bullets" for its attributes (Focus/Key Question/IT Example, what shapes it), and "memory" ("Utilitarianism = Results", "PAPA = Privacy, Accuracy, Property, Accessibility").
+5. Open concept sections with "definition" in the exact form "Term = meaning".
+6. Use "bullets" for families of similar items: "Term — what it is", bold-worthy term first, em dash before the description.
+7. Use "steps" for ordered processes: "Step name — what happens".
+8. Use "table" whenever concepts contrast (morality vs ethics vs law, the five theories side by side, attacks vs CIA property). Tables beat prose for comparisons.
+9. "mnemonic" is the memorize-the-order line with → arrows ("Recognize → Gather → ...") or a letter code ("U-D-V-S-R").
+10. "important" flags the trap ("Something can be legal but unethical, or ethical but not legally required."). "example" is one concrete IT scenario.
+11. "memory" is the section's memory trick. "examClue" maps the exact phrase the exam uses to the answer with → arrows.
+12. "idQuestions" are 6-14 identification drills: "clue" describes the concept WITHOUT naming it, "answer" is the term. Pull the exam's most likely definitions.
+13. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
+14. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
+15. Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
+16. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
 
 function clean(s) {
   return String(s || '').replace(/\s+/g, ' ').trim()
@@ -82,7 +102,7 @@ function termLine(s, e) {
   return `<b>${e(s.slice(0, i))}</b> — ${e(s.slice(i + 3))}`
 }
 
-function sanitizeReviewer(raw) {
+export function sanitizeReviewer(raw) {
   if (!raw || !Array.isArray(raw.parts) || !raw.parts.length) return null
   const parts = []
   let num = 1
@@ -93,19 +113,31 @@ function sanitizeReviewer(raw) {
       const explanation = clean(sec.explanation)
       const bullets = Array.isArray(sec.bullets) ? sec.bullets.map(clean).filter(Boolean) : []
       const steps = Array.isArray(sec.steps) ? sec.steps.map(clean).filter(Boolean) : []
-      if (!explanation && !bullets.length && !steps.length) continue
+      const terms = Array.isArray(sec.terms)
+        ? sec.terms.map(t => ({
+            term: clean(t?.term),
+            meaning: clean(t?.meaning).replace(/^meaning:\s*/i, ''),
+            bullets: Array.isArray(t?.bullets) ? t.bullets.map(clean).filter(Boolean) : [],
+            memory: clean(t?.memory) || null
+          })).filter(t => t.term && (t.meaning || t.bullets.length))
+        : []
+      if (!explanation && !bullets.length && !steps.length && !terms.length) continue
       const table = (sec.table && Array.isArray(sec.table.headers) && Array.isArray(sec.table.rows) && sec.table.rows.length)
         ? { headers: sec.table.headers.map(clean).filter(Boolean), rows: sec.table.rows.map(r => Array.isArray(r) ? r.map(clean) : []).filter(r => r.length) }
         : null
+      const stars = Number(sec.stars)
       sections.push({
         num: sec.num != null ? Number(sec.num) : num,
         heading: clean(sec.heading) || `Section ${num}`,
         mustKnow: clean(sec.mustKnow) || null,
+        stars: Number.isFinite(stars) ? Math.max(0, Math.min(3, Math.round(stars))) : null,
         definition: clean(sec.definition) || null,
         explanation,
+        terms,
         bullets,
         steps,
         table,
+        mnemonic: clean(sec.mnemonic) || null,
         important: clean(sec.important) || null,
         example: clean(sec.example) || null,
         memory: clean(sec.memory) || null,
@@ -125,10 +157,18 @@ function sanitizeReviewer(raw) {
         .map(h => ({ label: clean(h?.label), items: Array.isArray(h?.items) ? h.items.map(clean).filter(Boolean) : [] }))
         .filter(h => h.label && h.items.length)
     : []
+  const idQuestions = Array.isArray(raw.idQuestions)
+    ? raw.idQuestions
+        .map(q => ({ clue: clean(q?.clue), answer: clean(q?.answer) }))
+        .filter(q => q.clue && q.answer)
+    : []
+  const finalReview = Array.isArray(raw.finalReview) ? raw.finalReview.map(clean).filter(Boolean) : []
   return {
     title: clean(raw.title) || 'Exam Reviewer',
     intro: clean(raw.intro) || '',
     parts,
+    idQuestions,
+    finalReview,
     highYield
   }
 }
@@ -224,7 +264,8 @@ export function reviewerToHtml(reviewer, esc) {
       const flag = sec.mustKnow
         ? `<span class="ai-flag ${/VERY/i.test(sec.mustKnow) ? 'hot' : /Important/i.test(sec.mustKnow) ? 'warm' : 'cool'}">${e(sec.mustKnow)}</span>`
         : ''
-      out.push(`<div class="ai-sec-head"><span class="ai-num">${e(sec.num)}</span><h4>${e(sec.heading)}</h4>${flag}</div>`)
+      const stars = sec.stars ? '<span class="ai-stars">' + '⭐'.repeat(Math.min(3, sec.stars)) + '</span>' : ''
+      out.push(`<div class="ai-sec-head"><span class="ai-num">${e(sec.num)}</span><h4>${e(sec.heading)}${stars}</h4>${flag}</div>`)
       if (sec.definition) {
         const eq = sec.definition.indexOf('=')
         out.push(eq > 0
@@ -232,6 +273,18 @@ export function reviewerToHtml(reviewer, esc) {
           : `<p class="ai-def">${e(sec.definition)}</p>`)
       }
       if (sec.explanation) out.push(`<p class="ai-expl" data-para>${e(sec.explanation)}</p>`)
+      // 🔹 sub-terms: "Meaning:" line + attribute bullets + per-term memory
+      for (const t of (sec.terms || [])) {
+        out.push(`<div class="ai-term" data-para>`)
+        out.push(`<div class="ai-term-name">🔹 ${e(t.term)}</div>`)
+        if (t.meaning) {
+          const m = t.meaning.replace(/^meaning:\s*/i, '')
+          out.push(`<p class="ai-term-meaning"><span class="ai-term-label">Meaning:</span> ${e(m)}</p>`)
+        }
+        if (t.bullets && t.bullets.length) out.push(`<ul class="ai-bullets">${t.bullets.map(b => `<li data-para>${termLine(b, e)}</li>`).join('')}</ul>`)
+        if (t.memory) out.push(`<div class="ai-box ai-memory"><span class="ai-box-label">Memory</span><span>${e(t.memory)}</span></div>`)
+        out.push(`</div>`)
+      }
       const bullets = sec.bullets || []
       const steps = sec.steps || []
       if (bullets.length) out.push(`<ul class="ai-bullets">${bullets.map(b => `<li data-para>${termLine(b, e)}</li>`).join('')}</ul>`)
@@ -239,6 +292,7 @@ export function reviewerToHtml(reviewer, esc) {
       if (sec.table) {
         out.push(`<table class="ai-table"><thead><tr>${sec.table.headers.map(h => `<th>${e(h)}</th>`).join('')}</tr></thead><tbody>${sec.table.rows.map(r => `<tr>${r.map(c => `<td>${e(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)
       }
+      if (sec.mnemonic) out.push(`<div class="ai-mnemonic" data-para><span class="ai-mnemonic-label">🧠 Memorize</span><span>${e(sec.mnemonic)}</span></div>`)
       if (sec.important) out.push(`<div class="ai-box ai-important" data-para><span class="ai-box-label">Important</span><span>${e(sec.important)}</span></div>`)
       if (sec.example) out.push(`<div class="ai-box ai-example" data-para><span class="ai-box-label">Example</span><span>${e(sec.example)}</span></div>`)
       if (sec.memory) out.push(`<div class="ai-box ai-memory" data-para><span class="ai-box-label">Memory trick</span><span>${e(sec.memory)}</span></div>`)
@@ -251,12 +305,41 @@ export function reviewerToHtml(reviewer, esc) {
   if (highYield.length) {
     out.push(`
       <div class="rvw-part">
-        <div class="rvw-part-head"><span class="rvw-num">🔥</span><h3>High-Yield Memorization Sheet</h3></div>
-        ${reviewer.highYield.map(h => `
+        <div class="rvw-part-head"><span class="rvw-num">🔥</span><h3>Super Important Exam Points</h3></div>
+        <p class="ai-hy-intro">If you're short on study time, memorize these first:</p>
+        ${highYield.map(h => `
           <div class="ai-hy">
             <div class="ai-hy-label">${e(h.label)}</div>
             <ul class="ai-bullets">${h.items.map(i => `<li data-para>${e(i)}</li>`).join('')}</ul>
           </div>`).join('')}
+      </div>`)
+  }
+  // 📝 identification drills: "clue → Answer"
+  const idQuestions = reviewer.idQuestions || []
+  if (idQuestions.length) {
+    out.push(`
+      <div class="rvw-part">
+        <div class="rvw-part-head"><span class="rvw-num">📝</span><h3>Possible Identification Questions</h3></div>
+        ${idQuestions.map(q => `
+          <div class="ai-idq" data-para>
+            <div class="ai-idq-clue">${e(q.clue)}</div>
+            <div class="ai-idq-ans">→ ${e(q.answer)}</div>
+          </div>`).join('')}
+      </div>`)
+  }
+  // 🎯 one-minute final review: "Term = keyword" lines
+  const finalReview = reviewer.finalReview || []
+  if (finalReview.length) {
+    out.push(`
+      <div class="rvw-part">
+        <div class="rvw-part-head"><span class="rvw-num">🎯</span><h3>One-Minute Final Review</h3></div>
+        <p class="ai-hy-intro">Before your exam, remember:</p>
+        ${finalReview.map(line => {
+          const eq = line.indexOf('=')
+          return eq > 0
+            ? `<p class="ai-def" data-para><span class="ai-def-term">${e(line.slice(0, eq).trim())}</span> = ${e(line.slice(eq + 1).trim())}</p>`
+            : `<p class="ai-def" data-para>${e(line)}</p>`
+        }).join('')}
       </div>`)
   }
   out.push(`<p class="sum-note">AI-generated from your document — always double-check against your original source before the exam.</p>`)

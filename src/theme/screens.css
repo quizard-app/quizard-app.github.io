@@ -641,6 +641,53 @@ html[data-theme='dark'] .ai-table td { color: var(--text-dim); }
   color: var(--accent-strong); margin-bottom: 8px;
 }
 html[data-theme='dark'] .ai-hy-label { color: var(--accent); }
+.ai-hy-intro {
+  font-size: 12.5px; color: var(--text-faint); font-style: italic;
+  margin: 0 0 10px;
+}
+
+/* 🔹 sub-terms inside a section (theories, PAPA letters, term groups) */
+.ai-term {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px; margin: 0 0 10px;
+}
+.ai-term-name { font-weight: 800; font-size: 14.5px; margin-bottom: 4px; }
+.ai-term-meaning { font-size: 13.5px; line-height: 1.55; margin: 0 0 6px; }
+.ai-term-label { font-weight: 700; color: var(--accent-strong); }
+html[data-theme='dark'] .ai-term-label { color: var(--accent); }
+.ai-term .ai-bullets { margin: 4px 0 0; }
+.ai-term .ai-box { margin-top: 8px; }
+.ai-stars { font-size: 11px; letter-spacing: 2px; margin-left: 6px; }
+
+/* 🧠 arrow mnemonics — "Recognize → Gather → …" */
+.ai-mnemonic {
+  display: flex; gap: 8px; align-items: baseline;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: 10px 13px; margin: 0 0 10px;
+  font-weight: 700; font-size: 13.5px; line-height: 1.55;
+}
+.ai-mnemonic-label {
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-strong);
+}
+html[data-theme='dark'] .ai-mnemonic-label { color: var(--accent); }
+
+/* 📝 identification drills: clue → Answer */
+.ai-idq {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 10px 14px; margin-bottom: 8px;
+}
+.ai-idq-clue { font-size: 13.5px; line-height: 1.5; }
+.ai-idq-ans { margin-top: 4px; font-weight: 800; color: var(--accent-strong); }
+html[data-theme='dark'] .ai-idq-ans { color: var(--accent); }
 
 /* read-along: the line the wizard is speaking lights up */
 .reader p.speaking { padding: 8px 10px; }
