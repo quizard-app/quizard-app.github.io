@@ -107,6 +107,24 @@ describe('authorExamQuiz', () => {
     expect(topics.size).toBeGreaterThanOrEqual(3)
   })
 
+  it('respects the requested count when a unit needs multiple batches', async () => {
+    // one big single-topic doc → pick spans 2+ batches; the unit must not
+    // deliver its quota twice (the old multi-batch overshoot bug)
+    const W1 = ['alpha', 'bravo', 'charlie', 'delta', 'eagle', 'foxtrot', 'grape', 'hotel', 'india', 'juliet',
+      'krill', 'lilac', 'maple', 'november', 'oscar', 'peach', 'quebec', 'romeo', 'sierra', 'tango']
+    const W2 = ['aurora', 'breeze', 'cobalt', 'dynamo', 'ember', 'frost', 'glide', 'harbor', 'ion', 'jade',
+      'koala', 'lumen', 'manor', 'nectar', 'onyx', 'prism', 'quartz', 'ridge', 'summit', 'timber']
+    const lines = ['Networking Basics']
+    for (let i = 0; i < 20; i++) {
+      lines.push(`A router ${W1[i]} packets between networks during every ${W2[i]} window.`)
+    }
+    const bigDoc = [{ id: 'doc-big', name: 'Networking Basics.txt', text: lines.join('\n') }]
+    const gen = await authorExamQuiz(makeExam(), bigDoc, { count: 20 }, () => {})
+    expect(gen.questions.length).toBe(20)
+    const stems = new Set(gen.questions.map(q => q.stem.toLowerCase()))
+    expect(stems.size).toBe(20)
+  })
+
   it('falls back cleanly when the AI is unreachable', async () => {
     vi.mocked(chatJSON).mockRejectedValue(new Error('504'))
     const gen = await authorExamQuiz(makeExam(), DOCS, { count: 6 }, () => {})

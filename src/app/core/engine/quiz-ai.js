@@ -749,11 +749,14 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
   const out = []
   const seen = new Set()
   onProgress(0, total)
+  // per-unit intake counter shared by ALL of that unit's batches, so a unit
+  // never contributes more than its allocated share
+  const unitState = units.map((unit, u) => ({ taken: 0, want: alloc[u] }))
 
-  const takeRows = (rows, unit, quota) => {
+  const takeRows = (rows, unit, state) => {
     let taken = 0
     for (const it of (Array.isArray(rows) ? rows : [])) {
-      if (taken >= quota) break
+      if (state.taken + taken >= state.want || out.length >= total) break
       const src = unit.sentences[Number(it?.src)] || unit.sentences[0]
       const sentence = src ? src.text : ''
       if (!sentence || it.kind !== 'mcq') continue
@@ -764,7 +767,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       if (stem.length > 300 || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
       const all = [correct, ...wrong]
       if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
-      if (new RegExp('\b' + escapeRegExp(correct) + '\b', 'i').test(stem)) continue
+      if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
       const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
       const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
       if (answerIndex === -1) continue
@@ -773,15 +776,16 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct, docId: unit.docId, docName: unit.docName, topic: unit.topic } })
       taken++
     }
+    state.taken += taken
     onProgress(out.length, total)
     return taken
   }
 
-  const authBatch = async (unit, group, quota) => {
+  const authBatch = async (unit, state, group) => {
     const raw = await chatJSON(examAuthorPrompt(group, unit.topic, weakHint, unit.termBank), {
       maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
     })
-    return takeRows(extractJSONArray(raw) || [], unit, quota)
+    return takeRows(extractJSONArray(raw) || [], unit, state)
   }
 
   // Batches per unit (AUTHOR_BATCH sentences each), all fired in parallel.
@@ -792,28 +796,20 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
     const pick = unit.sentences.slice(0, Math.min(unit.sentences.length, Math.max(want * 2, 4)))
     for (let i = 0; i < pick.length; i += AUTHOR_BATCH) {
       const group = pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
-      jobs.push({ unit, group, quota: want })
+      jobs.push({ unit, state: unitState[u], group })
     }
-    remaining.push({ unit, next: pick.length, want })
+    remaining.push({ unit, state: unitState[u], next: pick.length, want })
   })
   if (!jobs.length) return { questions: [], error: 'not_enough_content' }
 
-  const wave = await runPool(jobs.map(j => () => authBatch(j.unit, j.group, j.quota)), AUTHOR_POOL)
-  const takenByUnit = new Map()
-  wave.forEach((r, i) => {
-    const j = jobs[i]
-    const taken = r.ok ? r.r : 0
-    takenByUnit.set(j.unit.topic + '|' + j.unit.docId, (takenByUnit.get(j.unit.topic + '|' + j.unit.docId) || 0) + taken)
-  })
+  await runPool(jobs.map(j => () => authBatch(j.unit, j.state, j.group)), AUTHOR_POOL)
 
   // Sequential top-up: units that came in under quota get one more batch.
   for (const rem of remaining) {
-    const key = rem.unit.topic + '|' + rem.unit.docId
-    while (out.length < total && (takenByUnit.get(key) || 0) < rem.want && rem.next < rem.unit.sentences.length) {
+    while (out.length < total && rem.state.taken < rem.want && rem.next < rem.unit.sentences.length) {
       const group = rem.unit.sentences.slice(rem.next, rem.next + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
       rem.next += AUTHOR_BATCH
-      const taken = await authBatch(rem.unit, group, rem.want - (takenByUnit.get(key) || 0)).catch(() => 0)
-      takenByUnit.set(key, (takenByUnit.get(key) || 0) + taken)
+      await authBatch(rem.unit, rem.state, group).catch(() => 0)
     }
   }
 
