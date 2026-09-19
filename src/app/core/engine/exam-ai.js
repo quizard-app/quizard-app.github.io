@@ -18,7 +18,10 @@ const STOPWORDS = new Set([
   'with', 'from', 'have', 'there', 'their', 'been', 'were', 'also', 'into',
   'only', 'over', 'then', 'when', 'what', 'which', 'your', 'after', 'before',
   'make', 'sure', 'need', 'want', 'like', 'some', 'most', 'very', 'much',
-  'many', 'well', 'good', 'about', 'said', 'told', 'class', 'during'
+  'many', 'well', 'good', 'about', 'said', 'told', 'class', 'during',
+  // words from the wizard's own auto re-check message ("I just uploaded new
+  // files… please re-check what's covered") must never become missing topics
+  'just', 'check', 'recheck', 'new', 'newly', 'done', 'cover'
 ])
 
 export async function examChat(conversation, digest, draft) {
@@ -97,13 +100,17 @@ export function offlineMatch(conversation, digest, draft, cause = null) {
   }
 }
 
-/** Library digest builder — one compact entry per document for the prompt. */
+/** Library digest builder — one compact entry per document for the prompt.
+ *  Docs store topics inconsistently (import saves {title,count} objects,
+ *  the exam wizard saves strings) — normalize to plain strings here. */
 export function buildDigest(docs) {
   return docs.map(d => ({
     id: d.id,
     name: d.name,
     type: d.type || 'txt',
-    topics: d.topics || [],
+    topics: (d.topics || [])
+      .map(t => (typeof t === 'string' ? t : String(t?.title || '')))
+      .filter(Boolean),
     keyTerms: keyTerms(d.text || '').slice(0, 10).map(t => t.term)
   }))
 }

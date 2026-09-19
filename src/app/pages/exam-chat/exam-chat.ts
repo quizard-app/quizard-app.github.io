@@ -95,7 +95,8 @@ export class ExamChatPage implements OnInit, OnDestroy {
       };
       this.hideTyping();
       this.bubble('wizard', state.reply);
-    } catch {
+    } catch (err) {
+      console.error('exam wizard ask failed:', err);
       this.hideTyping();
       this.bubble('wizard', 'Something interfered with my crystal ball — try sending that again.');
     }
