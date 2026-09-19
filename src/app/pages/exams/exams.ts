@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { getExam, listExams, deleteExam, getDoc, listDueCards, getWeakTerms } from '../../core/engine/storage.js';
 import { buildExamQuiz, countdownLabel, rankExamTopics } from '../../core/engine/exam.js';
+import { authorExamQuiz } from '../../core/engine/quiz-ai.js';
 import { assetUrl } from '../../shared/assets.js';
 import { exportExamPdf } from '../../core/engine/export.js';
 import { icon } from '../../shared/icons.js';
@@ -33,7 +34,15 @@ export class ExamsPage implements OnInit {
   buildingPdf = signal(false);
   practiceCount = signal(0);
   questionCount = signal(20);
+  // AI scenario authoring runs in the background: the offline-built quiz is
+  // ready instantly and the AI result replaces it when it lands.
+  aiBuilding = signal(false);
+  aiFailed = signal(false);
+  aiProgress = signal({ done: 0, total: 0 });
   private builtQuiz: any = null;
+  private aiToken = 0;
+  private aiPromise: Promise<any> | null = null;
+  private lastDocWeak: any[] = [];
 
   async ngOnInit() {
     // /exams/:id → detail; /exams → list
@@ -63,8 +72,35 @@ export class ExamsPage implements OnInit {
     ]);
     const realDocs = docs.filter(Boolean);
     const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
+    this.lastDocWeak = docWeak;
     this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
     this.practiceCount.set(this.builtQuiz.questions.length);
+    this.startAiBuild(exam, realDocs, docWeak);
+  }
+
+  // Kick the background AI authoring (scenario questions per topic per file).
+  // A token discards stale results when the exam or the count changes.
+  private startAiBuild(exam: any, realDocs: any[], docWeak: any[]) {
+    const token = ++this.aiToken;
+    this.aiBuilding.set(true);
+    this.aiFailed.set(false);
+    this.aiPromise = authorExamQuiz(exam, realDocs, { count: this.questionCount(), weakTerms: docWeak },
+      (done: number, t: number) => { if (token === this.aiToken) this.aiProgress.set({ done, total: t }); });
+    this.aiPromise.then(gen => {
+      if (token !== this.aiToken) return;
+      this.aiBuilding.set(false);
+      const good = (gen?.questions?.length || 0) >= Math.max(4, Math.ceil(this.questionCount() / 2));
+      if (good) {
+        this.builtQuiz = gen;
+        this.practiceCount.set(gen.questions.length);
+      } else {
+        this.aiFailed.set(true);
+      }
+    }).catch(() => {
+      if (token !== this.aiToken) return;
+      this.aiBuilding.set(false);
+      this.aiFailed.set(true);
+    });
   }
 
   private async loadList() {
@@ -82,6 +118,14 @@ export class ExamsPage implements OnInit {
   private   async loadDetail(examId: string) {
     const exam = await getExam(examId);
     if (!exam) { this.router.navigateByUrl('/exams'); return; }
+    // Exams saved by the pre-fix offline matcher stored topics with OBJECT
+    // titles ({title: {title, ...}}) — normalize every shape to string titles.
+    exam.topics = (exam.topics || []).map((t: any) => {
+      const base = typeof t === 'string' ? { title: t } : t;
+      let title = base?.title;
+      if (typeof title !== 'string') title = title?.title ?? title?.name ?? '';
+      return { ...base, title: String(title) };
+    }).filter((t: any) => t.title);
     this.exam.set(exam);
     const [docs, due, weak] = await Promise.all([
       Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null))),
@@ -90,12 +134,14 @@ export class ExamsPage implements OnInit {
     ]);
     const realDocs = docs.filter(Boolean);
     const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
+    this.lastDocWeak = docWeak;
     const cd = countdownLabel(exam.examDate);
     this.detailCountdown.set(cd ? `${exam.examDate ? new Date(exam.examDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' : ''}${cd}` : `${realDocs.length} files · ${exam.topics.length} topics`);
     this.detailCd.set(cd);
     this.detailDocs.set(realDocs);
     this.builtQuiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
     this.practiceCount.set(this.builtQuiz.questions.length);
+    this.startAiBuild(exam, realDocs, docWeak);
     const ranked = rankExamTopics(exam, realDocs);
     void ranked;
     const body = `
@@ -123,14 +169,21 @@ export class ExamsPage implements OnInit {
   async startPractice() {
     const exam = this.exam();
     if (!exam || !this.practiceCount()) return;
-    const [docs, due, weak] = await Promise.all([
-      Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null))),
-      listDueCards(60).catch(() => []),
-      getWeakTerms(null).catch(() => [])
-    ]);
-    const realDocs = docs.filter(Boolean);
-    const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
-    const quiz = this.builtQuiz || buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
+    // Give a still-running AI build a short grace period, then fall back to
+    // whatever is ready (the offline quiz is always available).
+    if (this.aiBuilding() && this.aiPromise) {
+      const settled = await Promise.race([
+        this.aiPromise.catch(() => null),
+        new Promise(r => setTimeout(() => r(null), 20000))
+      ]);
+      if (settled?.questions?.length && settled.questions.length >= (this.builtQuiz?.questions?.length || 0)) {
+        this.builtQuiz = settled;
+        this.practiceCount.set(settled.questions.length);
+      } else {
+        this.toast.toast('Starting with built-in questions — AI scenarios still crafting', true);
+      }
+    }
+    const quiz = this.builtQuiz || buildExamQuiz(exam, this.detailDocs(), this.lastDocWeak, { count: this.questionCount() });
     if (!quiz.questions.length) return;
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
@@ -150,9 +203,10 @@ export class ExamsPage implements OnInit {
       ]);
       const realDocs = docs.filter(Boolean);
       const docWeak = weak.filter((w: any) => (exam.docIds || []).includes(w.docId));
-      console.log('Exporting PDF with question count:', this.questionCount());
-      const quiz = buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
-      console.log('Generated quiz with', quiz.questions.length, 'questions');
+      this.lastDocWeak = docWeak;
+      // The cached quiz (AI scenarios when they landed, offline otherwise) so
+      // the handout matches what practice serves.
+      const quiz = this.builtQuiz || buildExamQuiz(exam, realDocs, docWeak, { count: this.questionCount() });
       const examWithQuestions = { ...exam, questions: quiz.questions };
       await exportExamPdf(examWithQuestions, docs);
       this.toast.toast('Exam PDF downloaded ✓');

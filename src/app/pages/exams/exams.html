@@ -15,6 +15,11 @@
             <label>Number of questions:</label>
             <input type="number" class="text-input" [value]="questionCount()" (input)="setQuestionCount($event.target.valueAsNumber)" min="1" max="100" placeholder="Enter number of questions">
           </div>
+          @if (aiBuilding()) {
+            <p class="faint" style="font-size:12px;margin:8px 0 0">✨ Crafting AI scenario questions for every topic in your files… ({{ aiProgress().done }}/{{ aiProgress().total }})</p>
+          } @else if (aiFailed()) {
+            <p class="faint" style="font-size:12px;margin:8px 0 0">AI scenario questions unavailable right now — practicing with built-in questions.</p>
+          }
           <button class="btn btn-primary" [disabled]="!practiceCount()" (click)="startPractice()">
             <span [innerHTML]="'play' | ico"></span> Practice quiz ({{ practiceCount() }} questions)
           </button>

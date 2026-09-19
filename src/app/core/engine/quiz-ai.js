@@ -5,7 +5,8 @@ import { listDocImages, saveDocImages, updateDoc } from './storage.js'
 import { renderPdfVisuals } from './extract/renderPage.js'
 import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence, hashString } from './textproc.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from './textproc.js'
-import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt, explainBatchPrompt, authorQuizPrompt } from './prompts.js'
+import { detectTopics } from './topics.js'
+import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt, explainBatchPrompt, authorQuizPrompt, examAuthorPrompt } from './prompts.js'
 import {
   extractJSONArray,
   clean,
@@ -665,6 +666,155 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
 
   for (let g = firstWave; g < groups.length && out.length < cfg.count; g++) {
     takeRows(await authGroup(groups[g]), groups[g])
+  }
+
+  return {
+    questions: out,
+    error: out.length ? null : 'not_enough_content',
+    aiPolished: out.length > 0,
+    aiNote: out.length ? null : 'author_empty'
+  }
+}
+
+// Exam-practice authoring across EVERY file the exam covers, split per topic:
+// one unit per doc-topic (from detectTopics' sentence membership), the
+// requested count allocated equally across units (min 1 each) so the quiz
+// covers each topic of each file like a properly written exam. Scenario-style
+// MCQs only (EXAM_AUTHOR_RULES); rows are validated per file and tagged with
+// meta.docId/docName/topic for mistake banking and topic labels.
+export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, total) => {}) {
+  const total = Math.max(4, opts.count || 20)
+  const weakTerms = Array.isArray(opts.weakTerms) ? opts.weakTerms : []
+  const weakHint = weakTerms.length
+    ? 'Lean toward these terms the student struggles with: ' +
+      weakTerms.slice(0, 20).map(w => String(w.term || w)).join(', ')
+    : ''
+
+  // One unit per doc-topic with at least two supporting sentences; smaller
+  // buckets merge into the doc's General unit so no material is lost.
+  // detectTopics runs on the RAW text (its heading detection needs the
+  // heading lines); ranked sentences come from the stripped text, so topics
+  // are matched back by containment.
+  const units = []
+  for (const doc of docs) {
+    const raw = doc.text || ''
+    const text = stripHeadings(raw)
+    const ranked = scoreSentences(sentences(text), termFreq(text))
+    if (ranked.length < 4) continue
+    const { membership } = detectTopics(raw)
+    const rawEntries = [...membership.entries()]
+    const topicOf = s => {
+      for (const [rawSent, t] of rawEntries) {
+        if (rawSent.includes(s.text) || s.text.includes(rawSent)) return t
+      }
+      return 'General'
+    }
+    const byTopic = new Map()
+    for (const s of ranked) {
+      const t = topicOf(s)
+      if (!byTopic.has(t)) byTopic.set(t, [])
+      byTopic.get(t).push(s)
+    }
+    const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(raw))
+    const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
+    const buckets = [...byTopic.entries()].sort((a, b) => b[1].length - a[1].length)
+    const general = []
+    for (const [topic, ss] of buckets) {
+      if (ss.length >= 2) units.push({ docId: doc.id, docName: doc.name, topic, sentences: ss, isBanned, termBank })
+      else general.push(...ss)
+    }
+    if (general.length >= 2) {
+      units.push({ docId: doc.id, docName: doc.name, topic: 'General', sentences: general, isBanned, termBank })
+    }
+  }
+  if (!units.length) return { questions: [], error: 'not_enough_content' }
+
+  // Allocate the count across units: equal share, min 1, capped by each
+  // unit's material (one question per source sentence); leftover quota goes
+  // to the biggest units, then to any unit that still has spare material.
+  const alloc = new Array(units.length).fill(1)
+  let left = total - units.length
+  if (left > 0) {
+    const order = units.map((u, i) => i).sort((a, b) => units[b].sentences.length - units[a].sentences.length)
+    for (const i of order) { if (!left) break; const add = Math.min(left, Math.floor(units[i].sentences.length / 2)); alloc[i] += add; left -= add }
+    while (left > 0) {
+      let progress = false
+      for (let i = 0; i < units.length && left > 0; i++) {
+        if (alloc[i] < units[i].sentences.length) { alloc[i]++; left--; progress = true }
+      }
+      if (!progress) break
+    }
+  }
+
+  const out = []
+  const seen = new Set()
+  onProgress(0, total)
+
+  const takeRows = (rows, unit, quota) => {
+    let taken = 0
+    for (const it of (Array.isArray(rows) ? rows : [])) {
+      if (taken >= quota) break
+      const src = unit.sentences[Number(it?.src)] || unit.sentences[0]
+      const sentence = src ? src.text : ''
+      if (!sentence || it.kind !== 'mcq') continue
+      const stem = clean(it.stem)
+      const correct = clean(it.correct)
+      const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
+      if (!stem || !correct || wrong.length !== 3) continue
+      if (stem.length > 300 || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
+      const all = [correct, ...wrong]
+      if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
+      if (new RegExp('\b' + escapeRegExp(correct) + '\b', 'i').test(stem)) continue
+      const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
+      const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
+      if (answerIndex === -1) continue
+      if (seen.has(stem.toLowerCase())) continue
+      seen.add(stem.toLowerCase())
+      out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct, docId: unit.docId, docName: unit.docName, topic: unit.topic } })
+      taken++
+    }
+    onProgress(out.length, total)
+    return taken
+  }
+
+  const authBatch = async (unit, group, quota) => {
+    const raw = await chatJSON(examAuthorPrompt(group, unit.topic, weakHint, unit.termBank), {
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
+    })
+    return takeRows(extractJSONArray(raw) || [], unit, quota)
+  }
+
+  // Batches per unit (AUTHOR_BATCH sentences each), all fired in parallel.
+  const jobs = []
+  const remaining = []
+  units.forEach((unit, u) => {
+    const want = alloc[u]
+    const pick = unit.sentences.slice(0, Math.min(unit.sentences.length, Math.max(want * 2, 4)))
+    for (let i = 0; i < pick.length; i += AUTHOR_BATCH) {
+      const group = pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
+      jobs.push({ unit, group, quota: want })
+    }
+    remaining.push({ unit, next: pick.length, want })
+  })
+  if (!jobs.length) return { questions: [], error: 'not_enough_content' }
+
+  const wave = await runPool(jobs.map(j => () => authBatch(j.unit, j.group, j.quota)), AUTHOR_POOL)
+  const takenByUnit = new Map()
+  wave.forEach((r, i) => {
+    const j = jobs[i]
+    const taken = r.ok ? r.r : 0
+    takenByUnit.set(j.unit.topic + '|' + j.unit.docId, (takenByUnit.get(j.unit.topic + '|' + j.unit.docId) || 0) + taken)
+  })
+
+  // Sequential top-up: units that came in under quota get one more batch.
+  for (const rem of remaining) {
+    const key = rem.unit.topic + '|' + rem.unit.docId
+    while (out.length < total && (takenByUnit.get(key) || 0) < rem.want && rem.next < rem.unit.sentences.length) {
+      const group = rem.unit.sentences.slice(rem.next, rem.next + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
+      rem.next += AUTHOR_BATCH
+      const taken = await authBatch(rem.unit, group, rem.want - (takenByUnit.get(key) || 0)).catch(() => 0)
+      takenByUnit.set(key, (takenByUnit.get(key) || 0) + taken)
+    }
   }
 
   return {

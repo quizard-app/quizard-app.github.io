@@ -226,3 +226,28 @@ export function authorQuizPrompt(group, weakHint, terms) {
   if (weakHint) prompt += '\n\n' + weakHint
   return prompt
 }
+
+// Exam-practice variant of the authoring rules. Differences from the doc-quiz
+// rules: each batch covers ONE topic of ONE study file, options must come from
+// the same concept family (principles together, attack types together…), and
+// — matching real teacher-made exam items — questions MAY reference the study
+// material ("according to the deck's whistleblowing process").
+export const EXAM_AUTHOR_RULES = AUTHOR_RULES
+  .replace(
+    'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
+    'NEVER reference document titles, section headings, chapter names, unit numbers, or page numbers. When a question mirrors a process or decision the study material describes, it MAY say "the deck" or "the study material" (e.g., "According to the deck\'s whistleblowing process, what should the employee do first?").'
+  ) + '\n' + [
+  'COVERAGE — every sentence in this batch belongs to ONE topic of ONE study file: keep all questions inside that topic, and spread them across the different angles the topic offers (what it is, when it applies, how the process runs, why it matters).',
+  'OPTION FAMILIES — all four options must come from the same concept family as the correct answer (ethical principles together, CIA properties together, attack types together, framework functions together, incident-response stages together), exactly like a professionally written exam.'
+].join('\n')
+
+export function examAuthorPrompt(group, topicHint, weakHint, terms) {
+  const lines = group.map(s => `[${s.i}] ${s.text}`).join('\n')
+  let prompt = EXAM_AUTHOR_RULES + '\n\nSource sentences:\n' + lines
+  if (topicHint) prompt += '\n\nTopic of this batch: ' + topicHint
+  if (terms && terms.length) {
+    prompt += '\n\nConcepts from this file (use these as wrong options where they fit the same family): ' + terms.join(', ')
+  }
+  if (weakHint) prompt += '\n\n' + weakHint
+  return prompt
+}
