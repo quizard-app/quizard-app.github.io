@@ -1,0 +1,1 @@
+import{W as Sl,gt as g,it as bb}from"./main-P4QYOTXK.js";import{t as k}from"./chunk-DLK3tC17.js";var c=class i{sanitizer=g(bb);cache=new Map;transform(t){return this.cache.has(t)||this.cache.set(t,this.sanitizer.bypassSecurityTrustHtml(k(t))),this.cache.get(t)}static ɵfac=function(p){return new(p||i)};static ɵpipe=Sl({name:`ico`,type:i,pure:!0})};export{c as t};
