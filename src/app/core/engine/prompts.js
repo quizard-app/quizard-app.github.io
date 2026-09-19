@@ -238,7 +238,8 @@ export const EXAM_AUTHOR_RULES = AUTHOR_RULES
     'NEVER reference document titles, section headings, chapter names, unit numbers, or page numbers. When a question mirrors a process or decision the study material describes, it MAY say "the deck" or "the study material" (e.g., "According to the deck\'s whistleblowing process, what should the employee do first?").'
   ) + '\n' + [
   'COVERAGE — every sentence in this batch belongs to ONE topic of ONE study file: keep all questions inside that topic, and spread them across the different angles the topic offers (what it is, when it applies, how the process runs, why it matters).',
-  'OPTION FAMILIES — all four options must come from the same concept family as the correct answer (ethical principles together, CIA properties together, attack types together, framework functions together, incident-response stages together), exactly like a professionally written exam.'
+  'OPTION FAMILIES — all four options must come from the same concept family as the correct answer (ethical principles together, CIA properties together, attack types together, framework functions together, incident-response stages together), exactly like a professionally written exam.',
+  '  - Every option must be a CONCEPT TERM — a noun naming a principle, attack, property, stage, law section, or process. NEVER use a bare verb, adjective, or filler word picked from the sentence (no "asks", "applies", "process", "thing").'
 ].join('\n')
 
 export function examAuthorPrompt(group, topicHint, weakHint, terms) {
