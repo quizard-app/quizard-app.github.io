@@ -209,6 +209,7 @@ export const AUTHOR_RULES = [
   '  - Keep all four options parallel in length and form, and make the wrong options specific, believable and distinct from each other.',
   '  - When "concepts from this document" are provided, use them as wrong options whenever they fit the family — never invent generic filler.',
   'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
+  '  - Preserve the source capitalization for proper nouns — agency names (CICC, PNP-ACG), law names (RA 10175), framework names (PAPA, WCAG) stay capitalized in stems and options.',
   'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
   'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
