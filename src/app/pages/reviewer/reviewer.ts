@@ -47,7 +47,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   @ViewChild('viewerImg') viewerImg?: ElementRef<HTMLImageElement>;
 
   doc = signal<any>(null);
-  view = signal<'summary' | 'gallery' | 'full'>('summary');
+  view = signal<'summary' | 'gallery'>('summary');
   contentHtml = signal<SafeHtml | string>('');
   scale = 1;
   hasImages = signal(false);
@@ -352,18 +352,11 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       this.contentHtml.set(this.trust(this.aiMode() && this.aiReviewer() ? this.aiReviewHtml() : this.summaryHtml()));
       content.classList.add('summary-mode');
       if (fc) fc.style.visibility = 'hidden';
-    } else {
-      this.contentHtml.set(this.trust(this.fullHtml()));
-      content.classList.remove('summary-mode');
-      this.applyScale();
-      if (fc) fc.style.visibility = 'visible';
     }
-    setTimeout(() => { this.attachSaveOnPress(); }, 0);
-    this.findVisible.set(view === 'full');
-    if (view !== 'full') this.clearFind();
+    this.clearFind();
   }
 
-  setView(v: 'summary' | 'gallery' | 'full') {
+  setView(v: 'summary' | 'gallery') {
     this.view.set(v);
     saveSettings({ reviewerView: v });
     this.applyView();
@@ -515,11 +508,11 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
 
   togglePlay() {
     if (this.view() === 'summary' && this.aiMode() && this.aiState() === 'ready') {
-      this.toast.toast('Read-aloud works on Quick notes and Full text');
+      this.toast.toast('Read-aloud works on Quick notes');
       return;
     }
     if (this.ttsActive) { resume(); this.ttsState.set('playing'); return; }
-    const targets = this.nlp ? this.nlp.readTargets[this.view() === 'full' ? 'full' : 'summary'] : [];
+    const targets = this.nlp ? this.nlp.readTargets['summary'] : [];
     if (!targets || !targets.length) { this.toast.toast('Nothing to read in this view'); return; }
     this.ttsActive = true;
     this.ttsState.set('playing');
@@ -529,8 +522,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       onindex: (i: number) => {
         const content = this.content?.nativeElement;
         content?.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
-        if (this.view() === 'full') content?.querySelectorAll('[data-para]')[i]?.classList.add('speaking');
-        else content?.querySelectorAll('[data-point]')[i]?.classList.add('speaking');
+        content?.querySelectorAll('[data-point]')[i]?.classList.add('speaking');
       }
     });
   }
