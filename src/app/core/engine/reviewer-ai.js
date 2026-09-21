@@ -54,6 +54,10 @@ Return JSON with exactly this shape:
     { "clue": "Personal or cultural beliefs about right and wrong", "answer": "Morality" },
     { "clue": "Framework consisting of Privacy, Accuracy, Property, and Accessibility", "answer": "PAPA" }
   ],
+  "myths": [
+    { "myth": "Liking or commenting on a libelous post automatically makes you liable.", "fact": "Mere recipients/reactors are protected; the original author is the primary target." },
+    { "myth": "Authorized penetration testing is illegal.", "fact": "Authorized security testing is lawful when performed within its permitted scope." }
+  ],
   "finalReview": [
     "Morality = What I/our culture believe is right",
     "Utilitarianism = Outcome",
@@ -79,10 +83,11 @@ RULES:
 10. "important" flags the trap ("Something can be legal but unethical, or ethical but not legally required."). "example" is one concrete IT scenario.
 11. "memory" is the section's memory trick. "examClue" maps the exact phrase the exam uses to the answer with → arrows.
 12. "idQuestions" are 6-14 identification drills: "clue" describes the concept WITHOUT naming it, "answer" is the term. Pull the exam's most likely definitions.
-13. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
-14. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
-15. Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
-16. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
+13. "myths" are 4-8 misconception pairs the document debunks (or that students commonly get wrong about it): the ❌ myth students believe, the ✅ fact that corrects it.
+14. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
+15. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
+16. You MAY open a part title or term with ONE emoji when it aids scanning (📚, 🇵🇭, 🟦…). Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
+17. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
 
 function clean(s) {
   return String(s || '').replace(/\s+/g, ' ').trim()
@@ -162,13 +167,19 @@ export function sanitizeReviewer(raw) {
         .map(q => ({ clue: clean(q?.clue), answer: clean(q?.answer) }))
         .filter(q => q.clue && q.answer)
     : []
+  const myths = Array.isArray(raw.myths)
+    ? raw.myths
+        .map(m => ({ myth: clean(m?.myth), fact: clean(m?.fact) }))
+        .filter(m => m.myth && m.fact)
+    : []
   const finalReview = Array.isArray(raw.finalReview) ? raw.finalReview.map(clean).filter(Boolean) : []
   return {
-    v: 2, // schema version — v1 caches (no sub-terms/ID drills) regenerate once
+    v: 3, // schema version — older caches (no myths block) regenerate once
     title: clean(raw.title) || 'Exam Reviewer',
     intro: clean(raw.intro) || '',
     parts,
     idQuestions,
+    myths,
     finalReview,
     highYield
   }
@@ -196,9 +207,9 @@ function chunkText(text) {
 export async function ensureAIReviewer(doc) {
   const cached = doc.reviewerAI
   const cachedOk = Array.isArray(cached) ? cached.length : cached?.parts?.length
-  // v2 = the hand-made format (sub-terms, ID drills, final review). v1 caches
-  // fall through and regenerate once with the new prompt.
-  if (cachedOk && cached.v === 2) {
+  // v3 = the hand-made format (sub-terms, ID drills, myths, final review).
+  // Older caches fall through and regenerate once with the new prompt.
+  if (cachedOk && cached.v === 3) {
     return { reviewer: cached, cached: true }
   }
 
@@ -329,6 +340,19 @@ export function reviewerToHtml(reviewer, esc) {
           <div class="ai-idq" data-para>
             <div class="ai-idq-clue">${e(q.clue)}</div>
             <div class="ai-idq-ans">→ ${e(q.answer)}</div>
+          </div>`).join('')}
+      </div>`)
+  }
+  // ❌ myth / ✅ fact misconception pairs
+  const myths = reviewer.myths || []
+  if (myths.length) {
+    out.push(`
+      <div class="rvw-part">
+        <div class="rvw-part-head"><span class="rvw-num">⚖️</span><h3>Myths vs Facts</h3></div>
+        ${myths.map(m => `
+          <div class="ai-myth" data-para>
+            <div class="ai-myth-row bad">❌ <span>${e(m.myth)}</span></div>
+            <div class="ai-myth-row good">✅ <span>${e(m.fact)}</span></div>
           </div>`).join('')}
       </div>`)
   }

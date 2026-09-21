@@ -36,6 +36,10 @@ const RAW = {
     { clue: 'Personal or cultural beliefs about right and wrong', answer: 'Morality' },
     { clue: '', answer: 'nope' }
   ],
+  myths: [
+    { myth: 'Liking or commenting on a libelous post automatically makes you liable.', fact: 'Mere recipients are protected; the original author is the target.' },
+    { myth: '  ', fact: 'nope' }
+  ],
   finalReview: ['Utilitarianism = Outcome', 'PAPA = Privacy, Accuracy, Property, Accessibility'],
   highYield: [{ label: 'Five theories', items: ['Utilitarianism → Outcome', 'Deontology → Duty'] }]
 }
@@ -54,6 +58,8 @@ describe('sanitizeReviewer (extended format)', () => {
     expect(sec.mnemonic).toContain('→')
     expect(r.idQuestions).toHaveLength(1)
     expect(r.idQuestions[0].answer).toBe('Morality')
+    expect(r.myths).toHaveLength(1)
+    expect(r.myths[0].fact).toContain('original author')
     expect(r.finalReview).toHaveLength(2)
     expect(r.highYield[0].items).toHaveLength(2)
   })
@@ -82,6 +88,9 @@ describe('reviewerToHtml (extended format)', () => {
     expect(html).toContain('Recognize → Gather')
     expect(html).toContain('Possible Identification Questions')
     expect(html).toContain('→ Morality')
+    expect(html).toContain('Myths vs Facts')
+    expect(html).toContain('❌')
+    expect(html).toContain('✅')
     expect(html).toContain('One-Minute Final Review')
     expect(html).toContain('ai-def-term') // "Utilitarianism = Outcome" as def line
     expect(html).toContain('Super Important Exam Points')

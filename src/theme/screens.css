@@ -677,6 +677,19 @@ html[data-theme='dark'] .ai-term-label { color: var(--accent); }
 }
 html[data-theme='dark'] .ai-mnemonic-label { color: var(--accent); }
 
+/* ❌ myth / ✅ fact misconception pairs */
+.ai-myth {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px; margin-bottom: 8px;
+}
+.ai-myth-row { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; line-height: 1.5; }
+.ai-myth-row + .ai-myth-row { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.ai-myth-row.bad span { color: var(--bad); }
+.ai-myth-row.good span { color: var(--good, var(--accent-strong)); font-weight: 600; }
+html[data-theme='dark'] .ai-myth-row.good span { color: var(--accent); }
+
 /* 📝 identification drills: clue → Answer */
 .ai-idq {
   background: var(--surface);
