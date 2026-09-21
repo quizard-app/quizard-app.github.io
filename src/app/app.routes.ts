@@ -42,10 +42,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/reviewer/reviewer').then(m => m.ReviewerPage)
   },
   {
-    path: 'flashcards/:id',
-    loadComponent: () => import('./pages/flashcards/flashcards').then(m => m.FlashcardsPage)
-  },
-  {
     path: 'quiz',
     loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
   },

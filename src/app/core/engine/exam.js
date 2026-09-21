@@ -13,7 +13,7 @@ const EXAM_MIX = { ...MCQ_ONLY_MIX }
  * @param {import('./db-types.js').Exam} exam
  * @param {Array<{id: string, name: string, text: string, type?: string}>} docs - full docs (getDoc)
  * @param {Array<{term: string, docId?: string}>} weakTerms - user's weak terms (optional)
- * @param {{count?: number}} opts
+ * @param {{count?: number, difficulty?: string}} opts
  * @returns {{ questions: Array<object>, error: string | null }}
  */
 export function buildExamQuiz(exam, docs, weakTerms = [], opts = {}) {
@@ -33,7 +33,7 @@ export function buildExamQuiz(exam, docs, weakTerms = [], opts = {}) {
     const cfg = {
       count: per,
       mix: EXAM_MIX,
-      difficulty: 'medium',
+      difficulty: opts.difficulty || 'medium',
       shuffle: false,
       timerSec: 0,
       topics: topicsFor(doc.id),

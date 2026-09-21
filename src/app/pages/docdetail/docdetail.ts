@@ -87,7 +87,6 @@ export class DocDetailPage implements OnInit {
 
   goSetup() { this.router.navigate(['/doc', this.doc().id, 'setup']); }
   goReviewer() { this.router.navigate(['/reviewer', this.doc().id]); }
-  goFlashcards() { this.router.navigate(['/flashcards', this.doc().id]); }
   goLibrary() { this.router.navigateByUrl('/tabs/library'); }
 
   async analyzeVisuals() {

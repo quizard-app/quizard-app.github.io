@@ -3,9 +3,11 @@ import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { KeyValuePipe } from '@angular/common';
 import { TYPE_META } from '../../core/engine/quizgen.js';
+import { buildExamQuiz } from '../../core/engine/exam.js';
+import { authorExamQuiz } from '../../core/engine/quiz-ai.js';
 import { explainAnswer } from '../../core/engine/explain.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
-import { loadSettings, getWeakTerms, listDueCards, listDocs, getDoc } from '../../core/engine/storage.js';
+import { loadSettings, getWeakTerms, listDueCards, listDocs, getDoc, getExam } from '../../core/engine/storage.js';
 import { keyTerms } from '../../core/engine/textproc.js';
 import { exportQuiz } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
@@ -204,6 +206,80 @@ export class ResultsPage implements OnInit {
       this.navCtrl.setDirection('root', false);
       this.router.navigateByUrl('/quiz-review');
     }
+  }
+
+  // ── Follow-up rounds: "Generate 20 more" (weighted to misses) + "Make it harder" ──
+  crafting = signal('');
+  private readonly ladder = ['easy', 'medium', 'hard'];
+
+  private bumpDifficulty(d?: string) {
+    const i = this.ladder.indexOf(d || 'medium');
+    return this.ladder[Math.min(this.ladder.length - 1, Math.max(0, i + 1))];
+  }
+
+  moreQuestions() { void this.followUp({ count: 20, bump: false }); }
+  makeHarder() { void this.followUp({ count: 0, bump: true }); }
+
+  private async followUp({ count, bump }: { count: number; bump: boolean }) {
+    const r = this.r();
+    if (!r || this.crafting()) return;
+    const want = count || (r.questions?.length || 20);
+    const difficulty = bump ? this.bumpDifficulty(r.cfg?.difficulty) : undefined;
+    const weak = await getWeakTerms(r.docId ?? null).catch(() => []);
+
+    // Exam practice rounds: craft here, then hand the questions to the quiz screen
+    if (r.examMode && r.examId) {
+      this.crafting.set(bump ? 'Crafting a harder set…' : `Crafting ${want} new questions…`);
+      try {
+        const exam = await getExam(r.examId);
+        if (!exam) throw new Error('exam gone');
+        const docs = (await Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null)))).filter(Boolean);
+        let questions: any[] = [];
+        try {
+          const gen = await authorExamQuiz(exam, docs, { count: want, weakTerms: weak, difficulty: difficulty || 'hard' });
+          questions = gen.questions || [];
+        } catch { /* AI unavailable — offline set below */ }
+        if (questions.length < Math.min(4, want)) {
+          questions = buildExamQuiz(exam, docs, weak, { count: want, difficulty: difficulty || 'hard' }).questions || [];
+        }
+        if (!questions.length) { this.toast.toast('Not enough material in these files for another set', true); this.crafting.set(''); return; }
+        this.qs.examSession.set({ examId: exam.id, questions, docName: exam.title });
+        this.qs.mistakeReview.set(null);
+        this.qs.currentDocId.set(null);
+        this.crafting.set('');
+        this.navCtrl.setDirection('root', false);
+        this.router.navigateByUrl('/quiz-review');
+      } catch {
+        this.crafting.set('');
+        this.toast.toast('Could not build a new set — try again', true);
+      }
+      return;
+    }
+
+    // Document rounds: retarget the stored config and let the quiz screen run
+    // its normal pipeline (AI authoring + progress UI included).
+    if (!r.docId) { this.toast.toast('This quiz has no source document', true); return; }
+    let configs: Record<string, any> = {};
+    try { configs = JSON.parse(localStorage.getItem('quizard-quiz-configs') || '{}'); } catch { /* fresh */ }
+    const prev = configs[r.docId] || {};
+    configs[r.docId] = {
+      ...prev,
+      count: want,
+      fresh: true,
+      shuffle: false,
+      timerSec: prev.timerSec || 0,
+      topics: [],
+      difficulty: difficulty || prev.difficulty || 'medium',
+      ai: true,
+      aiAuthor: true,
+      weakTerms: weak
+    };
+    localStorage.setItem('quizard-quiz-configs', JSON.stringify(configs));
+    this.qs.currentDocId.set(r.docId);
+    this.qs.examSession.set(null);
+    this.qs.mistakeReview.set(null);
+    this.navCtrl.setDirection('root', false);
+    this.router.navigateByUrl('/quiz-review');
   }
 
   reviewMistakes() { this.mistakes.startMistakeReview(this.r().docId ?? undefined); }

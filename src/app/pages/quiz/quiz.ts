@@ -532,10 +532,11 @@ export class QuizPage implements OnInit, OnDestroy {
     });
     this.qs.lastAttempt.set({
       docId: this.doc?.id || null,
+      examId: st.examId || null,
       docName: st.docName || this.doc?.name,
       correct: st.correct, total: this.total, percent, durationSec, wrongCount,
       mistakeMode: !!st.mistakeMode, examMode: !!st.examMode,
-      cfg: { timerSec: this.cfg?.timerSec || 0 },
+      cfg: { timerSec: this.cfg?.timerSec || 0, difficulty: this.cfg?.difficulty || 'medium' },
       byType, review,
       questions: this.session.map(q => ({ ...q }))
     });

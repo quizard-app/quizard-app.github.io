@@ -40,6 +40,20 @@
         </div>
       }
 
+      @if (!r.mistakeMode) {
+        <div class="next-steps">
+          <div class="ns-head"><span [innerHTML]="'zap' | ico"></span> Keep going</div>
+          <div class="ns-actions">
+            <button class="btn btn-primary ns-btn" [disabled]="crafting()" (click)="moreQuestions()" data-tooltip="Fresh questions weighted to what you missed">
+              <span [innerHTML]="'sparkles' | ico"></span> {{ crafting() || 'Generate 20 more' }}
+            </button>
+            <button class="btn btn-secondary ns-btn" [disabled]="crafting()" (click)="makeHarder()" data-tooltip="Same size, one difficulty level up">
+              <span [innerHTML]="'flame' | ico"></span> Make it harder
+            </button>
+          </div>
+        </div>
+      }
+
       @if (!r.mistakeMode && (weakCount() > 0 || dueCount() > 0)) {
         <div class="next-steps">
           <div class="ns-head"><span [innerHTML]="'sparkles' | ico"></span> What's next?</div>

@@ -102,14 +102,6 @@
       <p class="faint" style="font-size:12px;margin-top:10px">{{ keyStatus() }}</p>
     </div>
 
-    <div class="section-title">Study reminders</div>
-    <div class="settings-group">
-      <div class="row" style="border-bottom:none" data-tooltip="Get reminded to review flashcards that are due for spaced repetition">
-        <div><div class="label">Due-card reminders</div><div class="sub">Daily nudge to review due cards</div></div>
-        <div class="switch" [class.on]="remindersOn" (click)="toggleReminders(!remindersOn)" data-tooltip="Toggle due-card reminders"></div>
-      </div>
-    </div>
-
     <div class="section-title">Backup &amp; restore</div>
     <div class="card" style="padding:16px">
       @if (showNudge) {

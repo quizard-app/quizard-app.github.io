@@ -40,6 +40,10 @@ const RAW = {
     { myth: 'Liking or commenting on a libelous post automatically makes you liable.', fact: 'Mere recipients are protected; the original author is the target.' },
     { myth: '  ', fact: 'nope' }
   ],
+  gaps: [
+    'Section on encryption was unreadable in the source',
+    '   '
+  ],
   finalReview: ['Utilitarianism = Outcome', 'PAPA = Privacy, Accuracy, Property, Accessibility'],
   highYield: [{ label: 'Five theories', items: ['Utilitarianism → Outcome', 'Deontology → Duty'] }]
 }
@@ -60,6 +64,7 @@ describe('sanitizeReviewer (extended format)', () => {
     expect(r.idQuestions[0].answer).toBe('Morality')
     expect(r.myths).toHaveLength(1)
     expect(r.myths[0].fact).toContain('original author')
+    expect(r.gaps).toEqual(['Section on encryption was unreadable in the source'])
     expect(r.finalReview).toHaveLength(2)
     expect(r.highYield[0].items).toHaveLength(2)
   })
@@ -92,6 +97,8 @@ describe('reviewerToHtml (extended format)', () => {
     expect(html).toContain('❌')
     expect(html).toContain('✅')
     expect(html).toContain('One-Minute Final Review')
+    expect(html).toContain('Possibly missing from this reviewer')
+    expect(html).toContain('Section on encryption was unreadable in the source')
     expect(html).toContain('ai-def-term') // "Utilitarianism = Outcome" as def line
     expect(html).toContain('Super Important Exam Points')
     expect(html).toContain("If you're short on study time")

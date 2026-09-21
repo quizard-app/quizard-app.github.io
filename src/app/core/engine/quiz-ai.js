@@ -28,6 +28,13 @@ function blobToDataUrlLocal(blob) {
   })
 }
 
+// Optional difficulty steer for AI-authored questions (results "Make it harder")
+function difficultyHint(d) {
+  if (d === 'hard') return 'DIFFICULTY: HARD — prefer application and analysis questions; wrong options must be near-miss concepts from the same family.'
+  if (d === 'easy') return 'DIFFICULTY: EASY — straightforward recognition and definition questions.'
+  return ''
+}
+
 // Run async task factories with limited concurrency. AI authoring fires
 // several batch prompts at once — this keeps the wall time at roughly
 // ceil(batches / limit) × one call instead of summing every call, while
@@ -291,6 +298,7 @@ export async function generateQuizAI(doc, cfg, onProgress) {
       weakHint = `PRIORITIZE these learner-weak terms when picking sentences to quiz (use them as the answer where possible): ${terms.join(', ')}.`
     }
   }
+  const diffHint = difficultyHint(cfg.difficulty)
 
   // Full AI authoring: Gemini writes the whole quiz from scratch (recall +
   // comprehension + scenario questions) instead of polishing built-in drafts.
@@ -451,6 +459,7 @@ export async function gradeShortAnswer(userAnswer, q) {
 // records the first batch failure (null when every call succeeded).
 async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const text = stripHeadings(doc.text)
+  const diffHint = difficultyHint(cfg.difficulty)
   const ranked = scoreSentences(sentences(text), termFreq(text))
   if (ranked.length < 3) return { questions: [], error: null }
   // Top sentences from across the document; one question authored per
@@ -508,7 +517,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
 
   const authGroup = async (group) => {
     try {
-      return extractJSONArray(await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
+      return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
         maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7
       })) || []
     } catch (err) {
@@ -615,6 +624,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
     ? 'Lean toward these terms the student struggles with: ' +
       cfg.weakTerms.slice(0, 20).map(w => String(w.term || w)).join(', ')
     : ''
+  const diffHint = difficultyHint(cfg.difficulty)
 
   const out = []
   const seen = new Set()
@@ -654,7 +664,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   }
 
   const authGroup = async (group) => {
-    const raw = await chatJSON(authorQuizPrompt(group, weakHint, termBank), {
+    const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
       maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
     })
     return extractJSONArray(raw) || []
@@ -692,6 +702,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
     ? 'Lean toward these terms the student struggles with: ' +
       weakTerms.slice(0, 20).map(w => String(w.term || w)).join(', ')
     : ''
+  const diffHint = difficultyHint(opts.difficulty)
 
   // One unit per doc-topic with at least two supporting sentences; smaller
   // buckets merge into the doc's General unit so no material is lost.
@@ -786,7 +797,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
   }
 
   const authBatch = async (unit, state, group) => {
-    const raw = await chatJSON(examAuthorPrompt(group, unit.topic, weakHint, unit.termBank), {
+    const raw = await chatJSON(examAuthorPrompt(group, unit.topic, [weakHint, diffHint].filter(Boolean).join('\n'), unit.termBank), {
       maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
     })
     return takeRows(extractJSONArray(raw) || [], unit, state)

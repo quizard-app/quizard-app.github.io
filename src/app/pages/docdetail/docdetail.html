@@ -62,8 +62,7 @@
       <button class="btn btn-secondary" (click)="goReviewer()" style="margin-top:20px;width:100%" data-tooltip="Read this document as a study reviewer"><span [innerHTML]="'book' | ico"></span> Open Reviewer</button>
       <button class="btn btn-secondary" (click)="analyzeVisuals()" [disabled]="analyzing" style="margin-top:10px;width:100%" data-tooltip="Have Gemini look at the pages, diagrams and code so quizzes can ask about the visuals">
         <span [innerHTML]="'scan' | ico"></span> {{ analyzing ? 'Analyzing…' : 'Analyze visuals' }}
-      </button>
-      <button class="btn btn-secondary" (click)="goFlashcards()" style="margin-top:10px;width:100%" data-tooltip="Study key terms as flip cards"><span [innerHTML]="'shuffle' | ico"></span> Flashcards</button>
+      </button>
       <button class="btn btn-primary" (click)="goSetup()" style="margin-top:10px"><span [innerHTML]="'play' | ico"></span> Create Quiz</button>
       <button class="btn btn-danger-ghost" (click)="remove()" style="margin-top:10px;width:100%"><span [innerHTML]="'trash' | ico"></span> Delete document</button>
     </div>

@@ -690,6 +690,19 @@ html[data-theme='dark'] .ai-mnemonic-label { color: var(--accent); }
 .ai-myth-row.good span { color: var(--good, var(--accent-strong)); font-weight: 600; }
 html[data-theme='dark'] .ai-myth-row.good span { color: var(--accent); }
 
+/* ⚠ coverage notes: unreadable/uncovered source parts */
+.ai-gaps {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: color-mix(in srgb, var(--warn, #f59e0b) 10%, var(--surface));
+  border: 1px solid var(--warn-border, color-mix(in srgb, #f59e0b 35%, transparent));
+  border-radius: var(--radius-md);
+  padding: 12px 14px; margin: 0 0 10px;
+  font-size: 13px; line-height: 1.55;
+}
+.ai-gaps-head { font-weight: 800; margin-bottom: 4px; }
+.ai-gaps ul { margin: 4px 0 0; padding-left: 18px; }
+.ai-gaps li { margin-bottom: 4px; }
+
 /* 📝 identification drills: clue → Answer */
 .ai-idq {
   background: var(--surface);

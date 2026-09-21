@@ -58,6 +58,10 @@ Return JSON with exactly this shape:
     { "myth": "Liking or commenting on a libelous post automatically makes you liable.", "fact": "Mere recipients/reactors are protected; the original author is the primary target." },
     { "myth": "Authorized penetration testing is illegal.", "fact": "Authorized security testing is lawful when performed within its permitted scope." }
   ],
+  "gaps": [
+    "Section on X was unreadable in the source — re-upload a clearer copy for coverage",
+    "Topic Y appeared only as a heading with no supporting text to review"
+  ],
   "finalReview": [
     "Morality = What I/our culture believe is right",
     "Utilitarianism = Outcome",
@@ -84,10 +88,11 @@ RULES:
 11. "memory" is the section's memory trick. "examClue" maps the exact phrase the exam uses to the answer with → arrows.
 12. "idQuestions" are 6-14 identification drills: "clue" describes the concept WITHOUT naming it, "answer" is the term. Pull the exam's most likely definitions.
 13. "myths" are 4-8 misconception pairs the document debunks (or that students commonly get wrong about it): the ❌ myth students believe, the ✅ fact that corrects it.
-14. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
-15. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
-16. You MAY open a part title or term with ONE emoji when it aids scanning (📚, 🇵🇭, 🟦…). Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
-17. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
+14. "gaps" — up to 5 entries naming topics/sections from the DOCUMENT you could NOT cover, could not read clearly, or covered only thinly (empty array when coverage is complete). Never invent content to fill a gap — name it.
+15. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
+16. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
+17. You MAY open a part title or term with ONE emoji when it aids scanning (📚, 🇵🇭, 🟦…). Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
+18. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
 
 function clean(s) {
   return String(s || '').replace(/\s+/g, ' ').trim()
@@ -172,6 +177,7 @@ export function sanitizeReviewer(raw) {
         .map(m => ({ myth: clean(m?.myth), fact: clean(m?.fact) }))
         .filter(m => m.myth && m.fact)
     : []
+  const gaps = Array.isArray(raw.gaps) ? raw.gaps.map(clean).filter(Boolean).slice(0, 5) : []
   const finalReview = Array.isArray(raw.finalReview) ? raw.finalReview.map(clean).filter(Boolean) : []
   return {
     v: 3, // schema version — older caches (no myths block) regenerate once
@@ -180,6 +186,7 @@ export function sanitizeReviewer(raw) {
     parts,
     idQuestions,
     myths,
+    gaps,
     finalReview,
     highYield
   }
@@ -218,6 +225,7 @@ export async function ensureAIReviewer(doc) {
 
   const chunks = chunkText(source)
   let reviewer = null
+  let usedChunk = -1
   for (let i = 0; i < chunks.length && !reviewer; i++) {
     const scope = chunks.length > 1
       ? `DOCUMENT (part ${i + 1} of ${chunks.length}):\n\n${chunks[i]}\n\nCover only the topics in this part.`
@@ -235,6 +243,7 @@ export async function ensureAIReviewer(doc) {
         if (m) { try { parsed = JSON.parse(m[0]) } catch { parsed = null } }
       }
       reviewer = sanitizeReviewer(parsed)
+      if (reviewer) usedChunk = i
       if (!reviewer && chunks.length > 1) {
         // retry once for this chunk before giving up on the whole document
         try {
@@ -253,6 +262,13 @@ export async function ensureAIReviewer(doc) {
   }
 
   if (!reviewer) return { error: 'generation_failed' }
+  // Honest coverage notes: long files are reviewed from the first successful
+  // chunk only — say so instead of silently skipping the rest.
+  if (chunks.length > 1) {
+    const gaps = Array.isArray(reviewer.gaps) ? reviewer.gaps : []
+    gaps.unshift(`This file is long — the reviewer was built from part ${usedChunk + 1} of ${chunks.length}; later sections may be missing.`)
+    reviewer = { ...reviewer, gaps: gaps.slice(0, 6) }
+  }
   try { await updateDoc(doc.id, { reviewerAI: reviewer }) } catch { /* cache is best-effort */ }
   return { reviewer, cached: false }
 }
@@ -369,6 +385,15 @@ export function reviewerToHtml(reviewer, esc) {
             ? `<p class="ai-def" data-para><span class="ai-def-term">${e(line.slice(0, eq).trim())}</span> = ${e(line.slice(eq + 1).trim())}</p>`
             : `<p class="ai-def" data-para>${e(line)}</p>`
         }).join('')}
+      </div>`)
+  }
+  // ⚠ honest coverage notes: unreadable or uncovered parts of the source
+  const gaps = reviewer.gaps || []
+  if (gaps.length) {
+    out.push(`
+      <div class="ai-gaps" data-para>
+        <div class="ai-gaps-head">⚠️ Possibly missing from this reviewer</div>
+        <ul>${gaps.map(g => `<li>${e(g)}</li>`).join('')}</ul>
       </div>`)
   }
   out.push(`<p class="sum-note">AI-generated from your document — always double-check against your original source before the exam.</p>`)
