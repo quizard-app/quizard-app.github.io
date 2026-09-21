@@ -7,7 +7,11 @@
 
 export const MODEL_LABEL = 'gemini-3.5-flash-lite'
 
-const RELAY_BASE = 'https://quizard-relay.quizard-app.workers.dev'
+// The relay only accepts the production origin, so on localhost the dev server
+// (scripts/local-dev-server.mjs) proxies /gemini to it — same-origin, no CORS.
+const IS_LOCAL = /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
+const RELAY_URL = IS_LOCAL ? '/gemini' : 'https://quizard-relay.quizard-app.workers.dev/gemini'
+const HAS_RELAY = true
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
 const KEY_STORAGE = 'quizard.gemini.key'
 
@@ -24,8 +28,8 @@ export function setApiKey(key) {
 }
 
 // AI is available through the built-in relay; a personal key works too.
-export function hasApiKey() { return !!RELAY_BASE || !!getApiKey() }
-export function hasRelay() { return !!RELAY_BASE }
+export function hasApiKey() { return HAS_RELAY || !!getApiKey() }
+export function hasRelay() { return HAS_RELAY }
 export function getModelPool() { return [MODEL_LABEL] }
 
 async function relayRequest({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs) {
@@ -33,7 +37,7 @@ async function relayRequest({ prompt, images, json, maxOutputTokens, temperature
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res
   try {
-    res = await fetch(`${RELAY_BASE}/gemini`, {
+    res = await fetch(RELAY_URL, {
       method: 'POST',
       signal: ctrl.signal,
       headers: {
@@ -103,7 +107,7 @@ async function directRequest({ prompt, images = [], json = true, maxOutputTokens
 
 // Relay first (rotating server keys); direct-with-personal-key as backup.
 async function aiRequest(opts, timeoutMs) {
-  if (RELAY_BASE) {
+  if (HAS_RELAY) {
     try {
       return await relayRequest(opts, timeoutMs)
     } catch (err) {
