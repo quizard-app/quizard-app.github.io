@@ -133,10 +133,12 @@ export function cleanSentence(s) {
 /**
  * Split text into sentences, filtering out very short/long ones.
  * @param {string} text - Document text
+ * @param {{preStripped?: boolean}} [opts] - Set preStripped when text already
+ *   went through stripHeadings (skips a redundant full-text pass).
  * @returns {string[]}
  */
-export function sentences(text) {
-  const cleaned = stripHeadings(text)
+export function sentences(text, opts = {}) {
+  const cleaned = opts.preStripped ? String(text) : stripHeadings(text)
   const protectedText = cleaned.replace(ABBREVS, m => m.replace(/\./g, '\u0001'))
   const flat = protectedText.replace(/\s*\n\s*/g, ' ')
   const raw = flat.match(/[^.!?…]+[.!?…]*/g) || []
@@ -181,20 +183,22 @@ export function termFreq(text) {
 /**
  * Extract ranked key terms from text (single words + capitalised phrases).
  * @param {string} text
+ * @param {Map<string, number>} [freq] - Precomputed termFreq(text); skips a
+ *   second full-text tokenization pass when the caller already has one.
  * @returns {Array<{term: string, freq: number, phrase?: boolean, proper?: boolean}>}
  */
-export function keyTerms(text) {
-  const freq = termFreq(text)
-  let ranked = [...freq.entries()]
-    .filter(([w, f]) => f >= 2 && w.length >= 4)
+export function keyTerms(text, freq = null) {
+  const tf = freq || termFreq(text)
+  let ranked = [...tf.entries()]
+    .filter(([w, n]) => n >= 2 && w.length >= 4)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([term, f]) => ({ term, freq: f }))
+    .map(([term, n]) => ({ term, freq: n }))
 
   if (ranked.length < 12) {
-    ranked = [...freq.entries()]
+    ranked = [...tf.entries()]
       .filter(([w]) => w.length >= 5)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([term, f]) => ({ term, freq: f }))
+      .map(([term, n]) => ({ term, freq: n }))
   }
 
   const BLOCK_START = new Set(('the,a,an,this,that,these,those,his,her,its,their,in,on,at,during,after,before,' +
@@ -210,9 +214,12 @@ export function keyTerms(text) {
       phrases.set(p, (phrases.get(p) || 0) + 1)
     }
   }
+  const have = new Set(ranked.map(r => r.term))
   for (const [p, f] of phrases) {
-    if (f >= 1 && p.length <= 40 && !ranked.some(r => r.term === p.toLowerCase())) {
-      ranked.unshift({ term: p.toLowerCase(), phrase: true, freq: f + 2 })
+    const lp = p.toLowerCase()
+    if (f >= 1 && p.length <= 40 && !have.has(lp)) {
+      ranked.unshift({ term: lp, phrase: true, freq: f + 2 })
+      have.add(lp)
     }
   }
 
@@ -223,20 +230,22 @@ export function keyTerms(text) {
     return true
   })
 
-  const capRe = new Map()
-  for (const r of ranked) {
-    const cap = r.term.charAt(0).toUpperCase() + r.term.slice(1)
-    try {
-      capRe.set(r.term, new RegExp('\\b' + cap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(text))
-    } catch {
-      capRe.set(r.term, false)
+  // Proper-noun flag: one scan collects every capitalised token, then each
+  // kept term is a Set lookup — replacing N per-term full-text RegExp tests.
+  const kept = ranked.slice(0, 120)
+  let caps = null
+  for (const r of kept) {
+    if (r.phrase) { r.proper = true; continue }
+    if (!caps) {
+      caps = new Set()
+      const capTok = /\b[A-Z][A-Za-z'’-]*/g
+      let m
+      while ((m = capTok.exec(text)) !== null) caps.add(m[0])
     }
+    const cap = r.term.charAt(0).toUpperCase() + r.term.slice(1)
+    if (caps.has(cap)) r.proper = true
   }
-  for (const r of ranked) {
-    if (r.phrase || capRe.get(r.term)) r.proper = true
-  }
-
-  return ranked.slice(0, 120)
+  return kept
 }
 
 /**

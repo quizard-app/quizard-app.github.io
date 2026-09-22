@@ -197,11 +197,11 @@ export function generateQuiz(doc, config) {
   const rng = mulberry32(seed ^ require_hash(doc.id))
 
   const text = stripHeadings(doc.text)
-  const sents = sentences(text)
+  const sents = sentences(text, { preStripped: true })
   const tf = termFreq(text)
   // code/markup lines and slide chrome make garbage question sources — drop them
   const ranked = scoreSentences(sents, tf).filter(s => !looksLikeCode(s.text))
-  const terms = keyTerms(text)
+  const terms = keyTerms(text, tf)
 
   if (!terms.length || ranked.length < 3) {
     return { questions: [], seed, error: 'not_enough_content' }
@@ -226,8 +226,9 @@ export function generateQuiz(doc, config) {
     })
     if (scoped.length >= 3) {
       sentPool = scoped
-      const scopedTf = termFreq(scoped.map(s => s.text).join(' '))
-      const scopedTerms = keyTerms(scoped.map(s => s.text).join(' '))
+      const scopedText = scoped.map(s => s.text).join(' ')
+      const scopedTf = termFreq(scopedText)
+      const scopedTerms = keyTerms(scopedText, scopedTf)
       terms.length = 0
       terms.push(...scopedTerms)
       tf.clear()

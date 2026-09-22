@@ -371,6 +371,10 @@ export async function polishQuestionSet(questions, opts = {}) {
 }
 
 export async function generateQuizAI(doc, cfg, onProgress) {
+  onProgress?.(0, cfg.count)
+  // Yield once so zoneless CD can paint "Writing question 1…" before the
+  // synchronous NLP prep freezes the main thread.
+  await new Promise(r => setTimeout(r, 0))
   const base = generateQuiz(doc, cfg)
   if (base.error === 'not_enough_content' || !base.questions.length) return base
 
@@ -382,7 +386,8 @@ export async function generateQuizAI(doc, cfg, onProgress) {
 
   // Build a bank of the document's real key terms so the ai can ground its
   // distractors in THIS pdf's subject matter rather than inventing generic ones.
-  const termBank = keyTerms(doc.text).map(r => r.term.toLowerCase())
+  const docTf = termFreq(doc.text)
+  const termBank = keyTerms(doc.text, docTf).map(r => r.term.toLowerCase())
   const stTok = s => new Set((String(s).toLowerCase().match(/[a-z0-9]{3,}/g) || []))
   const relatedFor = q => {
     const st = stTok(q.meta.sentence + ' ' + q.meta.term)
@@ -544,21 +549,23 @@ export async function gradeShortAnswer(userAnswer, q) {
 // ban-list, or malformed is rejected. Returns { questions, error } where error
 // records the first batch failure (null when every call succeeded).
 async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
+  onProgress?.(0, cfg.count)
+  await new Promise(r => setTimeout(r, 0))
   const text = stripHeadings(doc.text)
   const diffHint = difficultyHint(cfg.difficulty)
-  const ranked = scoreSentences(sentences(text), termFreq(text))
+  const tf = termFreq(text)
+  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf)
   if (ranked.length < 3) return { questions: [], error: null }
   // Top sentences from across the document; one question authored per
   // sentence so coverage spreads instead of clustering.
   const material = ranked.slice(0, Math.max(Math.min(cfg.count * 3, 60), 12))
   // Real concepts from the document so the model's distractors stay in-family
   // (phishing variants pair with phishing variants, not with random nouns).
-  const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
+  const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
   const optionRng = mulberry32(hashString(String(doc.id)))
   const out = []
   const seen = new Set()
   let firstErr = null
-  onProgress?.(0, cfg.count)
 
   const takeRows = (arr, group) => {
     for (const row of (Array.isArray(arr) ? arr : [])) {
@@ -696,12 +703,17 @@ const AUTHOR_BATCH = 10
 const AUTHOR_POOL = 3
 
 export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
+  onProgress(0, cfg.count)
+  // Yield once so zoneless CD can paint "Writing question 1…" before the
+  // synchronous NLP prep freezes the main thread.
+  await new Promise(r => setTimeout(r, 0))
   const text = stripHeadings(doc.text)
   // code/markup lines from slides make garbage question sources — drop them
-  const ranked = scoreSentences(sentences(text), termFreq(text)).filter(s => !looksLikeCode(s.text))
+  const tf = termFreq(text)
+  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s => !looksLikeCode(s.text))
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
-  const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
+  const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
 
   const pick = ranked.slice(0, Math.min(ranked.length, Math.max(cfg.count * 2, 12)))
   const groups = []
@@ -716,7 +728,6 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
 
   const out = []
   const seen = new Set()
-  onProgress(0, cfg.count)
 
   const takeRows = (rows, group) => {
     for (const it of (Array.isArray(rows) ? rows : [])) {
@@ -793,6 +804,9 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
 // meta.docId/docName/topic for mistake banking and topic labels.
 export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, total) => {}) {
   const total = Math.max(4, opts.count || 20)
+  onProgress(0, total)
+  // Yield once so zoneless CD can paint progress before the per-doc NLP loop.
+  await new Promise(r => setTimeout(r, 0))
   const weakTerms = Array.isArray(opts.weakTerms) ? opts.weakTerms : []
   const weakHint = weakTerms.length
     ? 'Lean toward these terms the student struggles with: ' +
@@ -810,7 +824,8 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
     const raw = doc.text || ''
     const text = stripHeadings(raw)
     // drop code/markup lines from slides — they make garbage question sources
-    const ranked = scoreSentences(sentences(text), termFreq(text)).filter(s => !looksLikeCode(s.text))
+    const tf = termFreq(text)
+    const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s => !looksLikeCode(s.text))
     if (ranked.length < 4) continue
     const { membership } = detectTopics(raw)
     const rawEntries = [...membership.entries()]
@@ -827,7 +842,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       byTopic.get(t).push(s)
     }
     const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(raw))
-    const termBank = keyTerms(text).slice(0, 40).map(r => r.term)
+    const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
     const buckets = [...byTopic.entries()].sort((a, b) => b[1].length - a[1].length)
     const general = []
     for (const [topic, ss] of buckets) {
@@ -859,7 +874,6 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
 
   const out = []
   const seen = new Set()
-  onProgress(0, total)
   // per-unit intake counter shared by ALL of that unit's batches, so a unit
   // never contributes more than its allocated share
   const unitState = units.map((unit, u) => ({ taken: 0, want: alloc[u] }))
