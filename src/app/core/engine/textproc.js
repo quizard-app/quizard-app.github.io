@@ -87,34 +87,40 @@ const OPENER_RE = /(?:^|\s)((?:An?|The|It|In|On|At|As|By|For|To|With|When|If|Thi
 
 /**
  * Clean one candidate sentence: remove inline document furniture (module/
- * topic/outcome labels, stray page numbers) and any heading text glued in
- * front of the actual statement. Only fires when furniture LEADS the line —
- * the page-header pattern — so prose that merely mentions "Topic 3" mid-
- * sentence is left untouched.
+ * topic/outcome labels, stray page numbers), ordered-list markers pasted
+ * from slides ("C. Developer uses …", "3) Install …"), and any heading text
+ * glued in front of the actual statement. Only fires when furniture LEADS
+ * the line — the page-header pattern — so prose that merely mentions
+ * "Topic 3" mid-sentence is left untouched.
  * @param {string} s - Candidate sentence
  * @returns {string}
  */
 export function cleanSentence(s) {
   const original = String(s).replace(/\s+/g, ' ').trim()
+  // Ordered-list marker: "C. Developer …", "3) Install the package …".
+  // Requires a capitalized word after the marker so initials ("U.S. …")
+  // and versions ("2.0 release …" has no capital) are left alone.
+  const stripped = original.replace(/^(?:[A-Za-z]|\d{1,2})[.)]\s+(?=[A-Z][a-z]{2,}\b)/, '')
+  const base = (stripped.split(/\s+/).length >= 6 ? stripped : original)
   FURNITURE_RE.lastIndex = 0
-  const lead = original.search(FURNITURE_RE)
-  if (lead === -1 || lead > 6) return original
-  const hits = original.match(FURNITURE_RE) || []
+  const lead = base.search(FURNITURE_RE)
+  if (lead === -1 || lead > 6) return base
+  const hits = base.match(FURNITURE_RE) || []
   // A single leading label is usually real prose ("Chapter 3 discusses…").
   // Strip it only when Title-Case heading text follows the label.
   if (hits.length < 2) {
-    const restWords = original.slice(lead).replace(FURNITURE_RE, ' ').trim().split(/\s+/).filter(Boolean)
+    const restWords = base.slice(lead).replace(FURNITURE_RE, ' ').trim().split(/\s+/).filter(Boolean)
     const head = restWords.slice(0, 3)
-    if (!head.length || head.some(w => !/^[A-Z]/.test(w))) return original
+    if (!head.length || head.some(w => !/^[A-Z]/.test(w))) return base
   }
-  let t = original.replace(FURNITURE_RE, ' ')
+  let t = base.replace(FURNITURE_RE, ' ')
     .replace(/(?:^|\s)\d{1,4}(?=\s|$)/g, ' ')
     .replace(/\s*\|\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   // A pure-furniture line reduces to a fragment; callers that need full
   // sentences (sentences()) filter it out by word count.
-  if (!t) return original
+  if (!t) return base
   const m = t.match(OPENER_RE)
   if (m) {
     const start = m.index + m[0].length - m[1].length

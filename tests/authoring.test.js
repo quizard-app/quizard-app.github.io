@@ -9,7 +9,7 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
-import { generateQuizAI, grounded, byokHelps } from '../src/app/core/engine/quiz-ai.js'
+import { generateQuizAI, grounded, byokHelps, polishQuestionSet } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
 import { authorQuizPrompt } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
@@ -171,6 +171,45 @@ describe('byokHelps (offline-vs-key choice)', () => {
     for (const n of ['timeout', 'offline', 'network_error', 'not_enough_content', 'author_empty', 'blocked_content', 'empty_response', null, '']) {
       expect(byokHelps(n)).toBe(false)
     }
+  })
+})
+
+describe('polishQuestionSet (AI-written weak spots)', () => {
+  const qs = () => [{
+    type: 'mcq',
+    stem: 'Which concept is described here: "Developer uses this concept daily."?',
+    options: ['MVVM', 'MVC', 'MVP', 'Flux'],
+    answerIndex: 0,
+    meta: { sentence: 'Developer uses MVVM daily for building mobile apps worldwide.', term: 'MVVM', docId: 'd' }
+  }]
+
+  it('rewrites weak-spot stems exam-style', async () => {
+    vi.mocked(chatJSON).mockResolvedValueOnce(JSON.stringify([
+      { i: 0, kind: 'mcq', stem: 'Which pattern keeps UI state in a reactive ViewModel?', correct: 'MVVM', wrong: ['MVC', 'MVP', 'Flux'] }
+    ]))
+    const r = await polishQuestionSet(qs(), {})
+    expect(r.polished).toBe(1)
+    expect(r.aiNote).toBeNull()
+    expect(r.questions[0].stem).toBe('Which pattern keeps UI state in a reactive ViewModel?')
+    expect(r.questions[0].options).toHaveLength(4)
+    expect(r.questions[0].options[r.questions[0].answerIndex]).toBe('MVVM')
+  })
+
+  it('falls back to the built-in questions when AI fails', async () => {
+    vi.mocked(chatJSON).mockRejectedValueOnce(new Error('quota exploded'))
+    const input = qs()
+    const r = await polishQuestionSet(input, {})
+    expect(r.polished).toBe(0)
+    expect(r.questions).toEqual(input)
+    expect(r.aiNote).toBe('quota')
+    expect(byokHelps(r.aiNote)).toBe(true)
+  })
+
+  it('passes through items without source metadata', async () => {
+    const r = await polishQuestionSet([{ type: 'mcq', stem: 'Old?', options: ['A', 'B', 'C', 'D'], answerIndex: 0 }], {})
+    expect(r.polished).toBe(0)
+    expect(r.aiNote).toBeNull()
+    expect(vi.mocked(chatJSON).mock.calls.length).toBe(0)
   })
 })
 

@@ -62,15 +62,24 @@ export function buildMistakeQuestions(mistakes, docTerms) {
   return mistakes.map(m => {
     const pool = (docTerms.get(m.docId) || []).filter(t => t.term !== m.term.toLowerCase())
     if (pool.length >= 3) {
-      const distractors = pickImprovedDistractors({ term: m.term, proper: false, phrase: false }, pool, rng, 3)
+      const distractors = pickImprovedDistractors({ term: m.term, proper: false, phrase: false }, pool, rng, 3, {
+        avoidSentence: m.sentence
+      })
       if (distractors.length === 3) {
-        const options = shuffleArr([m.term, ...distractors], rng).map(formatOption)
-        return {
-          type: 'mcq',
-          stem: blankTerm(m.sentence, m.term),
-          options,
-          answerIndex: options.findIndex(o => o.toLowerCase() === m.term.toLowerCase()),
-          meta: { sentence: m.sentence, term: m.term, docId: m.docId }
+        // Direct exam-style stem (never a blank) with source-cased options
+        // ("MVVM", not "Mvvm") so the fallback matches AI quality.
+        const { stem } = buildMcqStem(m.sentence, m.term)
+        const options = shuffleArr([m.term, ...distractors], rng).map(t => surfaceOption(t, m.sentence))
+        const answerIndex = options.findIndex(o => o.toLowerCase() === m.term.toLowerCase())
+        if (stem && stem.endsWith('?') && answerIndex !== -1
+          && new Set(options.map(o => o.toLowerCase())).size === 4) {
+          return {
+            type: 'mcq',
+            stem,
+            options,
+            answerIndex,
+            meta: { sentence: m.sentence, term: m.term, docId: m.docId }
+          }
         }
       }
     }

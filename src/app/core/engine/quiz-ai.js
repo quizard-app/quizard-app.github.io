@@ -264,6 +264,78 @@ async function generateBatch(items, relatedFor, weakHint) {
   return out
 }
 
+// Polish a ready-made question set with the AI: exam-style direct stems and
+// same-family distractors, grounded in each item's own source sentence.
+// Only mcq/id/short items carrying meta.sentence + meta.term are polishable;
+// everything else passes through untouched. Used by generateQuizAI for fresh
+// quizzes and by the quiz page for weak-spot/mistake reviews so those are
+// AI-written too, with the built-in fallback standing in when AI is down.
+// opts: { seed?, relatedFor?, weakHint?, isBanned?, onProgress? }
+// Returns { questions, polished, aiNote } — aiNote is null on full success.
+export async function polishQuestionSet(questions, opts = {}) {
+  const list = Array.isArray(questions) ? questions : []
+  const queue = []
+  list.forEach((q, i) => {
+    if ((q.type === 'mcq' || q.type === 'id' || q.type === 'short') && q.meta?.sentence && q.meta?.term) queue.push([q, i])
+  })
+  if (!queue.length) return { questions: list, polished: 0, aiNote: null }
+  if (!hasApiKey()) return { questions: list, polished: 0, aiNote: 'no_key' }
+
+  const relatedFor = opts.relatedFor || null
+  const weakHint = opts.weakHint || null
+  const isBanned = opts.isBanned || (() => false)
+  const onProgress = opts.onProgress || null
+  const optionRng = mulberry32((((opts.seed ?? (Date.now() & 0xffffffff)) ^ 0x7a3f1d9b) >>> 0))
+  const results = new Map()
+  let aiNote = null
+  const BATCH = 6
+  const batches = []
+  for (let g = 0; g < queue.length; g += BATCH) batches.push(queue.slice(g, g + BATCH))
+  let done = list.length - queue.length
+  onProgress?.(done, list.length)
+  const batchOut = await runPool(batches.map(group => () => generateBatch(group, relatedFor, weakHint)), 3)
+  batchOut.forEach((gen, bi) => {
+    const group = batches[bi]
+    if (gen instanceof Error) {
+      if (!aiNote) aiNote = classifyAIError(gen)
+    } else {
+      group.forEach(([q, i]) => {
+        const genItem = gen.get(i)
+        if (!genItem) return
+
+        if (genItem.stem != null) {
+          if (isBanned(genItem.stem)) return
+          const correct = clean(genItem.correct) || q.meta.term
+          const options = shuffleArr([correct, ...genItem.wrong], optionRng)
+          results.set(i, { ...q, stem: genItem.stem, options, answerIndex: options.indexOf(correct), meta: { ...q.meta, term: correct } })
+        } else if (genItem.clue != null) {
+          if (isBanned(genItem.clue)) return
+          results.set(i, { ...q, clue: genItem.clue })
+        } else if (genItem.prompt != null) {
+          results.set(i, { ...q, prompt: genItem.prompt, answer: genItem.answer })
+        }
+      })
+    }
+    done = Math.min(list.length, done + group.length)
+    onProgress?.(done, list.length)
+  })
+
+  let polished = 0
+  const out = list.map((q, i) => {
+    const next = results.get(i)
+    if (!next) return q
+    polished++
+    return next
+  })
+  // Safety net: strip any document furniture the model copied from excerpts.
+  const final = out.map(q => {
+    if (q.stem) return { ...q, stem: cleanSentence(q.stem) }
+    if (q.clue) return { ...q, clue: cleanSentence(q.clue) }
+    return q
+  })
+  return { questions: final, polished, aiNote }
+}
+
 export async function generateQuizAI(doc, cfg, onProgress) {
   const base = generateQuiz(doc, cfg)
   if (base.error === 'not_enough_content' || !base.questions.length) return base
@@ -359,45 +431,14 @@ export async function generateQuizAI(doc, cfg, onProgress) {
         .catch(() => [])
     : Promise.resolve([])
 
-  const optionRng = mulberry32((base.seed ^ 0x7a3f1d9b) >>> 0)
-  const results = new Map()
-  const BATCH = 6
-  const batches = []
-  for (let g = 0; g < queue.length; g += BATCH) batches.push(queue.slice(g, g + BATCH))
-  const batchOut = await runPool(batches.map(group => () => generateBatch(group, relatedFor, weakHint)), 3)
-  batchOut.forEach((gen, bi) => {
-    const group = batches[bi]
-    if (gen instanceof Error) {
-      if (!aiNote) aiNote = classifyAIError(gen)
-    } else {
-      group.forEach(([q, i]) => {
-        const genItem = gen.get(i)
-        if (!genItem) return
-
-        if (genItem.stem != null) {
-          if (isBanned(genItem.stem)) return
-          const correct = clean(genItem.correct) || q.meta.term
-          const options = shuffleArr([correct, ...genItem.wrong], optionRng)
-          results.set(i, { ...q, stem: genItem.stem, options, answerIndex: options.indexOf(correct), meta: { ...q.meta, term: correct } })
-        } else if (genItem.clue != null) {
-          if (isBanned(genItem.clue)) return
-          results.set(i, { ...q, clue: genItem.clue })
-        } else if (genItem.prompt != null) {
-          results.set(i, { ...q, prompt: genItem.prompt, answer: genItem.answer })
-        }
-      })
-    }
-    done = Math.min(base.questions.length, done + group.length)
-    onProgress?.(done, base.questions.length)
+  const {
+    questions: out,
+    polished: polishedCount,
+    aiNote: polishNote
+  } = await polishQuestionSet(base.questions, {
+    seed: base.seed, relatedFor, weakHint, isBanned, onProgress
   })
-
-  let polishedCount = 0
-  const out = base.questions.map((q, i) => {
-    const next = results.get(i)
-    if (!next) return q
-    polishedCount++
-    return next
-  })
+  aiNote = polishNote
 
   let imageQuestions = []
   try { imageQuestions = (await visualPromise) || [] } catch { /* visual round is best-effort */ }

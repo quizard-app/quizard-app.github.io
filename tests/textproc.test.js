@@ -158,3 +158,20 @@ describe('cleanSentence — inline PDF furniture', () => {
     expect(out.every(s => !/TOPIC|Outcome|Module/.test(s))).toBe(true)
   })
 })
+
+describe('cleanSentence — ordered-list markers', () => {
+  it('strips a letter marker pasted from slides', () => {
+    expect(cleanSentence('C. Developer uses MVVM daily for building mobile apps worldwide.'))
+      .toBe('Developer uses MVVM daily for building mobile apps worldwide.')
+  })
+
+  it('strips a numbered marker', () => {
+    expect(cleanSentence('3) Install the package before running the full test suite tonight.'))
+      .toBe('Install the package before running the full test suite tonight.')
+  })
+
+  it('leaves initials like U.S. alone', () => {
+    const prose = 'U.S. regulators approved the new cybersecurity framework after lengthy review.'
+    expect(cleanSentence(prose)).toBe(prose)
+  })
+})

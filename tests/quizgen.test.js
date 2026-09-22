@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateQuiz, swapWithDistractor, tierForTerm } from '../src/app/core/engine/quizgen.js'
+import { generateQuiz, buildMistakeQuestions, swapWithDistractor, tierForTerm } from '../src/app/core/engine/quizgen.js'
 import { isTitleLike, mulberry32 } from '../src/app/core/engine/textproc.js'
 import { buildMcqStem, buildShortPrompt, pickDistractors, termClass, formatOption, buildCooccurrence, findAcronyms, buildAcronymStem, surfaceOption } from '../src/app/core/engine/questionForms.js'
 
@@ -339,6 +339,49 @@ describe('exam-style fallback quality', () => {
       const answer = q.options[q.answerIndex]
       expect(q.stem.toLowerCase()).not.toContain(answer.toLowerCase())
     }
+  })
+})
+
+describe('mistake-review exam format (offline fallback)', () => {
+  const mistakes = [
+    { docId: 'd', sentence: 'C. Developer uses MVVM daily while HTTP serves the mobile apps worldwide.', term: 'MVVM', type: 'mcq' },
+    { docId: 'd', sentence: 'The client sends every request over HTTP with proper headers attached always.', term: 'HTTP', type: 'mcq' }
+  ]
+  const docTerms = new Map([['d', [
+    { term: 'mvvm', freq: 4 }, { term: 'http', freq: 4 }, { term: 'viewmodel', freq: 3 },
+    { term: 'controller', freq: 3 }, { term: 'router', freq: 2 }, { term: 'client', freq: 2 }
+  ]]])
+
+  it('writes direct stems, never blanks', () => {
+    const qs = buildMistakeQuestions(mistakes, docTerms).filter(q => q.type === 'mcq')
+    expect(qs.length).toBeGreaterThan(0)
+    for (const q of qs) {
+      expect(q.stem.endsWith('?')).toBe(true)
+      expect(q.stem).not.toMatch(/complete the statement|____|BLANK/i)
+      expect(q.stem.toLowerCase()).not.toContain(q.options[q.answerIndex].toLowerCase())
+      expect(q.options).toHaveLength(4)
+      expect(new Set(q.options.map(o => o.toLowerCase())).size).toBe(4)
+    }
+  })
+
+  it('keeps acronym options cased (MVVM, HTTP)', () => {
+    const qs = buildMistakeQuestions(mistakes, docTerms).filter(q => q.type === 'mcq')
+    expect(qs.length).toBeGreaterThan(0)
+    for (const q of qs) {
+      for (const o of q.options) expect(o).toMatch(/^[A-Z]/)
+    }
+    const all = qs.flatMap(q => q.options)
+    expect(all).toContain('MVVM')
+  })
+
+  it('prefers concept style over broken object-questions on claused sentences', () => {
+    const { stem, style } = buildMcqStem(
+      'Developer uses MVVM: a ViewModel exposes reactive state to a thin view daily.',
+      'MVVM'
+    )
+    expect(style).toBe('concept')
+    expect(stem.endsWith('?')).toBe(true)
+    expect(stem.toLowerCase()).not.toContain('mvvm')
   })
 })
 

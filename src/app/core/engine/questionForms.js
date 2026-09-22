@@ -424,7 +424,10 @@ export function buildMcqStem(sentence, term, opts = {}) {
         if (!/^(is|are|was|were|be|been|being|has|have|had)$/i.test(verb)) {
           const termEnd = idx + term.length
           const suffix = sentence.slice(termEnd).replace(/\s+/g, ' ').trim().replace(/^[,\s:;-]+/, '').replace(/[.!?…]+$/, '').trim()
-          if (suffix.split(/\s+/).filter(Boolean).length >= 2) {
+          // A suffix opening a new clause ("a ViewModel exposes …") would
+          // read broken as a "What does X …?" stem — those sentences fall
+          // through to the concept style instead.
+          if (suffix.split(/\s+/).filter(Boolean).length >= 2 && !/^(a|an|the)\s+[A-Z]/.test(suffix)) {
             const stem = `What does ${subjectDisplay(subject)} ${baseForm(verb)} ${suffix}?`.replace(/\s+/g, ' ')
             const termRe = new RegExp('\\b' + escapeRe(term) + '\\b', 'i')
             if (!termRe.test(stem) && stem.length <= 300) {

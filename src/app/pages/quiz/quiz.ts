@@ -7,7 +7,7 @@ import {
   gradeSrsItem, getImageById, loadSettings, saveAttempt
 } from '../../core/engine/storage.js';
 import { generateQuiz, TYPE_META, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
-import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions, classifyAIError, byokHelps } from '../../core/engine/quiz-ai.js';
+import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions, classifyAIError, byokHelps, polishQuestionSet } from '../../core/engine/quiz-ai.js';
 import { explainAnswer } from '../../core/engine/explain.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
 import { ByokService } from '../../core/services/byok.service';
@@ -144,7 +144,23 @@ export class QuizPage implements OnInit, OnDestroy {
     if (qs.mistakeReview()) {
       const ms = qs.mistakeReview()!;
       qs.mistakeReview.set(null);
-      const session = ms.questions;
+      let session = ms.questions;
+      // Weak spots are AI-written when the relay/key is reachable; otherwise
+      // the built-in exam-style fallback (already on the questions) stands in.
+      if (hasApiKey() && session?.length) {
+        this.phase.set('generating');
+        this.genLabel.set('Rewriting your weak spots…');
+        try {
+          const r = await polishQuestionSet(session, { onProgress: ((d: any, t: any) => this.updateGen(d, t)) as any });
+          if (r.polished > 0) {
+            session = r.questions;
+            this.byok.notifyAiOk();
+          } else if (r.aiNote && byokHelps(r.aiNote)) {
+            this.toast.toast(`AI unavailable (${r.aiNote}) — using offline questions`, true);
+            this.byok.notifyAiFailure(r.aiNote);
+          }
+        } catch { /* keep the built-in questions */ }
+      }
       this.session = session;
       this.doc = null; this.cfg = { timerSec: 0, count: session.length };
       this.st = { questions: session, index: 0, correct: 0, answers: [], startTime: Date.now(), mistakeMode: true, docName: ms.docName || 'Mistake Review' };
