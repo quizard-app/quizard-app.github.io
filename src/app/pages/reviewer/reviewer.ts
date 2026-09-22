@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
@@ -8,7 +8,6 @@ import { sentences } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
 import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.js';
 import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
-import { speak, pause, resume, stop, isSupported } from '../../core/engine/tts.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
 import { exportSummary, printStudySheet, exportPdfHandout } from '../../core/engine/export.js';
@@ -33,7 +32,7 @@ const STOP = /^(The|This|That|These|Those|It|Its|In|At|On|And|But|For|With|When|
   imports: [IonContent, FormsModule, IcoPipe],
   templateUrl: './reviewer.html',
 })
-export class ReviewerPage implements AfterViewInit, OnDestroy {
+export class ReviewerPage implements AfterViewInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toast = inject(ToastService);
@@ -48,9 +47,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   doc = signal<any>(null);
   contentHtml = signal<SafeHtml | string>('');
   scale = 1;
-  ttsSupported = isSupported();
-  ttsState = signal<'idle' | 'playing' | 'paused'>('idle');
-  ttsRate = 1;
   // AI reviewer (reviewer-ai.js): forged from the uploaded file, cached on the doc
   aiReviewer = signal<any>(null);
   aiState = signal<'idle' | 'generating' | 'ready' | 'error'>('idle');
@@ -63,7 +59,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   private nlpBuilding = false;
   private findMatches: HTMLElement[] = [];
   private findPos = -1;
-  private ttsActive = false;
   private zoom: any = null;
 
   get themeIcon() { return this.ui.theme() === 'dark' ? 'sun' : 'moon'; }
@@ -84,7 +79,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
     }
     const settings = loadSettings();
     this.scale = settings.readerScale || 1;
-    this.ttsRate = settings.ttsRate || 1;
     this.aiMode.set(settings.reviewerAiMode !== false);
     // the article element renders one CD tick after the doc signal — defer
     setTimeout(() => this.applyView(), 0);
@@ -93,10 +87,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     this.load();
-  }
-
-  ngOnDestroy() {
-    this.stopTts();
   }
 
   private buildNlp() {
@@ -297,7 +287,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   }
 
   private applyView() {
-    this.stopTts();
     const content = this.content?.nativeElement;
     if (!content) return;
     const fc = content.closest('.rev-screen')?.querySelector('.font-controls') as HTMLElement | null;
@@ -422,46 +411,12 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   fontMinus() { this.scale = Math.max(0.85, +(this.scale - 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
   fontPlus() { this.scale = Math.min(1.5, +(this.scale + 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
 
-  // ── TTS ──
-  onRate(e: Event) { this.ttsRate = parseFloat((e.target as HTMLInputElement).value); saveSettings({ ttsRate: this.ttsRate }); }
-
-  stopTts() {
-    stop();
-    this.ttsActive = false;
-    this.ttsState.set('idle');
-    this.content?.nativeElement.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
-  }
-
-  togglePlay() {
-    if (this.aiMode() && this.aiState() === 'ready') {
-      this.toast.toast('Read-aloud works on Quick notes');
-      return;
-    }
-    if (this.ttsActive) { resume(); this.ttsState.set('playing'); return; }
-    const targets = this.nlp ? this.nlp.readTargets['summary'] : [];
-    if (!targets || !targets.length) { this.toast.toast('Nothing to read in this view'); return; }
-    this.ttsActive = true;
-    this.ttsState.set('playing');
-    speak(targets, {
-      rate: this.ttsRate,
-      onend: () => { this.ttsActive = false; this.ttsState.set('idle'); },
-      onindex: (i: number) => {
-        const content = this.content?.nativeElement;
-        content?.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
-        content?.querySelectorAll('[data-point]')[i]?.classList.add('speaking');
-      }
-    });
-  }
-  pauseTts() { pause(); this.ttsState.set('paused'); }
-
   // ── actions ──
   quizMe() {
-    this.stopTts();
     this.qs.currentDocId.set(this.doc().id);
     this.router.navigate(['/doc', this.doc().id, 'setup']);
   }
   back() {
-    this.stopTts();
     this.router.navigate(['/doc', this.doc().id]);
   }
   exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded study sheet (.md)'); }

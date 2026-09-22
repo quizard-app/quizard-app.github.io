@@ -12,7 +12,10 @@
 import { updateDoc } from './storage.js'
 import { chatJSON } from './gemini.js'
 
-const MAX_CHARS_PER_CHUNK = 42000
+// Keep each request small enough to finish inside the relay's per-key time
+// budget (~25s): a 42k-char / 16k-token reviewer routinely blew past it and
+// surfaced as 504 upstream_timeout. Smaller scope + output fits comfortably.
+const MAX_CHARS_PER_CHUNK = 14000
 
 // Structured output contract — mirrors the quality bar of a hand-made reviewer:
 // emoji-headed sections, 🔹 sub-terms with "Meaning:" lines, ⭐⭐⭐ importance
@@ -226,6 +229,7 @@ export async function ensureAIReviewer(doc) {
   const chunks = chunkText(source)
   let reviewer = null
   let usedChunk = -1
+  let timeoutSeen = false
   for (let i = 0; i < chunks.length && !reviewer; i++) {
     const scope = chunks.length > 1
       ? `DOCUMENT (part ${i + 1} of ${chunks.length}):\n\n${chunks[i]}\n\nCover only the topics in this part.`
@@ -233,9 +237,9 @@ export async function ensureAIReviewer(doc) {
     try {
       const raw = await chatJSON(`${RULES}\n\n${scope}`, {
         json: true,
-        maxOutputTokens: 16000,
+        maxOutputTokens: 8000,
         temperature: 0.3,
-        timeoutMs: 180000
+        timeoutMs: 95000
       })
       let parsed
       try { parsed = JSON.parse(raw) } catch {
@@ -248,20 +252,24 @@ export async function ensureAIReviewer(doc) {
         // retry once for this chunk before giving up on the whole document
         try {
           const retry = JSON.parse(await chatJSON(`${RULES}\n\n${scope}\n\nReturn ONLY valid JSON.`, {
-            json: true, maxOutputTokens: 16000, temperature: 0.2, timeoutMs: 180000
+            json: true, maxOutputTokens: 8000, temperature: 0.2, timeoutMs: 95000
           }))
           reviewer = sanitizeReviewer(retry)
         } catch { /* fall through */ }
       }
     } catch (e) {
-      if (String(e?.message || e).includes('no_keys_configured') || String(e?.message || e).includes('origin_not_allowed')) {
+      const msg = String(e?.message || e)
+      if (msg.includes('no_keys_configured') || msg.includes('origin_not_allowed')) {
         return { error: 'relay_unavailable' }
       }
-      // 503/504/timeouts: try the next chunk or fall through to error
+      // Timeouts/504s: try the next chunk, but remember so the UI can show a
+      // plain Retry (no BYOK popup — a personal key can't fix slowness).
+      if (/timeout|upstream_timeout|504|abort/i.test(msg)) timeoutSeen = true
+      // other 503s: try the next chunk or fall through to error
     }
   }
 
-  if (!reviewer) return { error: 'generation_failed' }
+  if (!reviewer) return { error: timeoutSeen ? 'timeout' : 'generation_failed' }
   // Honest coverage notes: long files are reviewed from the first successful
   // chunk only — say so instead of silently skipping the rest.
   if (chunks.length > 1) {

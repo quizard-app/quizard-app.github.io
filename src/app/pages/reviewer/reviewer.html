@@ -24,20 +24,6 @@
       @if (aiState() === 'error') {
         <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free Gemini key to generate the reviewer.')">Add a key</button></div>
       }
-      <div class="tts-bar" [class.hidden]="!ttsSupported">
-        @if (ttsState() !== 'playing') {
-          <button class="icon-btn" (click)="togglePlay()" data-tooltip="Read aloud — in the wizard's voice" [innerHTML]="'play' | ico"></button>
-        } @else {
-          <button class="icon-btn" (click)="pauseTts()" data-tooltip="Pause" [innerHTML]="'timer' | ico"></button>
-        }
-        @if (ttsState() !== 'idle') {
-          <button class="icon-btn" (click)="stopTts()" data-tooltip="Stop" [innerHTML]="'x' | ico"></button>
-        }
-        <div class="tts-rate">
-          <span class="faint" style="font-size:11px">Speed</span>
-          <input type="range" min="0.8" max="1.5" step="0.1" [value]="ttsRate" (input)="onRate($event)" aria-label="Read-aloud speed" />
-        </div>
-      </div>
       <div class="find-bar" [class.hidden]="!findVisible()">
         <input type="search" class="text-input" placeholder="Find in document…" aria-label="Find in document" autocomplete="off" [(ngModel)]="findQuery" (input)="runFind()" (keydown)="onFindKey($event)" />
         <span class="faint">{{ findCount() }}</span>
