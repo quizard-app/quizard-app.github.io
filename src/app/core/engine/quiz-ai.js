@@ -221,6 +221,26 @@ export function classifyAIError(err) {
   return 'error'
 }
 
+// A question is broken when any option (or the answer) is already named in
+// the stem. Short options match on word boundaries; long sequence chains
+// only count when the whole chain appears (their step words may legitimately
+// echo the stem's topic).
+export function leaksOption(stem, options) {
+  const s = String(stem || '')
+  for (const o of (options || [])) {
+    const t = clean(o)
+    if (!t) continue
+    if (t.split(/\s+/).length > 8) {
+      if (s.toLowerCase().includes(t.toLowerCase())) return true
+    } else {
+      let re = null
+      try { re = new RegExp('\\b' + escapeRegExp(t) + '\\b', 'i') } catch { re = null }
+      if (re && re.test(s)) return true
+    }
+  }
+  return false
+}
+
 // True when a personal Gemini key could plausibly fix this AI failure —
 // relay quota/key/busy problems — so the quiz offers an explicit choice:
 // continue now with offline questions, or add a key and retry with AI.
@@ -552,6 +572,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
         if (!ok) continue
         if (isBanned(ok.stem) || ok.wrong.some(w => isBanned(w))) continue
         if (!grounded(ok.stem + ' ' + correct, source)) continue
+        if (leaksOption(ok.stem, [correct, ...ok.wrong])) continue
         const surfaced = trueCase(correct, source)
         const options = shuffleArr([surfaced, ...ok.wrong.map(w => trueCase(w, source))], optionRng)
         const stem = cleanSentence(ok.stem)
@@ -712,6 +733,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         const all = [correct, ...wrong].map(w => trueCase(w, sentence))
         if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
         if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
+        if (leaksOption(stem, wrong)) continue
         const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
         const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
         if (answerIndex === -1) continue
@@ -850,6 +872,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       const all = [correct, ...wrong].map(w => trueCase(w, sentence))
       if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
       if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
+      if (leaksOption(stem, wrong)) continue
       const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
       const answerIndex = options.findIndex(o => o.toLowerCase() === correct.toLowerCase())
       if (answerIndex === -1) continue

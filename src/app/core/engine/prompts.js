@@ -186,37 +186,40 @@ export function explainBatchPrompt(items) {
   })
 }
 
-// Full AI authoring: instead of polishing built-in drafts, the model authors
-// original exam-style questions straight from numbered source sentences.
-// Each item cites its source sentence ("src") so the caller can validate the
-// grounding; validators + the heading ban list keep it honest.
+// Full AI authoring: the model first reads ALL the numbered source sentences,
+// understands the material as a whole, and authors original exam-style
+// questions testing important concepts — never one mechanical question per
+// sentence. Each item cites its primary source sentence ("src") so the caller
+// can validate the grounding; validators + the heading ban list keep it
+// honest.
 // Style bar: real exams lead with SCENARIO items — a concrete situation the
 // student resolves by identifying which concept from the source applies —
-// with process-order and plain definition questions as minority styles.
+// with direct, process-order, distinction and why/how questions mixed in.
 export const AUTHOR_RULES = [
-  'You are an exam writer for a study app. Author ORIGINAL exam questions STRICTLY grounded in the numbered source sentences below.',
-  'For EACH numbered source sentence, write ONE exam-style question a teacher would put on a real exam.',
-  'STYLE — MIX two question kinds, roughly half and half, in whatever blend the content supports:',
-  '  - SCENARIO questions: describe a short, concrete situation (1-3 sentences) in which a person, company, or system runs into the concept, then ask which concept/principle/type/step from the source applies. Vary the actors (a developer, an employee, a bank customer, an IT admin, a company, a student); the situation must clearly match ONLY the correct answer — the stem must never name or contain it.',
-  '  - DIRECT exam questions: when the sentence is a definition, acronym, law/act name, agency, classification, or an ordered list, ask about it straight — "What does CICC stand for?", "Which ethical framework focuses primarily on developing good character?", "Under its Section 4, computer-related fraud belongs to which family?", "Which sequence correctly represents the stages in order?".',
-  '  - When the source describes an ordered procedure, also write sequence questions where each OPTION is a complete chain the student must compare ("Reconnaissance → Weaponization → Delivery → …" in different orders) — only one chain matches the true source order.',
-  'Examples of the target style (note the scenario stem and the same-family options):',
-  '  - {"src":0,"kind":"mcq","stem":"An AI system makes an important decision affecting a person. Which principle requires that the decision be understandable or explainable?","correct":"Explicability","wrong":["Beneficence","Autonomy","Justice"]}',
-  '  - {"src":1,"kind":"mcq","stem":"An employee receives a highly personalized email pretending to be from the CEO asking for an urgent transfer of money. Which attack is most specifically described?","correct":"Whaling","wrong":["Smishing","Vishing","Quishing"]}',
-  'Ground every question ONLY in its own source sentence — never invent facts, and never blend material from other sentences.',
-  'Each item MUST cite its source: "src" is the number of the sentence it is based on.',
+  'You are an exam writer for a study app. First read ALL the numbered source sentences below and understand the material as a whole: identify the important examinable concepts (rules, principles, processes, attacks, agencies, laws, definitions, procedures, distinctions) before writing anything.',
+  'Author ORIGINAL exam questions a university teacher would put on a real exam. Each one must test UNDERSTANDING, APPLICATION, DISTINCTION, REASONING, PROCESS KNOWLEDGE or CORE FACTUAL knowledge — never mechanical rewording such as "What is X?", "Which of the following is X?" or "What does X mean?". Do NOT transform sentences one by one: write AT MOST one question per source sentence, skip any sentence that cannot support a good question, and NEVER force a question kind the material cannot support. Fewer good questions beat more bad ones.',
+  'You MAY combine closely related passages when they explain the same concept (e.g. one passage names an agency\'s role and a nearby one describes its procedure — together they support one application question). Do not combine unrelated topics just to make a question harder. Every item still cites its PRIMARY source sentence in "src".',
+  'STYLE MIX — blend these in roughly this proportion (scaled to the batch; skip kinds the material cannot support):',
+  '  - ~40% SCENARIO/APPLICATION: a short concrete situation (1-3 sentences) a person runs into, then ask which concept, principle, step or best practice applies. Vary the actors (employee, student, developer, investigator, IT admin, company). The situation must clearly match ONLY the correct answer and must never name or contain it. Example: {"src":0,"kind":"mcq","stem":"An investigator receives digital evidence from a suspected cybercrime case and immediately secures it so it cannot be altered or lost. Why is this step important?","correct":"To prevent digital evidence from being lost or altered","wrong":["To immediately convict the suspect","To replace the need for a court order","To automatically identify the attacker"]}',
+  '  - ~25% DIRECT: definitions, acronyms, agencies, laws, frameworks and classifications asked straight. Examples: "What does CICC stand for?", "Which RA 10175 family includes computer-related fraud?", "Which ethical framework focuses primarily on developing good character?"',
+  '  - ~15% PROCESS/ORDER: first step, next step, final step, or the full correct sequence. For sequence questions EVERY option is a complete plausible chain in a different order — only one chain matches the true source order, and never invent steps.',
+  '  - ~10% DISTINCTION: concepts students easily confuse (Confidentiality vs Integrity; NBI vs CICC vs DOJ Office of Cybercrime vs PNP-ACG; Family A vs Family B). The wording must require a real distinction, not recall of a name.',
+  '  - ~10% WHY/HOW: "Why is evidence preservation important?", "How does this process protect the system?" — asked only when the material actually explains the reason or mechanism.',
+  'DIFFICULTY — roughly 20% easy recall of core facts, 60% medium understanding and application, 20% challenging distinction, scenario or procedural reasoning. Never manufacture difficulty with confusing wording.',
+  'DIVERSITY — vary openings naturally ("An employee…", "During an investigation…", "Why…", "Under RA 10175…", "Which sequence…", "Suppose…", "A system administrator…"); never start everything with "Which of the following". Never test the same fact twice in different words.',
+  'Ground every question ONLY in the supplied sentences — never invent facts, terms, laws, agencies, dates, procedures, examples or relationships.',
+  'Each item MUST cite its primary source: "src" is the number of that sentence.',
   'Every question is multiple choice: "stem" (the situation plus the question), "correct" (the best answer) and "wrong" (exactly 3 wrong options).',
-  '  - Options are usually SHORT concrete terms of 1 to 8 words (a term of the subject, same family as the correct answer) — but for sequence or best-statement questions the options are complete chains or full statements the student reads and compares before choosing.',
-  '  - All four options must belong to the SAME family of concepts as the correct answer (other items from the same list, category, or chapter of the subject) so the item genuinely tests recognition.',
-  '  - Keep all four options parallel in length and form, and make the wrong options specific, believable and distinct from each other.',
+  '  - Options are usually SHORT concrete terms of 1 to 8 words from the same concept family as the correct answer — but scenario/reasoning questions may instead offer competing explanations, consequences, actions or principles, and sequence questions offer complete chains. Match the distractor strategy to the question kind instead of forcing one strategy everywhere.',
+  '  - All four options must be specific, believable and distinct from each other — plausible enough that a student must actually reason. None of the wrong options may equal or contain the correct answer.',
+  '  - Keep all four options parallel in length and form.',
   '  - When "concepts from this document" are provided, use them as wrong options whenever they fit the family — never invent generic filler.',
   'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
   '  - Preserve the source capitalization for proper nouns — agency names (CICC, PNP-ACG), law names (RA 10175), framework names (PAPA, WCAG) stay capitalized in stems and options. ' +
   'Tech acronyms and initialisms always print in standard UPPERCASE (MVVM, HTTP, API, CPU) — never sentence case ("Mvvm", "Http").',
   'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
-  'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
-  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An AI system makes an important decision affecting a person. Which principle requires that the decision be understandable or explainable?","correct":"Explicability","wrong":["Beneficence","Autonomy","Justice"]}]'
+  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An investigator receives digital evidence from a suspected cybercrime case and immediately secures it so it cannot be altered or lost. Why is this step important?","correct":"To prevent digital evidence from being lost or altered","wrong":["To immediately convict the suspect","To replace the need for a court order","To automatically identify the attacker"]}]'
 ].join('\n')
 
 export function authorQuizPrompt(group, weakHint, terms) {

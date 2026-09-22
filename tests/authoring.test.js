@@ -9,9 +9,9 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
-import { generateQuizAI, grounded, byokHelps, polishQuestionSet } from '../src/app/core/engine/quiz-ai.js'
+import { generateQuizAI, grounded, byokHelps, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
-import { authorQuizPrompt } from '../src/app/core/engine/prompts.js'
+import { authorQuizPrompt, AUTHOR_RULES } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
 import { buildQuizMarkdown } from '../src/app/core/engine/export.js'
 
@@ -221,6 +221,32 @@ describe('polishQuestionSet (AI-written weak spots)', () => {
     expect(r.polished).toBe(0)
     expect(r.aiNote).toBeNull()
     expect(vi.mocked(chatJSON).mock.calls.length).toBe(0)
+  })
+})
+
+describe('AUTHOR_RULES (concept-first exam quality)', () => {
+  it('demands concept coverage with a style mix, not one-question-per-sentence', () => {
+    expect(AUTHOR_RULES).toContain('SCENARIO')
+    expect(AUTHOR_RULES).toContain('DISTINCTION')
+    expect(AUTHOR_RULES).toContain('20%')
+    expect(AUTHOR_RULES).toContain('UPPERCASE')
+    expect(AUTHOR_RULES).not.toContain('write ONE exam-style question')
+    expect(AUTHOR_RULES).not.toContain('For EACH numbered source sentence, write ONE')
+    const p = authorQuizPrompt([{ i: 0, text: 'Alpha beta gamma delta.' }])
+    expect(p).toContain('"src"')
+  })
+})
+
+describe('leaksOption (answer-in-stem validation)', () => {
+  it('flags options named in the stem', () => {
+    expect(leaksOption('What does CICC stand for?', ['CICC', 'NBI', 'PNP', 'DICT'])).toBe(true)
+    expect(leaksOption('Which agency handles cybercrime forensics?', ['CICC', 'NBI', 'PNP', 'DICT'])).toBe(false)
+  })
+
+  it('ignores long chains unless the whole chain appears', () => {
+    const chain = 'Report → Assess → Collect → Analyze'
+    expect(leaksOption('Which sequence matches the report stage?', [chain, 'Collect → Report → Analyze → Assess'])).toBe(false)
+    expect(leaksOption(`First do ${chain} in order?`, [chain, 'Other'])).toBe(true)
   })
 })
 
