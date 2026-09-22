@@ -72,6 +72,16 @@ if (env.GEMINI_KEYS) {
     }
   })
 }
+// Groq keys look like gsk_… — same placeholder check as the Gemini pool.
+if (env.GROQ_API_KEY) {
+  const entries = env.GROQ_API_KEY.replace(/^["']|["']$/g, '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
+  console.log(`▸ GROQ_API_KEY: ${entries.length} key${entries.length === 1 ? '' : 's'} to rotate`)
+  entries.forEach((k, i) => {
+    if (!/^gsk_[0-9A-Za-z]{20,}$/.test(k)) {
+      console.log(`  ⚠ key ${i + 1} does not look like a Groq key (expected gsk_…): "${k.slice(0, 8)}…" — fix or remove it before relying on the fallback`)
+    }
+  })
+}
 for (const [name, value] of secrets) {
   if (!value) { console.log(`· ${name}: not set in .env — skipped`); continue }
   console.log(`▸ Uploading secret ${name}…`)

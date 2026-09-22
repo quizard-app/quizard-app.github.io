@@ -14,13 +14,14 @@
 //
 // Secrets (npx wrangler secret put ...):
 //   GEMINI_KEYS     one or more Gemini API keys, comma/newline separated
-//   GROQ_API_KEY    optional Groq key (console.groq.com) — fallback provider
+//   GROQ_API_KEY    optional Groq key(s) (console.groq.com) — fallback
+//                   provider; comma/newline separated, rotated the same way
 //   FISH_API_KEY    https://fish.audio/app/api-keys/
 //   FISH_VOICE_ID   the designed "wise old wizard" voice model id
 // Vars (wrangler.toml [vars]):
 //   GEMINI_MODEL    primary model (default gemini-3.5-flash-lite; the worker
 //                   falls back to the sibling model on 503 high demand)
-//   GROQ_MODEL      defaults to llama-3.3-70b-versatile
+//   GROQ_MODEL      defaults to openai/gpt-oss-120b
 //   FISH_MODEL      defaults to s2.1-pro-free
 
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -264,36 +265,106 @@ async function handleGemini(request, sec) {
 // ── Groq fallback provider (Llama, OpenAI-compatible) ──
 // Used only when every Gemini attempt failed (quota, capacity or upstream
 // timeout). Groq's infrastructure is independent of Google's, so its bad
-// days never line up with Gemini's.
+// days never line up with Gemini's. GROQ_API_KEY may hold several keys
+// (comma/newline separated, one per Groq account — limits are per
+// organization, so extra keys from the same account add nothing); a key
+// that answers 429 is parked for 60s while the rest take over.
+const groqThrottled = new Map()
+
+function getGroqKeys() {
+  return (env.GROQ_API_KEY || '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
+}
+function groqIsThrottled(key) {
+  const exp = groqThrottled.get(key)
+  if (!exp) return false
+  if (Date.now() > exp) { groqThrottled.delete(key); return false }
+  return true
+}
+function groqMarkThrottled(key) { groqThrottled.set(key, Date.now() + THROTTLE_MS) }
+
 async function callGroq(prompt, maxOutputTokens, temperature, json) {
-  const key = (env.GROQ_API_KEY || '').trim()
-  if (!key) return null
-  const model = (env.GROQ_MODEL || 'llama-3.3-70b-versatile').trim()
-  let res
-  try {
-    res = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature,
-        max_tokens: maxOutputTokens,
-        ...(json ? { response_format: { type: 'json_object' } } : {})
-      }),
-      signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
-    })
-  } catch (err) {
-    return { error: String(err?.message || err || 'groq_error') }
+  const keys = getGroqKeys()
+  if (!keys.length) return null
+  const model = (env.GROQ_MODEL || 'openai/gpt-oss-120b').trim()
+  // gpt-oss is a reasoning model: it spends completion tokens thinking before
+  // it answers, so a small max_tokens comes back with empty content (all
+  // budget eaten by reasoning). Keep the effort low and guarantee a budget
+  // that always leaves room for the actual answer.
+  const isReasoner = /gpt-oss/i.test(model)
+  const budget = Math.max(isReasoner ? 2048 : 256, maxOutputTokens)
+  // Groq's json_object mode hard-requires the word "json" in the messages —
+  // otherwise it 400s instantly. Every generation prompt mentions JSON, but a
+  // caller that relies on the relay's default (json !== false) might not, so
+  // make the request self-sufficient.
+  const groqPrompt = json && !/json/i.test(prompt) ? prompt + '\n\nRespond with valid JSON.' : prompt
+  const live = keys.filter(k => !groqIsThrottled(k))
+  const parked = keys.filter(k => groqIsThrottled(k))
+  const order = [...live, ...parked]
+  let lastErr = null
+  for (const key of order) {
+    let res
+    try {
+      res = await fetch(GROQ_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: groqPrompt }],
+          temperature,
+          max_tokens: budget,
+          ...(isReasoner ? { reasoning_effort: 'low' } : {}),
+          ...(json ? { response_format: { type: 'json_object' } } : {})
+        }),
+        signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
+      })
+    } catch (err) {
+      lastErr = String(err?.message || err || 'groq_error')
+      continue
+    }
+    if (!res.ok) {
+      let msg = `groq_http_${res.status}`
+      try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
+      // Strict JSON mode rejects the ENTIRE completion when the model's answer
+      // isn't parseable JSON ("failed_generation"). One retry with a blunt
+      // JSON-only instruction usually un-sticks the model.
+      if (json && res.status === 400 && /failed_generation|generate json/i.test(msg)) {
+        try {
+          const retry = await fetch(GROQ_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: groqPrompt + '\n\nIMPORTANT: Your ENTIRE reply must be one valid JSON object. No prose, no markdown, nothing outside the JSON.' }],
+              temperature,
+              max_tokens: budget,
+              ...(isReasoner ? { reasoning_effort: 'low' } : {}),
+              response_format: { type: 'json_object' }
+            }),
+            signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
+          })
+          if (retry.ok) {
+            const rd = await retry.json().catch(() => null)
+            const rt = rd?.choices?.[0]?.message?.content ?? ''
+            if (rt) return { text: rt }
+          }
+        } catch { /* fall through to the error path */ }
+      }
+      lastErr = msg
+      // Rate limited on this account: park the key, let the next one through.
+      if (res.status === 429 || /rate[\s_-]?limit|quota|too many requests/i.test(msg)) {
+        groqMarkThrottled(key)
+        continue
+      }
+      // Auth/other hard errors are key-specific too, but a 401 is likely a
+      // bad key — skip it rather than returning failure while others remain.
+      if (res.status === 401 || res.status === 403) continue
+      return { error: msg }
+    }
+    const data = await res.json().catch(() => null)
+    const text = data?.choices?.[0]?.message?.content ?? ''
+    return { text: text || null }
   }
-  if (!res.ok) {
-    let msg = `groq_http_${res.status}`
-    try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
-    return { error: msg }
-  }
-  const data = await res.json().catch(() => null)
-  const text = data?.choices?.[0]?.message?.content ?? ''
-  return { text: text || null }
+  return { error: lastErr || 'groq_error' }
 }
 
 // ── Fish Audio wizard voice ──
