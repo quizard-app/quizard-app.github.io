@@ -130,7 +130,10 @@ async function callGemini(model, key, payload) {
     res = await fetch(`${GEMINI_ENDPOINT_BASE}/${model}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      // One slow key must not stall the whole pool: cap each attempt so the
+      // rotation keeps moving. A timeout surfaces as networkError → next key.
+      signal: AbortSignal.timeout(12000)
     })
   } catch (err) {
     return { networkError: String(err?.message || err) }
