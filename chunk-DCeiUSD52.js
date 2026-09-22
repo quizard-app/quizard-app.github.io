@@ -1,4 +1,4 @@
-import{n as r,r as s}from"./chunk-CCnQ1X3m.js";import"./chunk-Dqyvoa3d.js";import"./chunk-hh0W7bTI.js";import"./chunk-CAs9auLs.js";import"./chunk-D4k-zadY.js";import"./chunk-DEURnQ86.js";import"./chunk-CABSGZFi.js";import"./chunk-tv0E5ky_.js";import{$t as qg,Cn as yw,Dt as gm,En as zt,Et as g,G as Tw,K as Uf,Kt as nm,N as Nl,S as JI,Tt as fm,Ut as mm,V as Ra,Vt as mS,Xt as pS,_n as xs,c as Cl,dt as bb,en as rS,et as Ws,in as sw,m as Ew,pt as bw,q as Ug,qt as nr,sn as uI,ut as aw,v as Hf,vn as yE,vt as dm,w as Jw,xt as eC,z as Qg}from"./chunk-DNNweo43.js";import{t as Gs}from"./chunk-CuU6x-TM.js";import{n as s$1,t as k}from"./chunk-mx_GOwWz.js";import{d as T,i as d,l as N}from"./main-4YFFY5Y2.js";import{t as a}from"./chunk-CCPKOP-2.js";import{a as M,l as X}from"./chunk-BiM_qOS_.js";import{d as at,o as Oe$1}from"./chunk-OenFUPh_.js";import{A as ce,h as Q$1,l as Lt,w as Y,y as Ut}from"./chunk-CjAev84X.js";import{a as s$2}from"./chunk-CId4CDmp.js";import{t as n}from"./chunk-BxT9_UAb.js";import{t as B}from"./chunk-C9txRCag.js";import"./chunk-Dqt6NRMF.js";import{i as R,r as O,t as H}from"./chunk-BiFcufyA.js";import{n as Ot,o as on,s as un,t as Ie$1}from"./chunk-oL0wvA0A.js";var ke=14e3;var Re=`You are an expert exam reviewer writer. Read the DOCUMENT and produce a complete exam reviewer in strict JSON \u2014 the kind a top student would write by hand to cram from.
+import{n as r,r as s}from"./chunk-CCnQ1X3m.js";import"./chunk-Dqyvoa3d.js";import"./chunk-hh0W7bTI.js";import"./chunk-DR4uDiqL.js";import"./chunk-D4k-zadY.js";import"./chunk-DEURnQ86.js";import"./chunk-CABSGZFi.js";import"./chunk-tv0E5ky_.js";import{$t as qg,Cn as yw,Dt as gm,En as zt,Et as g,G as Tw,K as Uf,Kt as nm,N as Nl,S as JI,Tt as fm,Ut as mm,V as Ra,Vt as mS,Xt as pS,_n as xs,c as Cl,dt as bb,en as rS,et as Ws,in as sw,m as Ew,pt as bw,q as Ug,qt as nr,sn as uI,ut as aw,v as Hf,vn as yE,vt as dm,w as Jw,xt as eC,z as Qg}from"./chunk-DNNweo43.js";import{t as Gs}from"./chunk-B4WUQaK7.js";import{n as s$1,t as k}from"./chunk-CqXSKDnk.js";import{d as q,i as d,l as T}from"./main-E6A4LJ5X.js";import{a as M,l as X}from"./chunk-BiM_qOS_.js";import{d as at,o as Oe$1}from"./chunk-OenFUPh_.js";import"./chunk-Dqt6NRMF.js";import{a as s$2}from"./chunk-CId4CDmp.js";import{t as n}from"./chunk-BxT9_UAb.js";import{A as ce,h as Q$1,l as Lt,w as Y,y as Ut}from"./chunk-CjAev84X.js";import{t as a}from"./chunk-CCPKOP-2.js";import{n as Ot,o as on,s as un,t as Ie$1}from"./chunk-oL0wvA0A.js";import{t as B}from"./chunk-C9txRCag.js";import{i as R,r as O,t as H}from"./chunk-bzLy-r8c2.js";var ke=14e3;var Re=`You are an expert exam reviewer writer. Read the DOCUMENT and produce a complete exam reviewer in strict JSON \u2014 the kind a top student would write by hand to cram from.
 
 Return JSON with exactly this shape:
 {
@@ -82,9 +82,9 @@ ${n[s]}
 
 Cover only the topics in this part.`:`DOCUMENT:
 
-${n[s]}`;try{let a=await N(`${Re}
+${n[s]}`;try{let a=await q(`${Re}
 
-${h}`,{json:!0,maxOutputTokens:8e3,temperature:.3,timeoutMs:95e3}),d;try{d=JSON.parse(a)}catch{let o=a.match(/\{[\s\S]*\}/);if(o)try{d=JSON.parse(o[0])}catch{d=null}}if(l=Pe(d),l&&(m=s),!l&&n.length>1)try{l=Pe(JSON.parse(await N(`${Re}
+${h}`,{json:!0,maxOutputTokens:8e3,temperature:.3,timeoutMs:95e3}),d;try{d=JSON.parse(a)}catch{let o=a.match(/\{[\s\S]*\}/);if(o)try{d=JSON.parse(o[0])}catch{d=null}}if(l=Pe(d),l&&(m=s),!l&&n.length>1)try{l=Pe(JSON.parse(await q(`${Re}
 
 ${h}
 
