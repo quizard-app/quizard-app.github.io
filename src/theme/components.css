@@ -59,6 +59,13 @@
 .icon-btn:active { transform: scale(0.92); background: var(--surface-2); }
 .icon-btn svg { width: 19px; height: 19px; stroke-width: 2; }
 .icon-btn.text-btn { font-size: 12px; font-weight: 700; width: auto; min-width: 36px; padding: 0 10px; }
+/* Header AI-key entry: compact pill (icon + label side by side, never wrapped) */
+.icon-btn.ai-key-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  width: auto; height: 38px; padding: 0 11px;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.icon-btn.ai-key-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ── Bottom nav (modern floating dock tabbar) ── */
 .bottom-nav {
@@ -473,6 +480,8 @@ svg { max-width: 100%; }
   .doc-card .btn-primary { min-height: 42px; }
   .onb-skip { padding: 12px 14px; }
   .back-header .icon-btn, .app-header .icon-btn { width: 40px; height: 40px; }
+  /* the AI-key pill keeps its label on one line even on phones */
+  .app-header .icon-btn.ai-key-btn { width: auto; height: 38px; }
 }
 
 /* ── Matching question ── */
