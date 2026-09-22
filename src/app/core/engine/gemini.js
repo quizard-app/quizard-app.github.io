@@ -5,7 +5,7 @@
 // is throttled; it is also used for direct Google calls when no relay is
 // configured (e.g. local dev without the relay).
 
-export const MODEL_LABEL = 'gemini-3.5-flash-lite'
+export const MODEL_LABEL = 'gemini-3.5-flash'
 
 // The relay only accepts the production origin, so on localhost the dev server
 // (scripts/local-dev-server.mjs) proxies /gemini to it — same-origin, no CORS.

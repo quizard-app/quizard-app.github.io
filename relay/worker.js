@@ -14,7 +14,7 @@
 //   FISH_API_KEY    https://fish.audio/app/api-keys/
 //   FISH_VOICE_ID   the designed "wise old wizard" voice model id
 // Vars (wrangler.toml [vars]):
-//   GEMINI_MODEL    defaults to gemini-3.5-flash-lite
+//   GEMINI_MODEL    pinned to gemini-3.5-flash (see wrangler.toml)
 //   FISH_MODEL      defaults to s2.1-pro-free
 
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -95,7 +95,7 @@ function getGemKeys() {
   return (env.GEMINI_KEYS || '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
 }
 function getGemModel() {
-  return (env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()
+  return (env.GEMINI_MODEL || 'gemini-3.5-flash').trim()
 }
 function gemIsThrottled(key) {
   const exp = gemThrottled.get(key)
@@ -118,7 +118,9 @@ function gemCombo(extra) {
 function isQuota(msg, status) {
   if (status === 429) return true
   const m = (msg || '').toLowerCase()
-  return /quota|rate[\s_-]?limit|resource_exhausted|exceeded.*limit|too many requests/.test(m)
+  // 503 "high demand" is capacity exhaustion: park the key and rotate like
+  // any other quota signal so one hot model doesn't burn the whole pool.
+  return /quota|rate[\s_-]?limit|resource_exhausted|exceeded.*limit|too many requests|high demand|overloaded|temporarily/.test(m)
 }
 
 // One slow key must not stall the whole pool, but real quiz generation

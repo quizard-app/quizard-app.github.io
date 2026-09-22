@@ -3,6 +3,9 @@ main = "worker.js"
 compatibility_date = "2026-01-15"
 
 [vars]
+# gemini-3.5-flash-lite repeatedly 503'd ("high demand") on every relay key,
+# and gemini-2.5-flash-lite is retired for these new-format keys — 3.5-flash
+# is the newest model that answers 200 for them.
+GEMINI_MODEL = "gemini-3.5-flash"
 # Override with `npx wrangler secret put` for anything sensitive.
-# GEMINI_MODEL = "gemini-3.5-flash-lite"
 # FISH_MODEL = "s2.1-pro-free"
