@@ -6,23 +6,38 @@
   <div class="byok-overlay" (click)="byok.close()">
     <div class="byok-modal" (click)="$event.stopPropagation()">
       <div class="byok-badge"><span [innerHTML]="'sparkles' | ico"></span> Quizard AI</div>
-      <h3 class="byok-title">AI is out of requests</h3>
-      <p class="byok-text">{{ byok.reason() || 'The built-in relay is busy right now. Add your own free Gemini key to keep AI quizzes and reviewers running — it stays on this device and is only used as a backup.' }}</p>
-      <input
-        class="text-input byok-input"
-        type="password"
-        autocomplete="off"
-        placeholder="Paste your Gemini API key"
-        [value]="byok.keyInput()"
-        (input)="byok.typeKey($any($event.target).value)"
-        (keyup.enter)="byok.save()"
-      />
+      <h3 class="byok-title">{{ byok.reason() ? 'AI is out of requests' : 'Unlock unlimited AI — free' }}</h3>
+      <p class="byok-text">{{ byok.reason() ? 'You can keep going right now with your own free Gemini key. Three quick steps, about one minute:' : 'Want faster, unlimited AI quizzes? Grab a free Gemini key once — three quick steps, about one minute:' }}</p>
+      <ol class="byok-steps">
+        <li>
+          <span class="byok-step-n">1</span>
+          <span>Tap this button and sign in with your Google account:</span>
+          <button class="btn btn-primary byok-step-btn" (click)="openKeyPage()">Get my free key</button>
+        </li>
+        <li>
+          <span class="byok-step-n">2</span>
+          <span>Tap <b>Create API key</b>, then <b>copy</b> the code it shows (it starts with <i>AIza…</i>).</span>
+        </li>
+        <li>
+          <span class="byok-step-n">3</span>
+          <span>Paste it here:</span>
+          <input
+            class="text-input byok-input"
+            type="password"
+            autocomplete="off"
+            placeholder="Paste the code here"
+            [value]="byok.keyInput()"
+            (input)="byok.typeKey($any($event.target).value)"
+            (keyup.enter)="byok.save()"
+          />
+        </li>
+      </ol>
       @if (byok.status()) { <p class="byok-status">{{ byok.status() }}</p> }
       <div class="byok-actions">
-        <button class="btn btn-secondary" (click)="byok.dismiss()">Maybe later</button>
-        <button class="btn btn-primary" (click)="byok.save()">Save key</button>
+        <button class="btn btn-secondary" (click)="byok.dismiss()">Not now — use basic quizzes</button>
+        <button class="btn btn-primary" (click)="byok.save()">Save my key</button>
       </div>
-      <p class="byok-hint">Free key: <span class="byok-link" (click)="openKeyPage()">aistudio.google.com/apikey</span> · your key is used first; the shared relay is the backup</p>
+      <p class="byok-hint">Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings.</p>
     </div>
   </div>
 }

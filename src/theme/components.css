@@ -383,7 +383,21 @@ html[data-theme='dark'] .stepper button { color: var(--accent); }
 }
 .byok-badge svg { width: 13px; height: 13px; }
 .byok-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
-.byok-text { font-size: 13.5px; line-height: 1.55; color: var(--text-dim, #94a3b8); margin: 0 0 14px; }
+.byok-text { font-size: 13.5px; line-height: 1.55; color: var(--text-dim, #94a3b8); margin: 0 0 12px; }
+.byok-steps { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; }
+.byok-steps li {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  font-size: 13.5px; line-height: 1.5; color: var(--text, #e2e8f0);
+  padding: 8px 0;
+}
+.byok-steps li + li { border-top: 1px dashed var(--border, rgba(148, 163, 184, .25)); }
+.byok-step-n {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--grad-accent, linear-gradient(135deg, #6366f1, #06b6d4));
+  color: #fff; font-size: 12px; font-weight: 800;
+}
+.byok-step-btn { flex-basis: 100%; margin-top: 4px; }
 .byok-input { width: 100%; margin-bottom: 8px; }
 .byok-status { font-size: 12px; color: var(--warn, #f59e0b); margin: 0 0 8px; }
 .byok-actions { display: flex; gap: 8px; margin-top: 4px; }
