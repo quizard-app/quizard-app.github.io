@@ -3,7 +3,7 @@
     <div class="brand"><span class="mark" [innerHTML]="icoLog"></span>Quizard</div>
     <div style="display:flex;gap:2px;align-items:center">
       <button class="avatar-chip" (click)="openAccounts()" [attr.data-tooltip]="'Switch account — ' + (account()?.name || 'account')" [style.background]="account()?.color || '#475569'">{{ (account()?.name || '?').charAt(0).toUpperCase() }}</button>
-      <button class="icon-btn ai-key-btn" [class.ai-down]="byok.aiDown()" aria-label="AI key" (click)="byok.open()" [attr.data-tooltip]="byok.aiDown() ? 'AI is out of requests — tap to add a free key' : 'AI key — keep AI working when the relay is busy'"><span [innerHTML]="'sparkles' | ico"></span><span>AI key</span></button>
+      <button class="icon-btn" [class.ai-down]="byok.aiDown()" aria-label="AI key" (click)="byok.open()" [attr.data-tooltip]="byok.aiDown() ? 'AI is out of requests — tap to add a free key' : 'AI key — keep AI working when the relay is busy'" [innerHTML]="'sparkles' | ico"></button>
       <button class="icon-btn" aria-label="Settings" (click)="openSettings()" data-tooltip="Settings & backup" [innerHTML]="'gear' | ico"></button>
       <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
     </div>
