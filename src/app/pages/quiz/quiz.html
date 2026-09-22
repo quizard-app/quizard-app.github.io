@@ -35,7 +35,7 @@
       } @else {
         <p>The AI service hit an error ({{ aiChoiceNote() }}) — not a quota issue. Your quiz doesn't have to wait.</p>
       }
-      <div style="display:grid;gap:8px;width:min(280px,80%);margin-top:18px">
+      <div style="display:grid;gap:8px;width:min(280px,80%);margin:18px auto 0">
         <button class="btn btn-primary" (click)="continueOffline()"><span [innerHTML]="'listChecks' | ico"></span> Use offline questions</button>
         <button class="btn btn-secondary" (click)="openByokChoice()"><span [innerHTML]="'zap' | ico"></span> Add my own key</button>
         <button class="btn btn-ghost" (click)="retryAiChoice()"><span [innerHTML]="'refresh' | ico"></span> Retry with AI</button>
