@@ -4,6 +4,7 @@ import { hasApiKey, chatJSON, chatMultimodal } from './gemini.js'
 import { listDocImages, saveDocImages, updateDoc } from './storage.js'
 import { renderPdfVisuals } from './extract/renderPage.js'
 import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence, hashString } from './textproc.js'
+import { restoreCasing } from './questionForms.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt, explainBatchPrompt, authorQuizPrompt, examAuthorPrompt } from './prompts.js'
@@ -264,6 +265,18 @@ async function generateBatch(items, relatedFor, weakHint) {
   return out
 }
 
+// Restore acronym/proper-noun casing the model flattened ("Mvvm" → "MVVM")
+// against the source text. Only ever ADDS capitals — a model-written
+// "Sunlight" is never lowered to a sentence-case "sunlight".
+function trueCase(option, srcText) {
+  const s = clean(option)
+  if (!s || !srcText) return s
+  const hit = restoreCasing(s, srcText)
+  if (!hit) return s
+  const caps = x => (String(x).match(/[A-Z]/g) || []).length
+  return caps(hit) > caps(s) ? hit.trim().replace(/[.!?…,;:]+$/, '') : s
+}
+
 // Polish a ready-made question set with the AI: exam-style direct stems and
 // same-family distractors, grounded in each item's own source sentence.
 // Only mcq/id/short items carrying meta.sentence + meta.term are polishable;
@@ -305,8 +318,9 @@ export async function polishQuestionSet(questions, opts = {}) {
 
         if (genItem.stem != null) {
           if (isBanned(genItem.stem)) return
-          const correct = clean(genItem.correct) || q.meta.term
-          const options = shuffleArr([correct, ...genItem.wrong], optionRng)
+          const srcText = opts.sourceText || q.meta?.sentence || ''
+          const correct = trueCase(clean(genItem.correct) || q.meta.term, srcText)
+          const options = shuffleArr([correct, ...genItem.wrong.map(w => trueCase(w, srcText))], optionRng)
           results.set(i, { ...q, stem: genItem.stem, options, answerIndex: options.indexOf(correct), meta: { ...q.meta, term: correct } })
         } else if (genItem.clue != null) {
           if (isBanned(genItem.clue)) return
@@ -538,7 +552,8 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
         if (!ok) continue
         if (isBanned(ok.stem) || ok.wrong.some(w => isBanned(w))) continue
         if (!grounded(ok.stem + ' ' + correct, source)) continue
-        const options = shuffleArr([correct, ...ok.wrong], optionRng)
+        const surfaced = trueCase(correct, source)
+        const options = shuffleArr([surfaced, ...ok.wrong.map(w => trueCase(w, source))], optionRng)
         const stem = cleanSentence(ok.stem)
         if (seen.has(stem.toLowerCase())) continue
         seen.add(stem.toLowerCase())
@@ -546,8 +561,8 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
           type: 'mcq',
           stem,
           options,
-          answerIndex: options.indexOf(correct),
-          meta: { sentence: source, term: correct, docId: doc.id, authored: true }
+          answerIndex: options.indexOf(surfaced),
+          meta: { sentence: source, term: surfaced, docId: doc.id, authored: true }
         })
       } else if (row?.kind === 'short') {
         const ok = validateGeneratedShort(row, clean(row.answer))
@@ -694,7 +709,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
         if (!stem || !correct || wrong.length !== 3) continue
         if (stem.length > 300 || isBlankStem(stem) || isBanned(stem) || wrong.some(w => isBanned(w))) continue
-        const all = [correct, ...wrong]
+        const all = [correct, ...wrong].map(w => trueCase(w, sentence))
         if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
         if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
         const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))
@@ -832,7 +847,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
       if (!stem || !correct || wrong.length !== 3) continue
       if (stem.length > 300 || isBlankStem(stem) || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
-      const all = [correct, ...wrong]
+      const all = [correct, ...wrong].map(w => trueCase(w, sentence))
       if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
       if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue
       const options = shuffleArr(all, mulberry32((out.length * 2654435761) >>> 0))

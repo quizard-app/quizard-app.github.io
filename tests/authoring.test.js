@@ -195,6 +195,17 @@ describe('polishQuestionSet (AI-written weak spots)', () => {
     expect(r.questions[0].options[r.questions[0].answerIndex]).toBe('MVVM')
   })
 
+  it('restores acronym casing the model flattened', async () => {
+    vi.mocked(chatJSON).mockResolvedValueOnce(JSON.stringify([
+      { i: 0, kind: 'mcq', stem: 'Which pattern keeps UI state in a reactive ViewModel?', correct: 'Mvvm', wrong: ['MVC', 'MVP', 'Flux'] }
+    ]))
+    const r = await polishQuestionSet(qs(), {})
+    expect(r.polished).toBe(1)
+    expect(r.questions[0].options[r.questions[0].answerIndex]).toBe('MVVM')
+    expect(r.questions[0].options).toContain('MVC')
+    expect(r.questions[0].options).toContain('MVP')
+  })
+
   it('falls back to the built-in questions when AI fails', async () => {
     vi.mocked(chatJSON).mockRejectedValueOnce(new Error('quota exploded'))
     const input = qs()

@@ -21,6 +21,7 @@ export const MCQ_RULES = [
   '  - Never use filler such as "none of the above", "all of the above", "option 1/2/3", "I don\'t know", placeholders, or the word "example".',
   '  - None of the wrong options may equal or contain the correct answer.',
   '  - Make all four options PARALLEL in length and form, like a teacher would list them on an exam (roughly 2-8 words each). Keep no option dramatically longer or shorter than the others.',
+  '  - Write acronyms and initialisms in their standard UPPERCASE form (MVVM, HTTP, API, CPU, CICC) — never in sentence case ("Mvvm", "Http"). More generally, preserve source capitalization for proper nouns: agency names (CICC, PNP-ACG), law names (RA 10175) and framework names (PAPA, WCAG) stay exactly as written in the material.',
   '  - The wrong options should be PLAUSIBLE and distinct from one another (not near-duplicates or synonyms of each other), so a student must actually reason rather than spot the odd one out.',
   '  - When the question is about a procedure, rule, or best practice ("What is the best way to…"), rank real alternatives from the document: the correct option states the recommended practice, the wrong options state practices that are less effective, outdated, or misread from the same material.',
   'Reply ONLY with a JSON array. Every item uses "i" (the index) and "kind":"mcq", plus "stem" (the direct question), "correct" (the full text of the best option) and "wrong" (exactly 3 short wrong options). Include every index. Example: [{"i":0,"kind":"mcq","stem":"What is the primary purpose of an operating system?","correct":"To manage computer hardware and software resources","wrong":["To browse the internet","To edit images","To create presentations"]}]'
@@ -119,6 +120,7 @@ export const VISUAL_Q_RULES = [
   'Every question is multiple choice with EXACTLY 4 options: "correct" plus exactly 3 specific, on-topic, filler-free "wrong" options.',
   '  - Each option is a SHORT, concrete phrase of 2 to 8 words (about 60 characters maximum) — never a full sentence.',
   '  - Keep the 4 options PARALLEL in length and form (short phrases of similar size, like a teacher would write on an exam), and make the wrong options plausible and distinct from each other.',
+  '  - Print acronyms and initialisms in standard UPPERCASE (MVVM, HTTP, API, CPU) — never sentence case ("Mvvm", "Http").',
   '  - Never write a fill-in-the-blank or "Complete the statement:" stem — ask a direct question instead.',
   'When the question depends on seeing the visual, set "imageIndex" to that element\'s index; otherwise omit it.',
   'Never mention the document title, chapter, section heading, or slide/page number in the wording.',
@@ -209,7 +211,8 @@ export const AUTHOR_RULES = [
   '  - Keep all four options parallel in length and form, and make the wrong options specific, believable and distinct from each other.',
   '  - When "concepts from this document" are provided, use them as wrong options whenever they fit the family — never invent generic filler.',
   'Never use filler ("none of the above", "option 1", "I don\'t know") or out-of-domain options.',
-  '  - Preserve the source capitalization for proper nouns — agency names (CICC, PNP-ACG), law names (RA 10175), framework names (PAPA, WCAG) stay capitalized in stems and options.',
+  '  - Preserve the source capitalization for proper nouns — agency names (CICC, PNP-ACG), law names (RA 10175), framework names (PAPA, WCAG) stay capitalized in stems and options. ' +
+  'Tech acronyms and initialisms always print in standard UPPERCASE (MVVM, HTTP, API, CPU) — never sentence case ("Mvvm", "Http").',
   'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
   'Skip any sentence that cannot support a good question — fewer good questions beat more bad ones.',
