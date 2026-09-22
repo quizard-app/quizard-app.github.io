@@ -182,15 +182,19 @@ async function handleGemini(request, sec) {
   const model = getGemModel()
   const combos = gemCombo(personal)
   let lastErr = null
+  let quotaSeen = false
   for (const key of combos) {
     if (gemIsThrottled(key)) continue
     const r = await callGemini(model, key, payload)
     if (r.networkError) { lastErr = r.networkError; continue }
-    if (r.fatal) return fail(502, r.fatal, sec)
-    if (r.error) { lastErr = r.error; continue }
+    // One bad or exhausted key must never poison the rest of the pool:
+    // park it briefly and try the next one. Only when every key has failed
+    // do we answer with an error.
+    if (r.error) { lastErr = r.error; quotaSeen = true; continue }
+    if (r.fatal) { lastErr = r.fatal; gemMarkThrottled(key); continue }
     return ok(r.text, sec)
   }
-  return fail(429, lastErr || 'all_keys_throttled', sec)
+  return fail(quotaSeen ? 429 : 502, lastErr || 'all_keys_throttled', sec)
 }
 
 // ── Fish Audio wizard voice ──

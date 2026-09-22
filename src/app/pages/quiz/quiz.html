@@ -30,8 +30,10 @@
       <h3>AI relay is out of requests</h3>
       @if (aiChoiceNote() === 'no_key') {
         <p>No AI key is available on this device right now.</p>
+      } @else if (aiChoiceNote() === 'quota') {
+        <p>The built-in AI ran out of requests. Your quiz doesn't have to wait.</p>
       } @else {
-        <p>The built-in AI ran out of requests ({{ aiChoiceNote() }}). Your quiz doesn't have to wait.</p>
+        <p>The AI service hit an error ({{ aiChoiceNote() }}) — not a quota issue. Your quiz doesn't have to wait.</p>
       }
       <div style="display:grid;gap:8px;width:min(280px,80%);margin-top:18px">
         <button class="btn btn-primary" (click)="continueOffline()"><span [innerHTML]="'listChecks' | ico"></span> Use offline questions</button>
