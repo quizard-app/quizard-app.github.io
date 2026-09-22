@@ -9,7 +9,7 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
-import { generateQuizAI, grounded } from '../src/app/core/engine/quiz-ai.js'
+import { generateQuizAI, grounded, byokHelps } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
 import { authorQuizPrompt } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
@@ -157,6 +157,20 @@ describe('full AI authoring', () => {
     // polish path: chatJSON mock returns undefined → no replacements
     expect(gen.questions.length).toBeGreaterThan(0)
     expect(gen.questions.every(q => !q.meta?.authored)).toBe(true)
+  })
+})
+
+describe('byokHelps (offline-vs-key choice)', () => {
+  it('offers the choice for quota/key/busy failures', () => {
+    for (const n of ['quota', 'invalid_key', 'server_busy', 'no_key', 'error']) {
+      expect(byokHelps(n)).toBe(true)
+    }
+  })
+
+  it('stays on silent offline fallback otherwise', () => {
+    for (const n of ['timeout', 'offline', 'network_error', 'not_enough_content', 'author_empty', 'blocked_content', 'empty_response', null, '']) {
+      expect(byokHelps(n)).toBe(false)
+    }
   })
 })
 

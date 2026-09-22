@@ -152,6 +152,111 @@ export function pickDistractors(answer, allTerms, rng, count = 3, opts = {}) {
   return picked
 }
 
+/* ── Source casing + acronyms (exam-style fallback quality) ── */
+
+/**
+ * Find the original casing of a (lowercased) term in the source text.
+ * Key terms are stored lowercase, which mangles acronyms/agency names
+ * ("cicc" → "Cicc"). The most frequent original surface form wins; ties
+ * prefer the form with more uppercase letters.
+ * @param {string} term - Lowercased term
+ * @param {string} text - Source document text
+ * @returns {string|null} Best original-casing form, or null when absent
+ */
+export function restoreCasing(term, text) {
+  if (!term || !text) return null
+  let re
+  try {
+    re = new RegExp('\\b' + escapeRe(term) + '\\b', 'gi')
+  } catch { return null }
+  const counts = new Map()
+  let m, guard = 0
+  while ((m = re.exec(text)) !== null && guard++ < 40) {
+    const form = m[0]
+    counts.set(form, (counts.get(form) || 0) + 1)
+    if (m[0].length === 0) re.lastIndex++
+  }
+  if (!counts.size) return null
+  const caps = s => (s.match(/[A-Z]/g) || []).length
+  return [...counts.entries()]
+    .sort((a, b) => (b[1] - a[1]) || (caps(b[0]) - caps(a[0])))
+    .map(e => e[0])[0]
+}
+
+/**
+ * Surface an option the way a teacher prints it: acronyms and proper nouns
+ * keep their source casing ("CICC", "PNP-ACG", "RA 10175"), common words are
+ * capitalized ("Sunlight").
+ */
+export function surfaceOption(term, text) {
+  const hit = restoreCasing(String(term || ''), text || '')
+  if (hit) {
+    const t = hit.trim().replace(/[.!?…,;:]+$/, '')
+    if (!t) return formatOption(term)
+    if (/[A-Z]/.test(t.slice(1))) return t
+    return formatOption(t)
+  }
+  return formatOption(term)
+}
+
+const ABBR_RE = /^[A-Z][A-Z0-9-]{1,7}$/
+
+function cleanExpansion(s) {
+  return String(s || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(the|a|an)\s+/i, '')
+    .replace(/[.;:,]+$/, '')
+}
+
+function validExpansion(exp, abbr) {
+  if (!exp || !abbr) return false
+  if (!ABBR_RE.test(abbr)) return false
+  if ((abbr.match(/[A-Z]/g) || []).length < 2) return false
+  const wc = exp.split(/\s+/).length
+  if (wc < 2 || wc > 8) return false
+  if (exp.length > 90) return false
+  const titled = exp.split(/\s+/).filter(w => /^[A-Z]/.test(w)).length
+  if (titled < 2) return false
+  if (new RegExp('\\b' + escapeRe(abbr) + '\\b').test(exp)) return false
+  return true
+}
+
+/**
+ * Detect acronym definitions in source text:
+ * "Cybercrime Investigation and Control Center (CICC)" and the reverse
+ * "CICC (Cybercrime Investigation and Control Center)".
+ * @param {string} text
+ * @returns {Array<{abbr: string, expansion: string}>}
+ */
+export function findAcronyms(text) {
+  const out = []
+  const seen = new Set()
+  const src = String(text || '')
+  if (!src) return out
+  const push = (abbr, exp) => {
+    const expansion = cleanExpansion(exp)
+    abbr = String(abbr || '').trim()
+    if (!validExpansion(expansion, abbr)) return
+    if (seen.has(abbr)) return
+    seen.add(abbr)
+    out.push({ abbr, expansion })
+  }
+  let m
+  const fwd = /([A-Z][A-Za-z0-9&'’-]*((\s+(?:of|the|for|and|on|de|del|sa|ng)?\s*)[A-Z][A-Za-z0-9&'’-]*)+)\s+\(([A-Z][A-Z0-9-]{1,7})\)/g
+  while ((m = fwd.exec(src)) !== null && out.length < 20) push(m[4], m[1])
+  const rev = /\b([A-Z][A-Z0-9-]{1,7})\s+\(([A-Z][^)]{3,80})\)/g
+  while ((m = rev.exec(src)) !== null && out.length < 20) push(m[1], m[2])
+  return out
+}
+
+/**
+ * Direct exam stem for an acronym ("What does CICC stand for?").
+ */
+export function buildAcronymStem(abbr) {
+  return { stem: `What does ${abbr} stand for?`, style: 'acronym' }
+}
+
 /* ── Sentence pattern detection ── */
 
 function escapeRe(s) {
@@ -205,12 +310,76 @@ function singularize(verb) {
 /* ── Teacher-style stem builders ── */
 
 /**
+ * Base (dictionary) form of a 3rd-person / past verb for "What does X …?"
+ * stems ("absorbs" → "absorb", "carries" → "carry", "has" → "have").
+ */
+function baseForm(verb) {
+  const v = String(verb || '').toLowerCase()
+  if (!v) return v
+  if (v === 'has') return 'have'
+  if (v === 'does') return 'do'
+  if (v === 'goes') return 'go'
+  if (/[^aeiou]ies$/.test(v)) return v.slice(0, -3) + 'y'
+  if (/(?:ches|shes|sses|xes|zes|oes)$/.test(v)) return v.slice(0, -2)
+  if (/[^s]s$/.test(v) && !/(?:ss|us|is)$/.test(v)) return v.slice(0, -1)
+  return v
+}
+
+function subjectDisplay(s) {
+  // Sentence-case common nouns read better lowercased mid-stem
+  // ("What does chlorophyll absorb …?"), but proper-noun phrases and
+  // acronyms keep their source form ("Calvin cycle", "CICC").
+  const t = String(s || '').trim()
+  if (!t || /\s/.test(t)) return t
+  if (/^[A-Z][a-z'’-]*$/.test(t)) return t.charAt(0).toLowerCase() + t.slice(1)
+  return t
+}
+
+const VERBAL_RE = /^(is|are|was|were|be|been|being|has|have|had|does|do|will|would|can|could|may|might|must|shall|should)$/i
+
+function looksVerbal(w) {
+  const t = String(w || '').replace(/[^A-Za-z]$/g, '')
+  if (t.length < 3) return false
+  if (VERBAL_RE.test(t)) return true
+  return /(s|es|ies|ed|ing)$/.test(t.toLowerCase())
+}
+
+// Leading "subject + verb" of a sentence for object-questions. Handles
+// two-word proper-noun subjects ("The Calvin cycle produces …" →
+// subject "Calvin cycle", verb "produces").
+function headSubjectVerb(sentence) {
+  const words = String(sentence || '').split(/\s+/).filter(Boolean)
+  if (words.length < 3) return null
+  let si = 0
+  if (/^(the|a|an)$/i.test(words[0])) si = 1
+  const clean = w => String(w || '').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '')
+  let subject = clean(words[si])
+  let vi = si + 1
+  const w2 = clean(words[vi])
+  if (subject && /^[A-Z]/.test(subject) && w2 && /^[a-z]/.test(w2) && !looksVerbal(w2)) {
+    const w3 = clean(words[vi + 1])
+    if (w3 && looksVerbal(w3)) {
+      subject += ' ' + w2
+      vi += 1
+    }
+  }
+  const verb = clean(words[vi])
+  if (!subject || !verb || !looksVerbal(verb)) return null
+  return { subject, verb }
+}
+
+/**
  * Build a teacher-style MCQ stem from a candidate sentence+term.
- * Returns { stem, style } where style is 'subject-question', 'definition', or 'cloze'.
+ * Returns { stem, style } where style is 'subject-question', 'definition',
+ * 'object-question', 'concept' or 'acronym'.
  *
  * Subject-question: "Which of the following converts light energy into chemical energy?"
  * Definition: "Which term is described as: 'the process by which...'"?
- * Cloze: "Complete the statement: "________ absorbs sunlight...""
+ * Object-question: "What does chlorophyll absorb most strongly ...?"
+ * Concept: "Which concept is described here: '... this concept ...'"?
+ *
+ * Fill-in-the-blank stems are never produced: every stem is a direct
+ * question ending in "?" that never names the answer.
  */
 export function buildMcqStem(sentence, term, opts = {}) {
   const split = splitSubject(sentence, term)
@@ -240,13 +409,67 @@ export function buildMcqStem(sentence, term, opts = {}) {
     }
   }
 
-  // Fallback — Cloze with instruction frame
-  const blanked = sentence.replace(
-    new RegExp(escapeRe(term), 'i'),
-    '\u0000BLANK\u0000'
-  )
-  const stem = `Complete the statement: "${blanked}"`
-  return { stem, style: 'cloze' }
+  // Fallback — object-question: the term is the OBJECT ("Chlorophyll absorbs
+  // sunlight …" → "What does chlorophyll absorb …?"). Direct exam style,
+  // never a blank.
+  {
+    let idx = -1
+    try {
+      idx = sentence.search(new RegExp('\\b' + escapeRe(term) + '\\b', 'i'))
+    } catch { idx = -1 }
+    if (idx > 8) {
+      const head = headSubjectVerb(sentence)
+      if (head) {
+        const { subject, verb } = head
+        if (!/^(is|are|was|were|be|been|being|has|have|had)$/i.test(verb)) {
+          const termEnd = idx + term.length
+          const suffix = sentence.slice(termEnd).replace(/\s+/g, ' ').trim().replace(/^[,\s:;-]+/, '').replace(/[.!?…]+$/, '').trim()
+          if (suffix.split(/\s+/).filter(Boolean).length >= 2) {
+            const stem = `What does ${subjectDisplay(subject)} ${baseForm(verb)} ${suffix}?`.replace(/\s+/g, ' ')
+            const termRe = new RegExp('\\b' + escapeRe(term) + '\\b', 'i')
+            if (!termRe.test(stem) && stem.length <= 300) {
+              return { stem, style: 'object-question' }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Copula anywhere in the sentence ("… term is …"), not just at the start.
+  {
+    let m = null
+    try {
+      m = sentence.match(new RegExp('\\b' + escapeRe(term) + '\\b\\s+(is|are|was|were)\\s+(.+?)[.!?…]?$', 'i'))
+    } catch { m = null }
+    if (m && m[2]) {
+      const predicate = m[2].replace(/\s+/g, ' ').trim()
+      if (predicate.split(/\s+/).length >= 4) {
+        const capPred = predicate.charAt(0).toLowerCase() + predicate.slice(1)
+        const stem = `Which term is described as: "${capPred}"?`
+        const termRe = new RegExp('\\b' + escapeRe(term) + '\\b', 'i')
+        if (!termRe.test(stem) && stem.length <= 300) {
+          return { stem, style: 'definition' }
+        }
+      }
+    }
+  }
+
+  // Last resort — concept description: quote the sentence with the answer
+  // named as "this concept". Still a direct question, never a blank.
+  {
+    let describe = sentence
+    try {
+      describe = sentence.replace(new RegExp('\\b' + escapeRe(term) + '\\b', 'i'), 'this concept')
+    } catch { /* keep original */ }
+    if (describe.length > 240) describe = describe.slice(0, 220).trim() + '…'
+    const stem = `Which concept is described here: "${describe}"?`
+    const termRe = (() => { try { return new RegExp('\\b' + escapeRe(term) + '\\b', 'i') } catch { return null } })()
+    if ((!termRe || !termRe.test(stem)) && stem.length <= 300) {
+      return { stem, style: 'concept' }
+    }
+    return { stem: `Which of the following is a key concept in this material?`, style: 'concept' }
+  }
 }
 
 /**

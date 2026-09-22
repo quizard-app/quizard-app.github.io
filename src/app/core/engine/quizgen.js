@@ -47,7 +47,7 @@
 import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { looksLikeCode } from './validate.js'
-import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption } from './questionForms.js'
+import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption, surfaceOption, findAcronyms, buildAcronymStem } from './questionForms.js'
 
 /**
  * Build MCQ/ID questions from previously banked mistakes.
@@ -279,6 +279,53 @@ export function generateQuiz(doc, config) {
   const usedSentences = new Set()
   const usedTerms = new Set()
 
+  // Exam-style acronym questions ("What does CICC stand for?") — the same
+  // direct format a teacher prints. Distractors are other expansions from
+  // the same document (same concept family), topped up with surfaced terms.
+  const allAcronyms = findAcronyms(doc.text)
+  const acronymBudget = allAcronyms.length
+    ? Math.min(allAcronyms.length, Math.max(1, Math.ceil(config.count / 5)))
+    : 0
+  if (acronymBudget && (config.mix || {}).mcq) {
+    const famPool = terms.concat(tierTerms.filter(t => !terms.includes(t)))
+    for (let ai = 0; ai < acronymBudget && questions.length < config.count; ai++) {
+      const a = allAcronyms[ai]
+      const wrong = shuffleArr(
+        allAcronyms.filter(x => x.abbr !== a.abbr).map(x => x.expansion), rng
+      ).slice(0, 3)
+      if (wrong.length < 3) {
+        const filler = pickImprovedDistractors(
+          { term: a.expansion.toLowerCase(), phrase: true }, famPool, rng, 6, {}
+        )
+        for (const t of filler) {
+          if (wrong.length >= 3) break
+          const s = surfaceOption(t, text)
+          if (!s) continue
+          const low = s.toLowerCase()
+          if (low === a.expansion.toLowerCase()) continue
+          if (wrong.some(w => w.toLowerCase() === low)) continue
+          if (low.includes(a.expansion.toLowerCase()) || a.expansion.toLowerCase().includes(low)) continue
+          wrong.push(s)
+        }
+      }
+      if (wrong.length < 3) continue
+      const options = shuffleArr([a.expansion, ...wrong], rng)
+      if (new Set(options.map(o => o.toLowerCase())).size !== 4) continue
+      const answerIndex = options.indexOf(a.expansion)
+      if (answerIndex === -1) continue
+      const src = ranked.find(s => s.text.toLowerCase().includes(a.abbr.toLowerCase()))
+      if (src) usedSentences.add(src.text)
+      usedTerms.add(a.expansion.toLowerCase())
+      questions.push({
+        type: 'mcq',
+        stem: buildAcronymStem(a.abbr).stem,
+        options,
+        answerIndex,
+        meta: { sentence: src ? src.text : `${a.abbr} stands for ${a.expansion}.`, term: a.expansion }
+      })
+    }
+  }
+
   function takeCandidate() {
     for (let i = 0; i < sentPool.length; i++) {
       const s = sentPool[i]
@@ -321,7 +368,7 @@ export function generateQuiz(doc, config) {
     }
     const cand = takeCandidate()
     if (!cand) break
-    const q = buildQuestion(type, cand, terms, tierTerms, rng, { cooccur })
+    const q = buildQuestion(type, cand, terms, tierTerms, rng, { cooccur, sourceText: doc.text })
     if (!q) continue
     usedTerms.add(cand.term.term)
     q.meta = { sentence: cand.text, term: cand.term.term }
@@ -360,10 +407,13 @@ function buildQuestion(type, cand, allTerms, tierTerms, rng, opts = {}) {
         cooccur
       })
       if (distractors.length < 3) return null
-      const options = shuffleArr([term.term, ...distractors], rng).map(formatOption)
+      const src = opts.sourceText || ''
+      const options = shuffleArr([term.term, ...distractors], rng).map(t => surfaceOption(t, src))
+      if (new Set(options.map(o => o.toLowerCase())).size !== options.length) return null
       const answerIdx = options.findIndex(o => o.toLowerCase() === term.term.toLowerCase())
       if (answerIdx === -1) return null
       const { stem } = buildMcqStem(cand.text, term.term)
+      if (!stem || !stem.endsWith('?')) return null
       return { type, stem, options, answerIndex: answerIdx }
     }
     case 'tf': {

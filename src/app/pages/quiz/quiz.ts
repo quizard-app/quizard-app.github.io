@@ -7,7 +7,7 @@ import {
   gradeSrsItem, getImageById, loadSettings, saveAttempt
 } from '../../core/engine/storage.js';
 import { generateQuiz, TYPE_META, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
-import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions } from '../../core/engine/quiz-ai.js';
+import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions, classifyAIError, byokHelps } from '../../core/engine/quiz-ai.js';
 import { explainAnswer } from '../../core/engine/explain.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
 import { ByokService } from '../../core/services/byok.service';
@@ -46,10 +46,12 @@ export class QuizPage implements OnInit, OnDestroy {
   readonly byok = inject(ByokService);
 
   // boot phases
-  phase = signal<'generating' | 'error' | 'active' | 'feedback'>('generating');
+  phase = signal<'generating' | 'error' | 'active' | 'feedback' | 'ai-choice'>('generating');
   genLabel = signal('Connecting to Gemini…');
   genPct = signal(0);
   errorMsg = signal('');
+  // why the ai-choice screen is showing ('quota' | 'no_key' | …)
+  aiChoiceNote = signal('');
 
   // quiz state
   private doc: any = null;
@@ -59,6 +61,8 @@ export class QuizPage implements OnInit, OnDestroy {
   private locked = false;
   private lastOk: boolean | null = null;
   private adaptiveOn = false;
+  // set by "use offline questions" so boot skips AI entirely; cleared on beginAttempt
+  private forceOffline = false;
   private timerInterval: any = null;
   imgUrlMap: Record<string, string> = {};
   private keyCleanup: (() => void) | null = null;
@@ -172,19 +176,37 @@ export class QuizPage implements OnInit, OnDestroy {
 
     if (cfg.fresh || !this.cachedQuiz[doc.id]) {
       let gen: any = null;
-      if (cfg.aiAuthor) {
+      let choiceNote: string | null = null;
+      if (cfg.aiAuthor && !this.forceOffline) {
         this.phase.set('generating');
-        try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch { gen = null; }
+        let authorErr: any = null;
+        try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { gen = null; authorErr = e; }
         const enough = (gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2);
-        if (!enough) { this.toast.toast('AI authoring unavailable — using built-in questions', true); this.byok.notifyAiFailure('quota'); gen = null; }
+        if (!enough) {
+          const note = authorErr ? classifyAIError(authorErr)
+            : (gen?.error && gen.error !== 'not_enough_content' ? gen.error : 'author_empty');
+          if (byokHelps(note)) choiceNote = note;
+          else { this.toast.toast('AI authoring unavailable — using built-in questions', true); this.byok.notifyAiFailure(note); }
+          gen = null;
+        }
         else this.byok.notifyAiOk();
       }
-      if (!gen && cfg.ai) {
+      if (!gen && !choiceNote && cfg.ai && !this.forceOffline) {
         this.phase.set('generating');
         try { gen = await generateQuizAI(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch { gen = null; }
-        if (gen?.aiNote === 'no_key') { this.toast.toast('Built-in questions ready — add a free Gemini key for AI-written ones'); this.byok.notifyAiFailure('no_key'); }
+        if (gen?.aiNote && byokHelps(gen.aiNote)) { choiceNote = gen.aiNote; gen = null; }
         else if (gen?.aiNote) { this.toast.toast(`Gemini unavailable (${gen.aiNote}) — used built-in questions`, true); this.byok.notifyAiFailure(gen.aiNote); }
         else if (gen?.questions?.length) this.byok.notifyAiOk();
+      }
+      if (choiceNote) {
+        // Relay quota exhausted (or no key on device): stop and let the
+        // learner choose — continue now with offline exam-style questions,
+        // or add a personal Gemini key and retry with AI. aiDown highlights
+        // the Settings/Home key entry in the meantime.
+        this.byok.aiDown.set(true);
+        this.aiChoiceNote.set(choiceNote);
+        this.phase.set('ai-choice');
+        return;
       }
       if (!gen || gen.error === 'not_enough_content' || !gen.questions.length) {
         gen = generateQuiz(doc, cfg);
@@ -220,6 +242,7 @@ export class QuizPage implements OnInit, OnDestroy {
   private async beginAttempt() {
     const st = this.st;
     st.startTime = Date.now();
+    this.forceOffline = false;
     this.adaptiveOn = this.cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode;
 
     if (loadSettings().aiExplain !== false && hasApiKey()) {
@@ -548,6 +571,27 @@ export class QuizPage implements OnInit, OnDestroy {
     if (!st.mistakeMode && this.doc) delete this.cachedQuiz[this.doc.id];
     this.clearResumeState();
     this.router.navigateByUrl('/results');
+  }
+
+  // ── AI quota choice: offline fallback vs BYOK ──
+  continueOffline() {
+    this.forceOffline = true;
+    this.phase.set('generating');
+    void this.boot();
+  }
+  openByokChoice() {
+    this.byok.open('The built-in AI relay is out of requests right now. Add your own free Gemini key to keep AI-written questions running — it stays on this device.');
+  }
+  retryAiChoice() {
+    this.forceOffline = false;
+    this.phase.set('generating');
+    void this.boot();
+  }
+  backToSetup() {
+    const id = this.doc?.id || this.qs.currentDocId();
+    this.stopTimer();
+    if (id) this.router.navigate(['/doc', id, 'setup']);
+    else this.router.navigateByUrl('/tabs/library');
   }
 
   async quit() {

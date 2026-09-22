@@ -23,6 +23,27 @@
   </div>
 }
 
+@if (phase() === 'ai-choice') {
+  <div class="screen screen-center">
+    <div class="empty-state">
+      <div class="art" [innerHTML]="'sparkles' | ico"></div>
+      <h3>AI relay is out of requests</h3>
+      @if (aiChoiceNote() === 'no_key') {
+        <p>No AI key is available on this device right now.</p>
+      } @else {
+        <p>The built-in AI ran out of requests ({{ aiChoiceNote() }}). Your quiz doesn't have to wait.</p>
+      }
+      <div style="display:grid;gap:8px;width:min(280px,80%);margin-top:18px">
+        <button class="btn btn-primary" (click)="continueOffline()"><span [innerHTML]="'listChecks' | ico"></span> Use offline questions</button>
+        <button class="btn btn-secondary" (click)="openByokChoice()"><span [innerHTML]="'zap' | ico"></span> Add my own key</button>
+        <button class="btn btn-ghost" (click)="retryAiChoice()"><span [innerHTML]="'refresh' | ico"></span> Retry with AI</button>
+      </div>
+      <p class="faint" style="font-size:12px;margin-top:14px">Offline questions are exam-style 4-option MCQs written from your document.</p>
+      <button class="btn btn-ghost" style="margin-top:6px" (click)="backToSetup()">Back to setup</button>
+    </div>
+  </div>
+}
+
 @if (phase() === 'active' && q(); as question) {
   <div class="quiz-topbar">
     <button class="icon-btn" (click)="quit()" data-tooltip="Quit quiz" [innerHTML]="'x' | ico"></button>

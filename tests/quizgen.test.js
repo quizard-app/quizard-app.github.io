@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { generateQuiz, swapWithDistractor, tierForTerm } from '../src/app/core/engine/quizgen.js'
 import { isTitleLike, mulberry32 } from '../src/app/core/engine/textproc.js'
-import { buildMcqStem, buildShortPrompt, pickDistractors, termClass, formatOption, buildCooccurrence } from '../src/app/core/engine/questionForms.js'
+import { buildMcqStem, buildShortPrompt, pickDistractors, termClass, formatOption, buildCooccurrence, findAcronyms, buildAcronymStem, surfaceOption } from '../src/app/core/engine/questionForms.js'
 
 const DOC = [
   'Biology Study Guide',
@@ -270,6 +270,74 @@ describe('exam-style formats', () => {
         expect(i).toBeGreaterThanOrEqual(0)
         expect(i).toBeLessThan(5)
       }
+    }
+  })
+})
+
+describe('exam-style fallback quality', () => {
+  it('detects acronym definitions both ways', () => {
+    const fwd = findAcronyms('The Cybercrime Investigation and Control Center (CICC) handles cybercrime investigation daily.')
+    expect(fwd).toContainEqual({ abbr: 'CICC', expansion: 'Cybercrime Investigation and Control Center' })
+    const rev = findAcronyms('The CICC (Cybercrime Investigation and Control Center) leads the national response effort today.')
+    expect(rev).toContainEqual({ abbr: 'CICC', expansion: 'Cybercrime Investigation and Control Center' })
+  })
+
+  it('builds direct acronym stems', () => {
+    expect(buildAcronymStem('CICC').stem).toBe('What does CICC stand for?')
+  })
+
+  it('restores acronym casing in options', () => {
+    const text = 'The CICC coordinates with the NBI on cybercrime cases every day.'
+    expect(surfaceOption('cicc', text)).toBe('CICC')
+    expect(surfaceOption('nbi', text)).toBe('NBI')
+    expect(surfaceOption('sunlight', 'Chlorophyll absorbs sunlight daily in green leaves.')).toBe('Sunlight')
+  })
+
+  it('never emits fill-in-the-blank fallback stems', () => {
+    const cases = [
+      ['Photosynthesis converts light energy into chemical energy inside chloroplasts.', 'Photosynthesis'],
+      ['Chlorophyll absorbs sunlight most strongly in the blue and red wavelengths.', 'sunlight'],
+      ['The Calvin cycle produces glucose using ATP and NADPH generated earlier.', 'glucose'],
+      ['Stomata are tiny pores that regulate gas exchange in plant leaves.', 'pores'],
+    ]
+    for (const [s, t] of cases) {
+      const { stem, style } = buildMcqStem(s, t)
+      expect(['subject-question', 'definition', 'object-question', 'concept']).toContain(style)
+      expect(stem.endsWith('?')).toBe(true)
+      expect(stem).not.toMatch(/complete the statement|____|BLANK/i)
+      expect(stem.toLowerCase()).not.toContain(t.toLowerCase())
+    }
+  })
+
+  it('builds object-questions for mid-sentence terms', () => {
+    const { stem, style } = buildMcqStem(
+      'Chlorophyll absorbs sunlight most strongly in the blue and red wavelengths.',
+      'sunlight'
+    )
+    expect(style).toBe('object-question')
+    expect(stem).toBe('What does chlorophyll absorb most strongly in the blue and red wavelengths?')
+  })
+
+  it('generates acronym questions from an ethics-style deck', () => {
+    const text = [
+      'The Cybercrime Investigation and Control Center (CICC) handles cybercrime investigation and digital forensics nationwide.',
+      'The National Bureau of Investigation (NBI) assists with complex criminal cases requiring forensic expertise daily.',
+      'The Department of Justice (DOJ) oversees prosecution and legal proceedings for cybercrime cases filed regularly.',
+      'The Philippine National Police (PNP) conducts law enforcement operations against cybercriminal groups operating locally.',
+      'The Department of Information and Communications Technology (DICT) develops national cybersecurity policies and programs.',
+      'Investigators first report and assess the incident before collecting digital evidence from affected computer systems.'
+    ].join(' ')
+    const doc = { id: 'ethics-deck', name: 'Ethics Reviewer', text }
+    const gen = generateQuiz(doc, { count: 6, mix: { mcq: true }, difficulty: 'medium', shuffle: false, fixedSeed: 11 })
+    expect(gen.questions.length).toBeGreaterThan(0)
+    // at least one acronym question, exam-style
+    expect(gen.questions.some(q => /stand for\?/.test(q.stem))).toBe(true)
+    for (const q of gen.questions) {
+      expect(q.stem.endsWith('?')).toBe(true)
+      expect(q.stem).not.toMatch(/complete the statement|____/i)
+      expect(q.options).toHaveLength(4)
+      const answer = q.options[q.answerIndex]
+      expect(q.stem.toLowerCase()).not.toContain(answer.toLowerCase())
     }
   })
 })

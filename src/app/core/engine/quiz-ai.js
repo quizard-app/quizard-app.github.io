@@ -220,6 +220,17 @@ export function classifyAIError(err) {
   return 'error'
 }
 
+// True when a personal Gemini key could plausibly fix this AI failure —
+// relay quota/key/busy problems — so the quiz offers an explicit choice:
+// continue now with offline questions, or add a key and retry with AI.
+// Mirrors ByokService.notifyAiFailure's skip-list from the other side:
+// offline/timeout/content failures stay on silent offline fallback.
+export function byokHelps(note) {
+  const r = String(note || '').toLowerCase()
+  if (/timeout|offline|network_error|network|fetch|not_enough_content|author_empty|blocked_|empty_response/.test(r)) return false
+  return /^(quota|invalid_key|server_busy|no_key|error)$/.test(r)
+}
+
 async function requestBatch(items, relatedFor, weakHint) {
   const raw = await chatJSON(
     mcqPrompt(items, relatedFor, weakHint),
