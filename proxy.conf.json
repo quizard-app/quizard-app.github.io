@@ -1,0 +1,8 @@
+{
+  "/gemini": {
+    "target": "https://quizard-relay.quizard-app.workers.dev",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}
