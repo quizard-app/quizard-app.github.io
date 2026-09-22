@@ -12,24 +12,16 @@
       </div>
     </header>
     <div class="screen rev-screen">
-      <div class="review-toggle">
-        <div class="seg" style="width:100%">
-          <button [class.on]="view() === 'summary'" (click)="setView('summary')" style="flex:1"><span [innerHTML]="'book' | ico"></span> Reviewer</button>
-          @if (hasImages()) {
-            <button [class.on]="view() === 'gallery'" (click)="setView('gallery')" style="flex:1"><span [innerHTML]="'fileText' | ico"></span> Gallery</button>
-          }
-        </div>
-      </div>
-      @if (view() === 'summary' && aiState() === 'ready') {
+      @if (aiState() === 'ready') {
         <div class="ai-mode-toggle">
           <button type="button" [class.on]="aiMode()" (click)="setAiMode(true)"><span [innerHTML]="'sparkles' | ico"></span> AI reviewer</button>
           <button type="button" [class.on]="!aiMode()" (click)="setAiMode(false)">Quick notes</button>
         </div>
       }
-      @if (view() === 'summary' && aiState() === 'generating') {
+      @if (aiState() === 'generating') {
         <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Quick notes shown meanwhile.</div>
       }
-      @if (view() === 'summary' && aiState() === 'error') {
+      @if (aiState() === 'error') {
         <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free Gemini key to generate the reviewer.')">Add a key</button></div>
       }
       <div class="tts-bar" [class.hidden]="!ttsSupported">
@@ -59,18 +51,6 @@
           <button class="btn btn-secondary" (click)="print()" data-tooltip="Open a printable study sheet"><span [innerHTML]="'print' | ico"></span> Print sheet</button>
         </div>
       </div>
-    </div>
-    <div class="img-viewer" [class.hidden]="!viewerOpen()" (click)="closeViewer()">
-      <div class="iv-zoom-bar">
-        <button class="iv-zoom" aria-label="Zoom out" (click)="ivOut(); $event.stopPropagation()" [innerHTML]="'minus' | ico"></button>
-        <button class="iv-zoom" aria-label="Reset zoom" (click)="ivReset(); $event.stopPropagation()" [innerHTML]="'refresh' | ico"></button>
-        <button class="iv-zoom" aria-label="Zoom in" (click)="ivIn(); $event.stopPropagation()" [innerHTML]="'plus' | ico"></button>
-      </div>
-      <button class="iv-close" (click)="closeViewer()" [innerHTML]="'x' | ico"></button>
-      <button class="iv-nav iv-prev" (click)="stepViewer(-1)" [innerHTML]="'chevronLeft' | ico"></button>
-      <img #viewerImg alt="Viewing image" />
-      <button class="iv-nav iv-next" (click)="stepViewer(1)" [innerHTML]="'chevronRight' | ico"></button>
-      <div class="iv-caption">{{ viewerCaption() }}</div>
     </div>
   }
 </ion-content>

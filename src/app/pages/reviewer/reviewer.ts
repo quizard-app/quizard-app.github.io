@@ -2,7 +2,7 @@ import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, signal
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
-import { getDoc, listDocImages, loadSettings, saveSettings, upsertSrsFromMistake } from '../../core/engine/storage.js';
+import { getDoc, loadSettings, saveSettings, upsertSrsFromMistake } from '../../core/engine/storage.js';
 import { detectTopics } from '../../core/engine/topics.js';
 import { sentences } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
@@ -11,7 +11,6 @@ import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { speak, pause, resume, stop, isSupported } from '../../core/engine/tts.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
-import { attachZoom } from '../../core/engine/imgZoom.js';
 import { exportSummary, printStudySheet, exportPdfHandout } from '../../core/engine/export.js';
 import { assetUrl } from '../../shared/assets.js';
 import { IcoPipe } from '../../shared/ico.pipe';
@@ -45,15 +44,10 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
 
   @ViewChild('content') content?: ElementRef<HTMLElement>;
-  @ViewChild('viewer') viewer?: ElementRef<HTMLElement>;
-  @ViewChild('viewerImg') viewerImg?: ElementRef<HTMLImageElement>;
 
   doc = signal<any>(null);
-  view = signal<'summary' | 'gallery'>('summary');
   contentHtml = signal<SafeHtml | string>('');
   scale = 1;
-  hasImages = signal(false);
-  galleryImages: any[] = [];
   ttsSupported = isSupported();
   ttsState = signal<'idle' | 'playing' | 'paused'>('idle');
   ttsRate = 1;
@@ -65,11 +59,8 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   findVisible = signal(false);
   findCount = signal('');
 
-  private objectUrls = new Map<string, string>();
   private nlp: any = null;
   private nlpBuilding = false;
-  private viewerIndex = 0;
-  private ivZoom: any = null;
   private findMatches: HTMLElement[] = [];
   private findPos = -1;
   private ttsActive = false;
@@ -93,13 +84,8 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
     }
     const settings = loadSettings();
     this.scale = settings.readerScale || 1;
-    const view = (settings.reviewerView === 'gallery' ? 'summary' : settings.reviewerView) || 'summary';
-    this.view.set(view);
     this.ttsRate = settings.ttsRate || 1;
     this.aiMode.set(settings.reviewerAiMode !== false);
-    const images = await listDocImages(doc.id);
-    this.galleryImages = images || [];
-    this.hasImages.set(!!images?.length);
     // the article element renders one CD tick after the doc signal — defer
     setTimeout(() => this.applyView(), 0);
     void this.tryGenerateAi();
@@ -111,12 +97,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.stopTts();
-    this.objectUrls.forEach(u => URL.revokeObjectURL(u));
-  }
-
-  private objectUrl(img: any) {
-    if (!this.objectUrls.has(img.id)) this.objectUrls.set(img.id, URL.createObjectURL(img.blob));
-    return this.objectUrls.get(img.id)!;
   }
 
   private buildNlp() {
@@ -275,18 +255,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       </section>`).join('') + '<p class="reader-end">· · ·</p>';
   }
 
-  private galleryHtml(): string {
-    return `
-      <div class="gallery-grid">
-        ${this.galleryImages.map((img, i) => `
-          <button class="gallery-item" data-i="${i}" data-tooltip="Image ${i + 1}${img.slideNumber ? ' · slide ' + img.slideNumber : ''}">
-            <img src="${this.objectUrl(img)}" alt="Extracted image ${i + 1}" loading="lazy" />
-            ${img.slideNumber ? `<span class="gi-badge">slide ${img.slideNumber}</span>` : ''}
-          </button>`).join('')}
-      </div>
-      <p class="sum-note">${this.galleryImages.length} image${this.galleryImages.length === 1 ? '' : 's'} extracted from this document.</p>`;
-  }
-
   private trust(html: string) { return this.sanitizer.bypassSecurityTrustHtml(html); }
 
   // ── AI reviewer: Gemini writes the exam-style reviewer from the uploaded file ──
@@ -312,7 +280,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       this.aiState.set('idle');
       return;
     }
-    if (this.view() === 'summary') this.applyView();
+    this.applyView();
   }
 
   retryAi() {
@@ -325,25 +293,14 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   setAiMode(v: boolean) {
     this.aiMode.set(v);
     saveSettings({ reviewerAiMode: v });
-    if (this.view() === 'summary') this.applyView();
+    this.applyView();
   }
 
   private applyView() {
     this.stopTts();
-    const view = this.view();
     const content = this.content?.nativeElement;
     if (!content) return;
     const fc = content.closest('.rev-screen')?.querySelector('.font-controls') as HTMLElement | null;
-    if (view === 'gallery') {
-      this.contentHtml.set(this.trust(this.galleryHtml()));
-      content.classList.remove('summary-mode');
-      if (fc) fc.style.visibility = 'hidden';
-      setTimeout(() => {
-        content.querySelectorAll('.gallery-item').forEach(item =>
-          item.addEventListener('click', () => this.openViewer(parseInt((item as HTMLElement).dataset['i'] || '0', 10))));
-      });
-      return;
-    }
     if (!this.nlp) {
       this.contentHtml.set(this.trust('<div class="reader-loading">Preparing your document…</div>'));
       if (!this.nlpBuilding) {
@@ -352,18 +309,10 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
       }
       return;
     }
-    if (view === 'summary') {
-      this.contentHtml.set(this.trust(this.aiMode() && this.aiReviewer() ? this.aiReviewHtml() : this.summaryHtml()));
-      content.classList.add('summary-mode');
-      if (fc) fc.style.visibility = 'hidden';
-    }
+    this.contentHtml.set(this.trust(this.aiMode() && this.aiReviewer() ? this.aiReviewHtml() : this.summaryHtml()));
+    content.classList.add('summary-mode');
+    if (fc) fc.style.visibility = 'hidden';
     this.clearFind();
-  }
-
-  setView(v: 'summary' | 'gallery') {
-    this.view.set(v);
-    saveSettings({ reviewerView: v });
-    this.applyView();
   }
 
   // ── find in document ──
@@ -473,33 +422,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   fontMinus() { this.scale = Math.max(0.85, +(this.scale - 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
   fontPlus() { this.scale = Math.min(1.5, +(this.scale + 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
 
-  // ── image viewer ──
-  viewerOpen = signal(false);
-  viewerCaption = signal('');
-
-  openViewer(i: number) {
-    this.viewerIndex = i;
-    const img = this.galleryImages[i];
-    this.viewerImg!.nativeElement.src = this.objectUrl(img);
-    this.viewerCaption.set(`Image ${i + 1} of ${this.galleryImages.length}${img.slideNumber ? ` · slide ${img.slideNumber}` : ''}`);
-    this.ivZoom?.reset();
-    this.viewerOpen.set(true);
-    setTimeout(() => {
-      if (!this.ivZoom && this.viewer?.nativeElement && this.viewerImg?.nativeElement) {
-        this.ivZoom = attachZoom(this.viewer.nativeElement, this.viewerImg.nativeElement);
-      }
-      this.ivZoom?.reset();
-    });
-  }
-  closeViewer() { this.viewerOpen.set(false); }
-  stepViewer(dir: number) {
-    this.viewerIndex = (this.viewerIndex + dir + this.galleryImages.length) % this.galleryImages.length;
-    this.openViewer(this.viewerIndex);
-  }
-  ivIn() { this.ivZoom?.zoomIn(); }
-  ivOut() { this.ivZoom?.zoomOut(); }
-  ivReset() { this.ivZoom?.reset(); }
-
   // ── TTS ──
   onRate(e: Event) { this.ttsRate = parseFloat((e.target as HTMLInputElement).value); saveSettings({ ttsRate: this.ttsRate }); }
 
@@ -511,7 +433,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   }
 
   togglePlay() {
-    if (this.view() === 'summary' && this.aiMode() && this.aiState() === 'ready') {
+    if (this.aiMode() && this.aiState() === 'ready') {
       this.toast.toast('Read-aloud works on Quick notes');
       return;
     }
@@ -540,7 +462,6 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   }
   back() {
     this.stopTts();
-    this.objectUrls.forEach(u => URL.revokeObjectURL(u));
     this.router.navigate(['/doc', this.doc().id]);
   }
   exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded study sheet (.md)'); }
