@@ -196,7 +196,7 @@ export class QuizPage implements OnInit, OnDestroy {
       if (cfg.aiAuthor && !this.forceOffline) {
         this.phase.set('generating');
         let authorErr: any = null;
-        try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { gen = null; authorErr = e; }
+        try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { console.error('[QZ] authorExamQuestions threw:', e); gen = null; authorErr = e; }
         const enough = (gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2);
         if (!enough) {
           const note = authorErr ? classifyAIError(authorErr)

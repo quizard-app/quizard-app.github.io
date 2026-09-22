@@ -65,7 +65,8 @@ function rowsFromPrompt(prompt) {
       kind: 'mcq',
       stem: `A company faces a situation involving ${w2}. Which concept from the study material applies?`,
       correct: w1,
-      wrong: [w3, w4, `${w4} rule`].map(w => w === w1 ? w + ' law' : w)
+      wrong: [w3, w4, `${w4} rule`].map(w => w === w1 ? w + ' law' : w),
+      explanation: `Because ${w1} is the concept the material describes.`
     }
   }).filter(Boolean)
 }
@@ -90,6 +91,7 @@ describe('authorExamQuiz', () => {
       expect(q.answerIndex).toBeLessThan(4)
       expect(q.meta.topic).toBeTruthy()
       expect(q.meta.sentence).toBeTruthy()
+      expect(q.explanation).toBeTruthy()
     }
     // stems must not leak the correct answer
     for (const q of gen.questions) {

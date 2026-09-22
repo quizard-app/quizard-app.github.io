@@ -5,7 +5,7 @@
 //
 // Routes (any prefix works — routed on the last path segment, so the legacy
 // /.netlify/functions/... paths keep working too):
-//   POST /gemini  { prompt, images?, json?, maxOutputTokens?, temperature? }
+//   POST /gemini  { prompt, images?, json?, maxOutputTokens?, temperature?, responseSchema? }
 //                 -> 200 text/plain (the model's answer)
 //   POST /tts     { text, speed? } -> 200 audio/mpeg (Fish Audio wizard voice)
 //
@@ -14,7 +14,8 @@
 //   FISH_API_KEY    https://fish.audio/app/api-keys/
 //   FISH_VOICE_ID   the designed "wise old wizard" voice model id
 // Vars (wrangler.toml [vars]):
-//   GEMINI_MODEL    pinned to gemini-3.5-flash (see wrangler.toml)
+//   GEMINI_MODEL    primary model (default gemini-3.5-flash-lite; the worker
+//                   falls back to the sibling model on 503 high demand)
 //   FISH_MODEL      defaults to s2.1-pro-free
 
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -95,7 +96,13 @@ function getGemKeys() {
   return (env.GEMINI_KEYS || '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
 }
 function getGemModel() {
-  return (env.GEMINI_MODEL || 'gemini-3.5-flash').trim()
+  return (env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()
+}
+// Capacity fallback: when the primary model answers "high demand" (503), the
+// request is retried once on the sibling model — lite and flash draw from
+// separate capacity pools, so one hot model stops breaking generation.
+function getFallbackModel(primary) {
+  return /lite/i.test(primary) ? 'gemini-3.5-flash' : 'gemini-3.5-flash-lite'
 }
 function gemIsThrottled(key) {
   const exp = gemThrottled.get(key)
@@ -118,9 +125,16 @@ function gemCombo(extra) {
 function isQuota(msg, status) {
   if (status === 429) return true
   const m = (msg || '').toLowerCase()
-  // 503 "high demand" is capacity exhaustion: park the key and rotate like
-  // any other quota signal so one hot model doesn't burn the whole pool.
-  return /quota|rate[\s_-]?limit|resource_exhausted|exceeded.*limit|too many requests|high demand|overloaded|temporarily/.test(m)
+  // True per-key quota signals: park the key and rotate to the next one.
+  return /quota|rate[\s_-]?limit|resource_exhausted|exceeded.*limit|too many requests/.test(m)
+}
+// Model-capacity signals ("high demand" 503, overload): the KEY is fine —
+// parking it would burn the pool for nothing. These trigger the model
+// fallback instead (lite ↔ flash draw from separate capacity pools).
+function isCapacity(msg, status) {
+  if (status === 503) return true
+  const m = (msg || '').toLowerCase()
+  return /high demand|overloaded|temporarily unavailable/.test(m)
 }
 
 // One slow key must not stall the whole pool, but real quiz generation
@@ -150,6 +164,7 @@ async function callGemini(model, key, payload) {
   if (!res.ok) {
     let msg = `gemini_http_${res.status}`
     try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
+    if (isCapacity(msg, res.status)) return { capacity: msg }
     if (isQuota(msg, res.status)) { gemMarkThrottled(key); return { error: msg } }
     return { fatal: msg }
   }
@@ -175,12 +190,17 @@ async function handleGemini(request, sec) {
   for (const im of images) {
     if (im?.data && im?.mimeType) parts.push({ inlineData: { mimeType: im.mimeType, data: im.data } })
   }
+  // Optional strict JSON schema (Gemini structured output) — when present it
+  // forces responseMimeType too, since the API requires the pair.
+  const schema = body.responseSchema && typeof body.responseSchema === 'object' ? body.responseSchema : null
   const payload = {
     contents: [{ parts }],
     generationConfig: {
       temperature,
       maxOutputTokens,
-      ...(json ? { responseMimeType: 'application/json' } : {})
+      ...(schema
+        ? { responseMimeType: 'application/json', responseSchema: schema }
+        : json ? { responseMimeType: 'application/json' } : {})
     }
   }
 
@@ -195,18 +215,32 @@ async function handleGemini(request, sec) {
   const combos = gemCombo(personal)
   let lastErr = null
   let quotaSeen = false
-  for (const key of combos) {
-    if (gemIsThrottled(key)) continue
-    const r = await callGemini(model, key, payload)
-    if (r.stop) { lastErr = r.networkError; break }
-    if (r.networkError) { lastErr = r.networkError; continue }
-    // One bad or exhausted key must never poison the rest of the pool:
-    // park it briefly and try the next one. Only when every key has failed
-    // do we answer with an error.
-    if (r.error) { lastErr = r.error; quotaSeen = true; continue }
-    if (r.fatal) { lastErr = r.fatal; gemMarkThrottled(key); continue }
-    return ok(r.text, sec)
+  let capacitySeen = false
+  // One pass across every live key on the given model. Returns the answer
+  // text, or null when every key failed (lastErr/quotaSeen/capacitySeen say why).
+  const runPool = async (modelName) => {
+    for (const key of combos) {
+      if (gemIsThrottled(key)) continue
+      const r = await callGemini(modelName, key, payload)
+      if (r.stop) { lastErr = r.networkError; break }
+      if (r.networkError) { lastErr = r.networkError; continue }
+      // One bad or exhausted key must never poison the rest of the pool:
+      // park it briefly and try the next one. Only when every key has failed
+      // do we answer with an error.
+      if (r.capacity) { lastErr = r.capacity; capacitySeen = true; continue }
+      if (r.error) { lastErr = r.error; quotaSeen = true; continue }
+      if (r.fatal) { lastErr = r.fatal; gemMarkThrottled(key); continue }
+      return r.text
+    }
+    return null
   }
+  let text = await runPool(model)
+  // Primary model out of capacity (503 high demand)? The keys are fine —
+  // retry the same request on the sibling model (lite ↔ flash) once.
+  if (text == null && capacitySeen) {
+    text = await runPool(getFallbackModel(model))
+  }
+  if (text != null) return ok(text, sec)
   if (quotaSeen) return fail(429, lastErr || 'all_keys_throttled', sec)
   // Upstream timeout / non-quota failure: 502 so clients can map it to a
   // busy/retryable state instead of a generic unknown error.

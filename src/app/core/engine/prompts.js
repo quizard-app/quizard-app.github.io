@@ -209,7 +209,7 @@ export const AUTHOR_RULES = [
   'DIVERSITY — vary openings naturally ("An employee…", "During an investigation…", "Why…", "Under RA 10175…", "Which sequence…", "Suppose…", "A system administrator…"); never start everything with "Which of the following". Never test the same fact twice in different words.',
   'Ground every question ONLY in the supplied sentences — never invent facts, terms, laws, agencies, dates, procedures, examples or relationships.',
   'Each item MUST cite its primary source: "src" is the number of that sentence.',
-  'Every question is multiple choice: "stem" (the situation plus the question), "correct" (the best answer) and "wrong" (exactly 3 wrong options).',
+  'Every question is multiple choice: "stem" (the situation plus the question), "correct" (the best answer), "wrong" (exactly 3 wrong options) and "explanation" (ONE short sentence, max ~140 characters, saying WHY the correct answer is right — it is shown to the student together with the answer feedback).',
   '  - Options are usually SHORT concrete terms of 1 to 8 words from the same concept family as the correct answer — but scenario/reasoning questions may instead offer competing explanations, consequences, actions or principles, and sequence questions offer complete chains. Match the distractor strategy to the question kind instead of forcing one strategy everywhere.',
   '  - All four options must be specific, believable and distinct from each other — plausible enough that a student must actually reason. None of the wrong options may equal or contain the correct answer.',
   '  - Keep all four options parallel in length and form.',
@@ -219,7 +219,7 @@ export const AUTHOR_RULES = [
   'Tech acronyms and initialisms always print in standard UPPERCASE (MVVM, HTTP, API, CPU) — never sentence case ("Mvvm", "Http").',
   'Never write a fill-in-the-blank, never write "Complete the statement:", and never put a blank (____) in the stem.',
   'NEVER reference the document title, section headings, chapter names, unit numbers, or page numbers — and never write "the document", "the deck" or "the source" in the question.',
-  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An investigator receives digital evidence from a suspected cybercrime case and immediately secures it so it cannot be altered or lost. Why is this step important?","correct":"To prevent digital evidence from being lost or altered","wrong":["To immediately convict the suspect","To replace the need for a court order","To automatically identify the attacker"]}]'
+  'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An investigator receives digital evidence from a suspected cybercrime case and immediately secures it so it cannot be altered or lost. Why is this step important?","correct":"To prevent digital evidence from being lost or altered","wrong":["To immediately convict the suspect","To replace the need for a court order","To automatically identify the attacker"],"explanation":"Digital evidence is fragile — securing it first keeps the chain of custody intact"}}]'
 ].join('\n')
 
 export function authorQuizPrompt(group, weakHint, terms) {

@@ -5,7 +5,7 @@
 // is throttled; it is also used for direct Google calls when no relay is
 // configured (e.g. local dev without the relay).
 
-export const MODEL_LABEL = 'gemini-3.5-flash'
+export const MODEL_LABEL = 'gemini-3.5-flash-lite'
 
 // The relay only accepts the production origin, so on localhost the dev server
 // (scripts/local-dev-server.mjs) proxies /gemini to it — same-origin, no CORS.
@@ -44,7 +44,7 @@ async function relayOnce({ prompt, images, json, maxOutputTokens, temperature },
         'Content-Type': 'application/json',
         ...(getApiKey() ? { 'x-quizard-key': getApiKey() } : {})
       },
-      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature })
+      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, ...(opts.responseSchema ? { responseSchema: opts.responseSchema } : {}) })
     })
   } catch (err) {
     throw new Error(err.name === 'AbortError' ? 'timeout' : 'network_error')
@@ -77,7 +77,7 @@ async function relayRequest(opts, timeoutMs) {
   }
 }
 
-async function directRequest({ prompt, images = [], json = true, maxOutputTokens, temperature }, timeoutMs) {
+async function directRequest({ prompt, images = [], json = true, maxOutputTokens, temperature, responseSchema }, timeoutMs) {
   const key = getApiKey()
   if (!key) throw new Error('no_key')
   const parts = [{ text: prompt }]
@@ -89,7 +89,9 @@ async function directRequest({ prompt, images = [], json = true, maxOutputTokens
     generationConfig: {
       temperature,
       maxOutputTokens,
-      ...(json ? { responseMimeType: 'application/json' } : {})
+      ...(responseSchema
+        ? { responseMimeType: 'application/json', responseSchema }
+        : json ? { responseMimeType: 'application/json' } : {})
     }
   }
   const ctrl = new AbortController()
@@ -138,8 +140,8 @@ async function aiRequest(opts, timeoutMs) {
   throw new Error('no_key')
 }
 
-export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000 } = {}) {
-  return aiRequest({ prompt, json: true, maxOutputTokens, temperature }, timeoutMs)
+export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000, schema } = {}) {
+  return aiRequest({ prompt, json: true, maxOutputTokens, temperature, responseSchema: schema }, timeoutMs)
 }
 
 export async function chatMultimodal(prompt, images = [], { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 90000, json = true } = {}) {

@@ -20,6 +20,29 @@ import {
   isBlankStem
 } from './validate.js'
 
+// Explanation rows: carry the model's why-answer (baked into generation since
+// Edrick's structured-output suggestion) onto the question for instant feedback.
+const rowExplanation = r => clean(r?.explanation).slice(0, 240) || null
+
+// Strict Gemini structured-output schema for authored MCQ rows. Passing this
+// as responseSchema makes malformed rows physically impossible — no more
+// parse-failure retries or sanitizer bailouts on bad shapes.
+const ROWS_SCHEMA = {
+  type: 'ARRAY',
+  items: {
+    type: 'OBJECT',
+    properties: {
+      src: { type: 'INTEGER' },
+      kind: { type: 'STRING', enum: ['mcq'] },
+      stem: { type: 'STRING' },
+      correct: { type: 'STRING' },
+      wrong: { type: 'ARRAY', items: { type: 'STRING' } },
+      explanation: { type: 'STRING' }
+    },
+    required: ['src', 'kind', 'stem', 'correct', 'wrong']
+  }
+}
+
 function blobToDataUrlLocal(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -593,6 +616,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
           stem,
           options,
           answerIndex: options.indexOf(surfaced),
+          explanation: rowExplanation(row),
           meta: { sentence: source, term: surfaced, docId: doc.id, authored: true }
         })
       } else if (row?.kind === 'short') {
@@ -616,7 +640,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const authGroup = async (group) => {
     try {
       return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
-        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7
+        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7, schema: ROWS_SCHEMA
       })) || []
     } catch (err) {
       if (!firstErr) firstErr = err
@@ -753,7 +777,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
         if (answerIndex === -1) continue
         if (seen.has(stem.toLowerCase())) continue
         seen.add(stem.toLowerCase())
-        out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct } })
+        out.push({ type: 'mcq', stem, options, answerIndex, explanation: rowExplanation(it), meta: { sentence, term: correct } })
       } else if (it.kind === 'short') {
         const prompt = clean(it.prompt)
         const answer = clean(it.answer)
@@ -771,7 +795,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
       // Short fuse on purpose: a hung batch must fail fast into offline
       // fallback instead of pinning the "Writing question…" screen.
       // Must stay above the relay's 25s per-key cap or the client aborts first.
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 40000
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 40000, schema: ROWS_SCHEMA
     })
     return extractJSONArray(raw) || []
   }
@@ -903,7 +927,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       if (answerIndex === -1) continue
       if (seen.has(stem.toLowerCase())) continue
       seen.add(stem.toLowerCase())
-      out.push({ type: 'mcq', stem, options, answerIndex, meta: { sentence, term: correct, docId: unit.docId, docName: unit.docName, topic: unit.topic } })
+      out.push({ type: 'mcq', stem, options, answerIndex, explanation: rowExplanation(it), meta: { sentence, term: correct, docId: unit.docId, docName: unit.docName, topic: unit.topic } })
       taken++
     }
     state.taken += taken
@@ -913,7 +937,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
 
   const authBatch = async (unit, state, group) => {
     const raw = await chatJSON(examAuthorPrompt(group, unit.topic, [weakHint, diffHint].filter(Boolean).join('\n'), unit.termBank), {
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000, schema: ROWS_SCHEMA
     })
     return takeRows(extractJSONArray(raw) || [], unit, state)
   }

@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "vitest run",
     "copy404": "node -e \"const fs=require('fs');fs.copyFileSync('dist/quizard-ng/browser/index.html','dist/quizard-ng/browser/404.html');console.log('404 synced')\"",
-    "local": "node scripts/local-dev-server.mjs"
+    "local": "node scripts/local-dev-server.mjs",
+    "relay:deploy": "node scripts/deploy-relay.mjs"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
