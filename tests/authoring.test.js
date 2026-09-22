@@ -9,7 +9,7 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
-import { generateQuizAI, grounded, byokHelps, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
+import { generateQuizAI, grounded, byokHelps, classifyAIError, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
 import { authorQuizPrompt, AUTHOR_RULES } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
@@ -171,6 +171,23 @@ describe('byokHelps (offline-vs-key choice)', () => {
     for (const n of ['timeout', 'offline', 'network_error', 'not_enough_content', 'author_empty', 'blocked_content', 'empty_response', null, '']) {
       expect(byokHelps(n)).toBe(false)
     }
+  })
+})
+
+describe('classifyAIError (relay/provider failures)', () => {
+  it('maps 502/504 and relay_http_* to server_busy, not generic error', () => {
+    expect(classifyAIError(new Error('relay_http_502'))).toBe('server_busy')
+    expect(classifyAIError(new Error('relay_http_504'))).toBe('server_busy')
+    expect(classifyAIError(new Error('upstream_timeout'))).toBe('timeout')
+    expect(classifyAIError(new Error('The operation was aborted due to timeout'))).toBe('timeout')
+    expect(classifyAIError(new Error('gemini_http_500'))).toBe('server_busy')
+  })
+
+  it('keeps quota / invalid_key / timeout branches', () => {
+    expect(classifyAIError(new Error('429 quota exceeded'))).toBe('quota')
+    expect(classifyAIError(new Error('API key not valid. Please pass a valid API key.'))).toBe('invalid_key')
+    expect(classifyAIError(new Error('timeout'))).toBe('timeout')
+    expect(classifyAIError(new Error('network_error'))).toBe('offline')
   })
 })
 

@@ -213,11 +213,14 @@ async function authorVisualQuestions(doc, elements, isBanned, weakHint) {
 // Map a raw gemini failure to a short user-facing reason.
 export function classifyAIError(err) {
   const msg = String(err?.message || err || '')
-  if (msg === 'timeout' || msg.includes('timed out')) return 'timeout'
+  if (msg === 'timeout' || msg === 'upstream_timeout' || /timed?[\s_-]?out|abort/i.test(msg)) return 'timeout'
   if (msg === 'network_error' || msg.includes('fetch') || msg.includes('network')) return 'offline'
   if (/429|rate|quota|resource_?exhausted|throttled|all_keys/i.test(msg)) return 'quota'
   if (/api[ _]?key|permission|403|401/i.test(msg)) return 'invalid_key'
-  if (/50[03]|overloaded|unavailable/i.test(msg)) return 'server_busy'
+  // 502/504 from the relay (and Google 5xx) are retryable busy states —
+  // `50[03]` alone missed 502/504, which fell through to generic 'error'.
+  if (/50[0-9]|relay_http|gemini_http_50[0-9]|overloaded|unavailable/i.test(msg)) return 'server_busy'
+  if (/not_enough_content|author_empty|blocked_|empty_response/.test(msg)) return msg.match(/not_enough_content|author_empty|blocked_[a-z]+|empty_response/)[0]
   return 'error'
 }
 
@@ -767,7 +770,8 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
     const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
       // Short fuse on purpose: a hung batch must fail fast into offline
       // fallback instead of pinning the "Writing question…" screen.
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 30000
+      // Must stay above the relay's 25s per-key cap or the client aborts first.
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 40000
     })
     return extractJSONArray(raw) || []
   }

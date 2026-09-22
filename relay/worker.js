@@ -121,6 +121,11 @@ function isQuota(msg, status) {
   return /quota|rate[\s_-]?limit|resource_exhausted|exceeded.*limit|too many requests/.test(m)
 }
 
+// One slow key must not stall the whole pool, but real quiz generation
+// (JSON, thousands of output tokens) routinely needs >12s — 12s killed every
+// attempt mid-stream, burned the whole key list, then surfaced as 502/error.
+const KEY_TIMEOUT_MS = 25_000
+
 async function callGemini(model, key, payload) {
   let res
   try {
@@ -128,12 +133,17 @@ async function callGemini(model, key, payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify(payload),
-      // One slow key must not stall the whole pool: cap each attempt so the
-      // rotation keeps moving. A timeout surfaces as networkError → next key.
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
     })
   } catch (err) {
-    return { networkError: String(err?.message || err) }
+    const msg = String(err?.message || err || '')
+    // Timeout means the model (or network) is slow for this payload — not a
+    // per-key problem. Rotating through every remaining key just multiplies
+    // the wait and the client aborts first. Stop after the first timeout.
+    if (err?.name === 'TimeoutError' || /timeout|abort/i.test(msg)) {
+      return { stop: true, networkError: msg || 'timeout' }
+    }
+    return { networkError: msg }
   }
   if (!res.ok) {
     let msg = `gemini_http_${res.status}`
@@ -186,6 +196,7 @@ async function handleGemini(request, sec) {
   for (const key of combos) {
     if (gemIsThrottled(key)) continue
     const r = await callGemini(model, key, payload)
+    if (r.stop) { lastErr = r.networkError; break }
     if (r.networkError) { lastErr = r.networkError; continue }
     // One bad or exhausted key must never poison the rest of the pool:
     // park it briefly and try the next one. Only when every key has failed
@@ -194,7 +205,11 @@ async function handleGemini(request, sec) {
     if (r.fatal) { lastErr = r.fatal; gemMarkThrottled(key); continue }
     return ok(r.text, sec)
   }
-  return fail(quotaSeen ? 429 : 502, lastErr || 'all_keys_throttled', sec)
+  if (quotaSeen) return fail(429, lastErr || 'all_keys_throttled', sec)
+  // Upstream timeout / non-quota failure: 502 so clients can map it to a
+  // busy/retryable state instead of a generic unknown error.
+  if (/timeout|abort/i.test(String(lastErr || ''))) return fail(504, 'upstream_timeout', sec)
+  return fail(502, lastErr || 'all_keys_throttled', sec)
 }
 
 // ── Fish Audio wizard voice ──

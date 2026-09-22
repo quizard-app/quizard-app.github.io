@@ -43,7 +43,10 @@ export class ByokService {
     this.aiDown.set(true);
     if (this.visible()) return;
     if (sessionStorage.getItem('quizard-byok-dismissed')) return;
-    this.open('The built-in AI relay is out of requests right now. Add your own free Gemini key to keep AI features running — it stays on this device.');
+    const r2 = String(reason || '').toLowerCase();
+    this.open(r2 === 'quota'
+      ? 'The built-in AI relay is out of requests right now. Add your own free Gemini key to keep AI features running — it stays on this device.'
+      : 'The built-in AI is having trouble right now. Add your own free Gemini key to keep AI features running — it stays on this device.');
   }
 
   // call after a successful AI response so highlights clear
