@@ -82,7 +82,7 @@
         Gemini keys automatically, so quizzes keep generating even when one key hits its limit.
         Nothing to configure. Optionally, paste your own free key
         (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">aistudio.google.com/apikey</a>)
-        as a backup: it is stored only on this device and used if the relay keys are ever all busy.
+        first: it is stored only on this device and used before the shared relay.
       </p>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key" autocomplete="off" spellcheck="false" aria-label="Gemini API key"
@@ -91,7 +91,7 @@
       <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <button class="btn btn-primary" style="flex:1;min-width:110px" (click)="saveKey()"><span [innerHTML]="icons.check"></span> Save key</button>
         <button class="btn btn-secondary" style="flex:1;min-width:110px" (click)="removeKey()"><span [innerHTML]="icons.trash"></span> Remove</button>
-        <button class="btn btn-secondary" (click)="byok.open('Add a free Gemini key as a backup when the relay is busy.')" data-tooltip="Open the quick AI-key dialog"><span [innerHTML]="'sparkles' | ico"></span> Quick add key</button>
+        <button class="btn btn-secondary" (click)="byok.open('Add a free Gemini key — used first, with the shared relay as backup.')" data-tooltip="Open the quick AI-key dialog"><span [innerHTML]="'sparkles' | ico"></span> Quick add key</button>
       </div>
       <div class="row" style="border-bottom:none;margin-bottom:12px" data-tooltip="After answering, tap 'Why?' to get a Gemini explanation of the correct answer">
         <div><div class="label">Explain answers</div><div class="sub">Show a “Why?” button to explain quiz answers with Gemini</div></div>

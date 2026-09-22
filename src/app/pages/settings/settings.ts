@@ -85,7 +85,7 @@ export class SettingsPage implements OnInit {
     setApiKey(val);
     this.keyInput = '';
     this.byok.notifyAiOk();
-    this.renderKeyStatus('Key saved ✓ — used only if the relay keys are ever all busy.');
+    this.renderKeyStatus('Key saved ✓ — AI now uses your key first');
     this.toast.toast('Personal backup key saved ✓');
   }
   removeKey() {

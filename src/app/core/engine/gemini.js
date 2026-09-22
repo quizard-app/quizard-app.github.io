@@ -32,7 +32,7 @@ export function hasApiKey() { return HAS_RELAY || !!getApiKey() }
 export function hasRelay() { return HAS_RELAY }
 export function getModelPool() { return [MODEL_LABEL] }
 
-async function relayRequest({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs) {
+async function relayOnce({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res
@@ -59,6 +59,22 @@ async function relayRequest({ prompt, images, json, maxOutputTokens, temperature
   const text = await res.text()
   if (!text) throw new Error('empty_response')
   return text
+}
+
+// One quiet retry for transient capacity errors ("high demand" 503 spikes) —
+// they come in bursts, so a short pause often gets through. Timeouts and hard
+// errors are not retried here.
+async function relayRequest(opts, timeoutMs) {
+  try {
+    return await relayOnce(opts, timeoutMs)
+  } catch (err) {
+    const msg = String(err?.message || err || '')
+    if (/high demand|relay_http_503|relay_http_429/i.test(msg)) {
+      await new Promise(r => setTimeout(r, 6000))
+      return relayOnce(opts, timeoutMs)
+    }
+    throw err
+  }
 }
 
 async function directRequest({ prompt, images = [], json = true, maxOutputTokens, temperature }, timeoutMs) {
@@ -107,15 +123,19 @@ async function directRequest({ prompt, images = [], json = true, maxOutputTokens
 
 // Relay first (rotating server keys); direct-with-personal-key as backup.
 async function aiRequest(opts, timeoutMs) {
-  if (HAS_RELAY) {
+  // A saved personal key goes FIRST: its quota belongs to this user alone and
+  // it calls Google directly, skipping the shared relay's bottlenecks. The
+  // relay covers users without a key and serves as the key-holder's backup.
+  if (getApiKey()) {
     try {
-      return await relayRequest(opts, timeoutMs)
+      return await directRequest(opts, timeoutMs)
     } catch (err) {
-      if (!getApiKey()) throw err
-      // relay failed but the user has a personal key — fall through
+      if (!HAS_RELAY) throw err
+      // personal key failed (quota/invalid) — the relay is the backup
     }
   }
-  return directRequest(opts, timeoutMs)
+  if (HAS_RELAY) return relayRequest(opts, timeoutMs)
+  throw new Error('no_key')
 }
 
 export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000 } = {}) {

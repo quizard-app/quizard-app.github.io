@@ -60,7 +60,7 @@ export class ByokService {
     setApiKey(val);
     this.visible.set(false);
     this.aiDown.set(false);
-    this.toast.toast('Personal key saved ✓ — used as a backup when the relay is busy');
+    this.toast.toast('Personal key saved ✓ — AI now uses your key first');
   }
 
   remove() {
