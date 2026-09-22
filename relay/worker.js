@@ -90,7 +90,6 @@ function tooLarge(request, limit = 2_000_000) {
 
 // ── Gemini key rotation ──
 const gemThrottled = new Map()
-let gemRr = 0
 
 function getGemKeys() {
   return (env.GEMINI_KEYS || '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
@@ -105,17 +104,15 @@ function gemIsThrottled(key) {
   return true
 }
 function gemMarkThrottled(key) { gemThrottled.set(key, Date.now() + THROTTLE_MS) }
-// Round-robin so all keys wear evenly; throttled keys go to the back.
+// Priority order: the first key in .env is always tried first for every
+// request; the rest are fallbacks in listed order. Throttled keys sink to
+// the back until their 60s park expires. The personal key stays last resort.
 function gemCombo(extra) {
   const keys = getGemKeys()
   if (extra && !keys.includes(extra)) keys.push(extra)
-  const n = keys.length
-  if (!n) return []
-  const ordered = []
-  for (let i = 0; i < n; i++) ordered.push(keys[(gemRr + i) % n])
-  gemRr = (gemRr + 1) % n
-  const live = ordered.filter(k => !gemIsThrottled(k))
-  return live.length ? live : ordered
+  const live = keys.filter(k => !gemIsThrottled(k))
+  const parked = keys.filter(k => gemIsThrottled(k))
+  return [...live, ...parked]
 }
 
 function isQuota(msg, status) {
