@@ -55,10 +55,10 @@ const secrets = [
 // because one bad key used to poison the whole rotation pool.
 if (env.GEMINI_KEYS) {
   const entries = env.GEMINI_KEYS.replace(/^["']|["']$/g, '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
-  const bad = entries.filter(k => !/^AIza[0-9A-Za-z_-]{20,}$/.test(k))
+  const bad = entries.filter(k => !/^(AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z_-]{20,})$/.test(k))
   console.log(`▸ GEMINI_KEYS: ${entries.length} key${entries.length === 1 ? '' : 's'} to rotate`)
   for (const b of bad) {
-    console.log(`  ⚠ does not look like a Gemini key (expected AIza…): "${b.slice(0, 12)}…" — fix or remove it before relying on the pool`)
+    console.log(`  ⚠ does not look like a Gemini key (expected AIza… or AQ.…): "${b.slice(0, 12)}…" — fix or remove it before relying on the pool`)
   }
 }
 for (const [name, value] of secrets) {
