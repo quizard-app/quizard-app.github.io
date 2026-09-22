@@ -56,6 +56,7 @@ const subdomain = (sub.match(/workers\.dev[^"]*?subdomain[^"]*?"([^"]+)"/) || []
 
 const secrets = [
   ['GEMINI_KEYS', env.GEMINI_KEYS],
+  ['GROQ_API_KEY', env.GROQ_API_KEY],
   ['FISH_API_KEY', env.FISH_API_KEY],
   ['FISH_VOICE_ID', env.FISH_VOICE_ID]
 ]

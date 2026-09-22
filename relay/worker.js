@@ -7,18 +7,24 @@
 // /.netlify/functions/... paths keep working too):
 //   POST /gemini  { prompt, images?, json?, maxOutputTokens?, temperature?, responseSchema? }
 //                 -> 200 text/plain (the model's answer)
+//                 Provider order: Gemini (rotating keys, model fallback
+//                 lite↔flash on capacity) → Groq (Llama, JSON mode) as the
+//                 last-resort provider when every Gemini attempt failed.
 //   POST /tts     { text, speed? } -> 200 audio/mpeg (Fish Audio wizard voice)
 //
 // Secrets (npx wrangler secret put ...):
 //   GEMINI_KEYS     one or more Gemini API keys, comma/newline separated
+//   GROQ_API_KEY    optional Groq key (console.groq.com) — fallback provider
 //   FISH_API_KEY    https://fish.audio/app/api-keys/
 //   FISH_VOICE_ID   the designed "wise old wizard" voice model id
 // Vars (wrangler.toml [vars]):
 //   GEMINI_MODEL    primary model (default gemini-3.5-flash-lite; the worker
 //                   falls back to the sibling model on 503 high demand)
+//   GROQ_MODEL      defaults to llama-3.3-70b-versatile
 //   FISH_MODEL      defaults to s2.1-pro-free
 
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const FISH_ENDPOINT = 'https://api.fish.audio/v1/tts'
 const THROTTLE_MS = 60 * 1000
 
@@ -240,12 +246,54 @@ async function handleGemini(request, sec) {
   if (text == null && capacitySeen) {
     text = await runPool(getFallbackModel(model))
   }
+  // Every Gemini attempt failed and a Groq key is configured — try the
+  // independent provider before giving up. Groq's JSON mode needs the word
+  // "JSON" in the prompt, which every generation prompt already contains.
+  if (text == null) {
+    const g = await callGroq(prompt, Math.min(maxOutputTokens, 8192), temperature, json)
+    if (g?.text) return ok(g.text, sec)
+  }
   if (text != null) return ok(text, sec)
   if (quotaSeen) return fail(429, lastErr || 'all_keys_throttled', sec)
   // Upstream timeout / non-quota failure: 502 so clients can map it to a
   // busy/retryable state instead of a generic unknown error.
   if (/timeout|abort/i.test(String(lastErr || ''))) return fail(504, 'upstream_timeout', sec)
   return fail(502, lastErr || 'all_keys_throttled', sec)
+}
+
+// ── Groq fallback provider (Llama, OpenAI-compatible) ──
+// Used only when every Gemini attempt failed (quota, capacity or upstream
+// timeout). Groq's infrastructure is independent of Google's, so its bad
+// days never line up with Gemini's.
+async function callGroq(prompt, maxOutputTokens, temperature, json) {
+  const key = (env.GROQ_API_KEY || '').trim()
+  if (!key) return null
+  const model = (env.GROQ_MODEL || 'llama-3.3-70b-versatile').trim()
+  let res
+  try {
+    res = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature,
+        max_tokens: maxOutputTokens,
+        ...(json ? { response_format: { type: 'json_object' } } : {})
+      }),
+      signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
+    })
+  } catch (err) {
+    return { error: String(err?.message || err || 'groq_error') }
+  }
+  if (!res.ok) {
+    let msg = `groq_http_${res.status}`
+    try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
+    return { error: msg }
+  }
+  const data = await res.json().catch(() => null)
+  const text = data?.choices?.[0]?.message?.content ?? ''
+  return { text: text || null }
 }
 
 // ── Fish Audio wizard voice ──
