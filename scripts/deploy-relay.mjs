@@ -14,10 +14,19 @@ function readEnv() {
   const path = join(process.cwd(), '.env')
   const vars = {}
   if (existsSync(path)) {
-    // [^\r\n] not `.` — JS dots don't match \r, and values can embed CRs
+    // [^\r\n] not `.` — JS dots don't match \r, and values can embed CRs.
+    // A line that is not KEY=value (and not blank/comment) continues the
+    // previous value, so GEMINI_KEYS can list one key per line.
+    let lastKey = null
     for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*([^\r\n]*)/)
-      if (m) vars[m[1]] = m[2].replace(/\r/g, '').replace(/^["']|["']$/g, '').trim()
+      if (m) {
+        vars[m[1]] = m[2].replace(/\r/g, '').replace(/^["']|["']$/g, '').trim()
+        lastKey = m[1]
+        continue
+      }
+      const cont = line.trim()
+      if (cont && !cont.startsWith('#') && lastKey) vars[lastKey] += '\n' + cont
     }
   }
   return vars
@@ -55,11 +64,12 @@ const secrets = [
 // because one bad key used to poison the whole rotation pool.
 if (env.GEMINI_KEYS) {
   const entries = env.GEMINI_KEYS.replace(/^["']|["']$/g, '').split(/[\n\r,]+/).map(k => k.trim()).filter(Boolean)
-  const bad = entries.filter(k => !/^(AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z_-]{20,})$/.test(k))
   console.log(`▸ GEMINI_KEYS: ${entries.length} key${entries.length === 1 ? '' : 's'} to rotate`)
-  for (const b of bad) {
-    console.log(`  ⚠ does not look like a Gemini key (expected AIza… or AQ.…): "${b.slice(0, 12)}…" — fix or remove it before relying on the pool`)
-  }
+  entries.forEach((k, i) => {
+    if (!/^(AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z_-]{20,})$/.test(k)) {
+      console.log(`  ⚠ line ${i + 1} does not look like a Gemini key (expected AIza… or AQ.…): "${k.slice(0, 12)}…" — fix or remove it before relying on the pool`)
+    }
+  })
 }
 for (const [name, value] of secrets) {
   if (!value) { console.log(`· ${name}: not set in .env — skipped`); continue }
