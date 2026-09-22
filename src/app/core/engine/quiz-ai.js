@@ -754,7 +754,9 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
 
   const authGroup = async (group) => {
     const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000
+      // Short fuse on purpose: a hung batch must fail fast into offline
+      // fallback instead of pinning the "Writing question…" screen.
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 30000
     })
     return extractJSONArray(raw) || []
   }
@@ -766,7 +768,12 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const waveRows = await runPool(groups.slice(0, firstWave).map(g => () => authGroup(g)), AUTHOR_POOL)
   waveRows.forEach((rows, i) => takeRows(rows, groups[i]))
 
-  for (let g = firstWave; g < groups.length && out.length < cfg.count; g++) {
+  // Top-ups are sequential and capped: a few extra batches may rescue an
+  // under-filled quiz, but we never grind through all remaining groups —
+  // whatever is missing falls back to built-in questions instead of
+  // pinning the loader for minutes.
+  const MAX_TOPUPS = 3
+  for (let g = firstWave, topUps = 0; g < groups.length && out.length < cfg.count && topUps < MAX_TOPUPS; g++, topUps++) {
     takeRows(await authGroup(groups[g]), groups[g])
   }
 
