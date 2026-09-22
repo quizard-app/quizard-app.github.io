@@ -611,6 +611,9 @@ html[data-theme='dark'] .ai-def-term { color: var(--accent); }
 }
 .ai-table td { padding: 7px 10px; border: 1px solid var(--border); color: var(--text); line-height: 1.5; }
 html[data-theme='dark'] .ai-table td { color: var(--text-dim); }
+/* Wide comparison tables on narrow phones: the table scrolls horizontally
+   inside its own box instead of clipping the last column off-screen. */
+.ai-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ai-box {
   display: flex; align-items: flex-start; gap: 9px;
   font-size: 12.5px; line-height: 1.55; color: var(--text);

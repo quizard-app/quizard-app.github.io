@@ -70,7 +70,13 @@
     </div>
 
     <div class="section-title">AI question writing</div>
-    <div class="card" style="padding:16px">
+    <div class="card" style="padding:16px" [class.ai-down-card]="byok.aiDown()">
+      @if (byok.aiDown()) {
+        <div class="ai-down-banner">
+          <span [innerHTML]="'alert' | ico"></span>
+          <span>AI is out of requests — add a free personal key below to keep AI features running.</span>
+        </div>
+      }
       <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
         Quizard writes AI questions through its <b>built-in relay</b> — the app rotates several
         Gemini keys automatically, so quizzes keep generating even when one key hits its limit.
@@ -85,6 +91,7 @@
       <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <button class="btn btn-primary" style="flex:1;min-width:110px" (click)="saveKey()"><span [innerHTML]="icons.check"></span> Save key</button>
         <button class="btn btn-secondary" style="flex:1;min-width:110px" (click)="removeKey()"><span [innerHTML]="icons.trash"></span> Remove</button>
+        <button class="btn btn-secondary" (click)="byok.open('Add a free Gemini key as a backup when the relay is busy.')" data-tooltip="Open the quick AI-key dialog"><span [innerHTML]="'sparkles' | ico"></span> Quick add key</button>
       </div>
       <div class="row" style="border-bottom:none;margin-bottom:12px" data-tooltip="After answering, tap 'Why?' to get a Gemini explanation of the correct answer">
         <div><div class="label">Explain answers</div><div class="sub">Show a “Why?” button to explain quiz answers with Gemini</div></div>

@@ -15,6 +15,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
 import { NavController } from '@ionic/angular';
 import { MistakesService } from '../../core/services/mistakes.service';
+import { ByokService } from '../../core/services/byok.service';
 
 @Component({
   selector: 'app-results',
@@ -27,6 +28,7 @@ export class ResultsPage implements OnInit {
   private qs = inject(QuizStateService);
   private navCtrl = inject(NavController);
   private mistakes = inject(MistakesService);
+  readonly byok = inject(ByokService);
   readonly Math = Math;
   readonly objectKeys = Object.keys;
 
@@ -238,7 +240,7 @@ export class ResultsPage implements OnInit {
         try {
           const gen = await authorExamQuiz(exam, docs, { count: want, weakTerms: weak, difficulty: difficulty || 'hard' });
           questions = gen.questions || [];
-        } catch { /* AI unavailable — offline set below */ }
+        } catch { this.byok.notifyAiFailure('quota'); /* AI unavailable — offline set below */ }
         if (questions.length < Math.min(4, want)) {
           questions = buildExamQuiz(exam, docs, weak, { count: want, difficulty: difficulty || 'hard' }).questions || [];
         }

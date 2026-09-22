@@ -30,7 +30,7 @@
         <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Quick notes shown meanwhile.</div>
       }
       @if (view() === 'summary' && aiState() === 'error') {
-        <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button></div>
+        <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free Gemini key to generate the reviewer.')">Add a key</button></div>
       }
       <div class="tts-bar" [class.hidden]="!ttsSupported">
         @if (ttsState() !== 'playing') {

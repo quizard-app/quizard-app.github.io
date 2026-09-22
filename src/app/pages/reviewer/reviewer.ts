@@ -18,6 +18,7 @@ import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
 import { UiStateService } from '../../core/services/ui-state.service';
+import { ByokService } from '../../core/services/byok.service';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 
 function chunkParas(sentenceList: string[], size = 3) {
@@ -40,6 +41,7 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
   ui = inject(UiStateService);
   typeLabel = typeLabel;
   private qs = inject(QuizStateService);
+  readonly byok = inject(ByokService);
   private sanitizer = inject(DomSanitizer);
 
   @ViewChild('content') content?: ElementRef<HTMLElement>;
@@ -302,8 +304,10 @@ export class ReviewerPage implements AfterViewInit, OnDestroy {
     if (res.reviewer) {
       this.aiReviewer.set(res.reviewer);
       this.aiState.set('ready');
+      this.byok.notifyAiOk();
     } else if (res.error !== 'not_enough_content') {
       this.aiState.set('error');
+      this.byok.notifyAiFailure(res.error || 'error');
     } else {
       this.aiState.set('idle');
       return;

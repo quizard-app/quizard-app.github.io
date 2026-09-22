@@ -1,3 +1,28 @@
 <ion-app>
   <ion-router-outlet></ion-router-outlet>
 </ion-app>
+
+@if (byok.visible()) {
+  <div class="byok-overlay" (click)="byok.close()">
+    <div class="byok-modal" (click)="$event.stopPropagation()">
+      <div class="byok-badge"><span [innerHTML]="'sparkles' | ico"></span> Quizard AI</div>
+      <h3 class="byok-title">AI is out of requests</h3>
+      <p class="byok-text">{{ byok.reason() || 'The built-in relay is busy right now. Add your own free Gemini key to keep AI quizzes and reviewers running — it stays on this device and is only used as a backup.' }}</p>
+      <input
+        class="text-input byok-input"
+        type="password"
+        autocomplete="off"
+        placeholder="Paste your Gemini API key"
+        [value]="byok.keyInput()"
+        (input)="byok.typeKey($any($event.target).value)"
+        (keyup.enter)="byok.save()"
+      />
+      @if (byok.status()) { <p class="byok-status">{{ byok.status() }}</p> }
+      <div class="byok-actions">
+        <button class="btn btn-secondary" (click)="byok.dismiss()">Maybe later</button>
+        <button class="btn btn-primary" (click)="byok.save()">Save key</button>
+      </div>
+      <p class="byok-hint">Free key: <span class="byok-link" (click)="openKeyPage()">aistudio.google.com/apikey</span> · used only if the relay keys are all busy</p>
+    </div>
+  </div>
+}

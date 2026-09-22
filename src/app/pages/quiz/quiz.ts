@@ -10,6 +10,7 @@ import { generateQuiz, TYPE_META, MCQ_ONLY_MIX } from '../../core/engine/quizgen
 import { generateQuizAI, gradeShortAnswer, explainQuestions, authorExamQuestions } from '../../core/engine/quiz-ai.js';
 import { explainAnswer } from '../../core/engine/explain.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
+import { ByokService } from '../../core/services/byok.service';
 import { checkTyped } from '../../core/engine/textproc.js';
 import { blankHtml } from '../../shared/helpers.js';
 import { assetUrl } from '../../shared/assets.js';
@@ -42,6 +43,7 @@ export class QuizPage implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
   private qs = inject(QuizStateService);
+  readonly byok = inject(ByokService);
 
   // boot phases
   phase = signal<'generating' | 'error' | 'active' | 'feedback'>('generating');
@@ -174,13 +176,15 @@ export class QuizPage implements OnInit, OnDestroy {
         this.phase.set('generating');
         try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch { gen = null; }
         const enough = (gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2);
-        if (!enough) { this.toast.toast('AI authoring unavailable — using built-in questions', true); gen = null; }
+        if (!enough) { this.toast.toast('AI authoring unavailable — using built-in questions', true); this.byok.notifyAiFailure('quota'); gen = null; }
+        else this.byok.notifyAiOk();
       }
       if (!gen && cfg.ai) {
         this.phase.set('generating');
         try { gen = await generateQuizAI(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch { gen = null; }
-        if (gen?.aiNote === 'no_key') this.toast.toast('Built-in questions ready — add a free Gemini key in Settings for AI-written ones');
-        else if (gen?.aiNote) this.toast.toast(`Gemini unavailable (${gen.aiNote}) — used built-in questions`, true);
+        if (gen?.aiNote === 'no_key') { this.toast.toast('Built-in questions ready — add a free Gemini key for AI-written ones'); this.byok.notifyAiFailure('no_key'); }
+        else if (gen?.aiNote) { this.toast.toast(`Gemini unavailable (${gen.aiNote}) — used built-in questions`, true); this.byok.notifyAiFailure(gen.aiNote); }
+        else if (gen?.questions?.length) this.byok.notifyAiOk();
       }
       if (!gen || gen.error === 'not_enough_content' || !gen.questions.length) {
         gen = generateQuiz(doc, cfg);
@@ -219,7 +223,7 @@ export class QuizPage implements OnInit, OnDestroy {
     this.adaptiveOn = this.cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode;
 
     if (loadSettings().aiExplain !== false && hasApiKey()) {
-      explainQuestions(this.session).catch(() => {});
+      explainQuestions(this.session).catch((e: any) => this.byok.notifyAiFailure(String(e?.message || e || 'error')));
     }
     const imgIds = [...new Set(this.session.filter((q: any) => q.imageId).map((q: any) => q.imageId))];
     for (const id of imgIds) {
@@ -496,8 +500,9 @@ export class QuizPage implements OnInit, OnDestroy {
       const text = await explainAnswer(this.q(), this.st.answers[this.st.index]?.chosen ?? null);
       this.q().explanation = text;
       this.fbExplanation.set(text);
-    } catch {
+    } catch (e: any) {
       this.fbExplanation.set("Couldn't load an explanation right now.");
+      this.byok.notifyAiFailure(String(e?.message || e || 'error'));
     } finally {
       this.fbExplainLoading.set(false);
     }

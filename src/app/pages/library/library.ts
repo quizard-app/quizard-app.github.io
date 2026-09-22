@@ -12,6 +12,7 @@ import { typeLabel, scorePill, fmtDate } from '../../shared/helpers.js';
 import { emptyLibraryArt } from '../../shared/art.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
+import { ByokService } from '../../core/services/byok.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 
@@ -29,6 +30,7 @@ const SORTS = [
 export class LibraryPage {
   private router = inject(Router);
   ui = inject(UiStateService);
+  readonly byok = inject(ByokService);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
 

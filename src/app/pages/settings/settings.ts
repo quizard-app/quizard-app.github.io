@@ -14,6 +14,7 @@ import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { ByokService } from '../../core/services/byok.service';
 import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js';
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -28,6 +29,7 @@ export class SettingsPage implements OnInit {
   ui = inject(UiStateService);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
+  readonly byok = inject(ByokService);
 
   @ViewChild('importInput') importInput?: ElementRef<HTMLInputElement>;
   @ViewChild('encImportInput') encImportInput?: ElementRef<HTMLInputElement>;
@@ -82,6 +84,7 @@ export class SettingsPage implements OnInit {
     if (!val) { this.renderKeyStatus('Paste a key first — get a free one at aistudio.google.com/apikey'); return; }
     setApiKey(val);
     this.keyInput = '';
+    this.byok.notifyAiOk();
     this.renderKeyStatus('Key saved ✓ — used only if the relay keys are ever all busy.');
     this.toast.toast('Personal backup key saved ✓');
   }
@@ -100,7 +103,7 @@ export class SettingsPage implements OnInit {
       : res.message === 'no_key' || res.message === 'No key'
         ? 'Save your key first — aistudio.google.com/apikey'
         : `✗ ${res.message}`);
-    if (res.ok) this.toast.toast('Gemini OK ✓');
+    if (res.ok) { this.byok.notifyAiOk(); this.toast.toast('Gemini OK ✓'); }
   }
   setExplain(on: boolean) { this.explaining = on; saveSettings({ aiExplain: on }); }
 

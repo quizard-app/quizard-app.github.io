@@ -3,6 +3,8 @@ import { IonApp, IonRouterOutlet } from '@ionic/angular';
 import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
 import { IdlePreloadService } from './core/services/idle-preload.service';
+import { ByokService } from './core/services/byok.service';
+import { IcoPipe } from './shared/ico.pipe';
 import { afterNextRender } from '@angular/core';
 
 // Eager shell: under zoneless CD (Angular 22 makes OnPush the default) an
@@ -11,7 +13,7 @@ import { afterNextRender } from '@angular/core';
 // the outlet (see Ionic zoneless guide).
 @Component({
   selector: 'app-root',
-  imports: [IonApp, IonRouterOutlet],
+  imports: [IonApp, IonRouterOutlet, IcoPipe],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './app.html',
 })
@@ -20,6 +22,9 @@ export class App {
   // inside the afterNextRender callback instead throws NG0203.
   private preload = inject(IdlePreloadService);
   private swUpdate = inject(SwUpdate, { optional: true });
+  readonly byok = inject(ByokService);
+
+  openKeyPage() { window.open('https://aistudio.google.com/apikey', '_blank', 'noopener'); }
 
   constructor() {
     afterNextRender(() => this.preload.start());

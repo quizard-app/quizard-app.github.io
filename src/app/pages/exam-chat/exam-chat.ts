@@ -9,6 +9,7 @@ import { buildDigest, examChat } from '../../core/engine/exam-ai.js';
 import { assetUrl } from '../../shared/assets.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
+import { ByokService } from '../../core/services/byok.service';
 
 interface Msg { role: 'user' | 'wizard'; text: string }
 interface Draft {
@@ -24,6 +25,7 @@ interface Draft {
 export class ExamChatPage implements OnInit, OnDestroy {
   private router = inject(Router);
   private toast = inject(ToastService);
+  readonly byok = inject(ByokService);
 
   @ViewChild('log') log?: ElementRef<HTMLElement>;
   @ViewChild('msgInput') msgInput?: ElementRef<HTMLInputElement>;
@@ -95,10 +97,12 @@ export class ExamChatPage implements OnInit, OnDestroy {
       };
       this.hideTyping();
       this.bubble('wizard', state.reply);
+      this.byok.notifyAiOk();
     } catch (err) {
       console.error('exam wizard ask failed:', err);
       this.hideTyping();
       this.bubble('wizard', 'Something interfered with my crystal ball — try sending that again.');
+      this.byok.notifyAiFailure(String((err as any)?.message || err || 'error'));
     }
     this.renderCoverage();
     this.busy = false;
