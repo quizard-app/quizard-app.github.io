@@ -10,7 +10,11 @@ export class IcoPipe {
 
   transform(name: string): SafeHtml {
     if (!this.cache.has(name)) {
-      this.cache.set(name, this.sanitizer.bypassSecurityTrustHtml(icon(name)));
+      // Inline SVGs with only a viewBox stretch to their container's width
+      // wherever no CSS sizes them (e.g. icons inside labels) — give every
+      // icon an intrinsic 1em size; explicit CSS rules still override it.
+      const svg = icon(name).replace('<svg ', '<svg width="1em" height="1em" ');
+      this.cache.set(name, this.sanitizer.bypassSecurityTrustHtml(svg));
     }
     return this.cache.get(name)!;
   }

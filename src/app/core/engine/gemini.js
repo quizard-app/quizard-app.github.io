@@ -32,7 +32,7 @@ export function hasApiKey() { return HAS_RELAY || !!getApiKey() }
 export function hasRelay() { return HAS_RELAY }
 export function getModelPool() { return [MODEL_LABEL] }
 
-async function relayOnce({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs) {
+async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, responseSchema }, timeoutMs) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res
@@ -44,7 +44,7 @@ async function relayOnce({ prompt, images, json, maxOutputTokens, temperature },
         'Content-Type': 'application/json',
         ...(getApiKey() ? { 'x-quizard-key': getApiKey() } : {})
       },
-      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, ...(opts.responseSchema ? { responseSchema: opts.responseSchema } : {}) })
+      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, ...(responseSchema ? { responseSchema } : {}) })
     })
   } catch (err) {
     throw new Error(err.name === 'AbortError' ? 'timeout' : 'network_error')
