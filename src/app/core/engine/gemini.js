@@ -32,7 +32,7 @@ export function hasApiKey() { return HAS_RELAY || !!getApiKey() }
 export function hasRelay() { return HAS_RELAY }
 export function getModelPool() { return [MODEL_LABEL] }
 
-async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, responseSchema }, timeoutMs) {
+async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, responseSchema, shape }, timeoutMs) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res
@@ -44,7 +44,7 @@ async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, r
         'Content-Type': 'application/json',
         ...(getApiKey() ? { 'x-quizard-key': getApiKey() } : {})
       },
-      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, ...(responseSchema ? { responseSchema } : {}) })
+      body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, shape, ...(responseSchema ? { responseSchema } : {}) })
     })
   } catch (err) {
     throw new Error(err.name === 'AbortError' ? 'timeout' : 'network_error')
@@ -140,12 +140,15 @@ async function aiRequest(opts, timeoutMs) {
   throw new Error('no_key')
 }
 
-export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000, schema } = {}) {
-  return aiRequest({ prompt, json: true, maxOutputTokens, temperature, responseSchema: schema }, timeoutMs)
+// shape: 'array' when the caller parses a top-level JSON array (question
+// authoring) — the relay then skips Groq's object-forcing json_object mode.
+// 'object' (the default) keeps the historical behaviour for object callers.
+export async function chatJSON(prompt, { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 60000, schema, shape = 'object' } = {}) {
+  return aiRequest({ prompt, json: true, maxOutputTokens, temperature, responseSchema: schema, shape }, timeoutMs)
 }
 
-export async function chatMultimodal(prompt, images = [], { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 90000, json = true } = {}) {
-  return aiRequest({ prompt, images, json, maxOutputTokens, temperature }, timeoutMs)
+export async function chatMultimodal(prompt, images = [], { maxOutputTokens = 2048, temperature = 0.4, timeoutMs = 90000, json = true, shape = 'object' } = {}) {
+  return aiRequest({ prompt, images, json, maxOutputTokens, temperature, shape }, timeoutMs)
 }
 
 export async function testApiKey() {

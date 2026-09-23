@@ -5,11 +5,14 @@
 //
 // Routes (any prefix works — routed on the last path segment, so the legacy
 // /.netlify/functions/... paths keep working too):
-//   POST /gemini  { prompt, images?, json?, maxOutputTokens?, temperature?, responseSchema? }
+//   POST /gemini  { prompt, images?, json?, maxOutputTokens?, temperature?, responseSchema?, shape? }
 //                 -> 200 text/plain (the model's answer)
+//                 `shape` is 'array' when the caller parses a top-level JSON
+//                 array (all question authoring), else 'object' (the default).
 //                 Provider order: Gemini (rotating keys, model fallback
-//                 lite↔flash on capacity) → Groq (Llama, JSON mode) as the
-//                 last-resort provider when every Gemini attempt failed.
+//                 lite↔flash on capacity) → Groq (gpt-oss, shape-aware JSON
+//                 handling) as the last-resort provider when every Gemini
+//                 attempt failed.
 //   POST /tts     { text, speed? } -> 200 audio/mpeg (Fish Audio wizard voice)
 //
 // Secrets (npx wrangler secret put ...):
@@ -192,6 +195,10 @@ async function handleGemini(request, sec) {
   const json = body.json !== false
   const maxOutputTokens = Number(body.maxOutputTokens) || 2048
   const temperature = typeof body.temperature === 'number' ? body.temperature : 0.4
+  // Expected top-level JSON shape: 'array' (question authoring — parsed with
+  // extractJSONArray) or 'object' (everything else). Anything else (or an
+  // absent shape) keeps the historical object behaviour.
+  const shape = body.shape === 'array' ? 'array' : 'object'
 
   const parts = [{ text: prompt }]
   for (const im of images) {
@@ -251,7 +258,7 @@ async function handleGemini(request, sec) {
   // independent provider before giving up. Groq's JSON mode needs the word
   // "JSON" in the prompt, which every generation prompt already contains.
   if (text == null) {
-    const g = await callGroq(prompt, Math.min(maxOutputTokens, 8192), temperature, json)
+    const g = await callGroq(prompt, Math.min(maxOutputTokens, 8192), temperature, json, shape)
     if (g?.text) return ok(g.text, sec)
   }
   if (text != null) return ok(text, sec)
@@ -262,7 +269,7 @@ async function handleGemini(request, sec) {
   return fail(502, lastErr || 'all_keys_throttled', sec)
 }
 
-// ── Groq fallback provider (Llama, OpenAI-compatible) ──
+// ── Groq fallback provider (gpt-oss, OpenAI-compatible) ──
 // Used only when every Gemini attempt failed (quota, capacity or upstream
 // timeout). Groq's infrastructure is independent of Google's, so its bad
 // days never line up with Gemini's. GROQ_API_KEY may hold several keys
@@ -282,7 +289,7 @@ function groqIsThrottled(key) {
 }
 function groqMarkThrottled(key) { groqThrottled.set(key, Date.now() + THROTTLE_MS) }
 
-async function callGroq(prompt, maxOutputTokens, temperature, json) {
+async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'object') {
   const keys = getGroqKeys()
   if (!keys.length) return null
   const model = (env.GROQ_MODEL || 'openai/gpt-oss-120b').trim()
@@ -292,11 +299,18 @@ async function callGroq(prompt, maxOutputTokens, temperature, json) {
   // that always leaves room for the actual answer.
   const isReasoner = /gpt-oss/i.test(model)
   const budget = Math.max(isReasoner ? 2048 : 256, maxOutputTokens)
+  // Array callers (question authoring) parse a top-level JSON array, which
+  // json_object mode forbids outright — it coerces the reply into an object
+  // (or 400s array-shaped answers as failed_generation), and the client then
+  // parses the wreckage into zero usable questions. So array requests go out
+  // with NO response_format: the prompt already says "Reply ONLY with a JSON
+  // array", and the reply is verified to contain one before it is accepted.
+  const wantArray = json && shape === 'array'
   // Groq's json_object mode hard-requires the word "json" in the messages —
   // otherwise it 400s instantly. Every generation prompt mentions JSON, but a
   // caller that relies on the relay's default (json !== false) might not, so
   // make the request self-sufficient.
-  const groqPrompt = json && !/json/i.test(prompt) ? prompt + '\n\nRespond with valid JSON.' : prompt
+  const groqPrompt = !wantArray && json && !/json/i.test(prompt) ? prompt + '\n\nRespond with valid JSON.' : prompt
   const live = keys.filter(k => !groqIsThrottled(k))
   const parked = keys.filter(k => groqIsThrottled(k))
   const order = [...live, ...parked]
@@ -313,7 +327,7 @@ async function callGroq(prompt, maxOutputTokens, temperature, json) {
           temperature,
           max_tokens: budget,
           ...(isReasoner ? { reasoning_effort: 'low' } : {}),
-          ...(json ? { response_format: { type: 'json_object' } } : {})
+          ...(!wantArray && json ? { response_format: { type: 'json_object' } } : {})
         }),
         signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
       })
@@ -324,10 +338,12 @@ async function callGroq(prompt, maxOutputTokens, temperature, json) {
     if (!res.ok) {
       let msg = `groq_http_${res.status}`
       try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
-      // Strict JSON mode rejects the ENTIRE completion when the model's answer
-      // isn't parseable JSON ("failed_generation"). One retry with a blunt
-      // JSON-only instruction usually un-sticks the model.
-      if (json && res.status === 400 && /failed_generation|generate json/i.test(msg)) {
+      // Strict object-mode JSON rejects the ENTIRE completion when the model's
+      // answer isn't parseable JSON ("failed_generation"). One retry with a
+      // blunt JSON-only instruction usually un-sticks the model. (Array
+      // requests never set response_format, so this error can't occur for
+      // them — their shape is verified on success below instead.)
+      if (!wantArray && json && res.status === 400 && /failed_generation|generate json/i.test(msg)) {
         try {
           const retry = await fetch(GROQ_ENDPOINT, {
             method: 'POST',
@@ -361,7 +377,32 @@ async function callGroq(prompt, maxOutputTokens, temperature, json) {
       return { error: msg }
     }
     const data = await res.json().catch(() => null)
-    const text = data?.choices?.[0]?.message?.content ?? ''
+    let text = data?.choices?.[0]?.message?.content ?? ''
+    // Array contract: the reply must contain a JSON array, otherwise the
+    // client's extractJSONArray yields nothing and the whole fallback was
+    // wasted. One retry with a blunt array-only instruction, mirroring the
+    // object-mode retry above (failure-path only — never on success).
+    if (wantArray && !/\[[\s\S]*\]/.test(text)) {
+      try {
+        const retry = await fetch(GROQ_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: groqPrompt + '\n\nIMPORTANT: Your ENTIRE reply must be one valid JSON array. No prose, no markdown, nothing outside the array.' }],
+            temperature,
+            max_tokens: budget,
+            ...(isReasoner ? { reasoning_effort: 'low' } : {})
+          }),
+          signal: AbortSignal.timeout(KEY_TIMEOUT_MS)
+        })
+        if (retry.ok) {
+          const rd = await retry.json().catch(() => null)
+          const rt = rd?.choices?.[0]?.message?.content ?? ''
+          if (rt) text = rt
+        }
+      } catch { /* fall through with the original text */ }
+    }
     return { text: text || null }
   }
   return { error: lastErr || 'groq_error' }

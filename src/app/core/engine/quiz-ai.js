@@ -144,7 +144,7 @@ export async function ensureVisualAnalysis(doc) {
   }
   if (!parts.length) return null
 
-  const rawAnalysis = await chatMultimodal(DOC_VISUAL_RULES, parts, { maxOutputTokens: 1500 })
+  const rawAnalysis = await chatMultimodal(DOC_VISUAL_RULES, parts, { maxOutputTokens: 1500, shape: 'array' })
   const arr = extractJSONArray(rawAnalysis) || []
   const elements = []
   for (const row of Array.isArray(arr) ? arr : []) {
@@ -189,7 +189,7 @@ async function authorVisualQuestions(doc, elements, isBanned, weakHint) {
   const prompt = visualQuestionPrompt(elements, weakHint)
   let arr
   try {
-    arr = extractJSONArray(await chatJSON(prompt, { maxOutputTokens: 1024 + 128 * elements.length }))
+    arr = extractJSONArray(await chatJSON(prompt, { maxOutputTokens: 1024 + 128 * elements.length, shape: 'array' }))
   } catch { return [] }
   if (!Array.isArray(arr)) return []
 
@@ -281,7 +281,7 @@ export function byokHelps(note) {
 async function requestBatch(items, relatedFor, weakHint) {
   const raw = await chatJSON(
     mcqPrompt(items, relatedFor, weakHint),
-    { maxOutputTokens: 1024 + 256 * items.length }
+    { maxOutputTokens: 1024 + 256 * items.length, shape: 'array' }
   )
   return extractJSONArray(raw) || []
 }
@@ -640,7 +640,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const authGroup = async (group) => {
     try {
       return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
-        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7, schema: ROWS_SCHEMA
+        maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7, schema: ROWS_SCHEMA, shape: 'array'
       })) || []
     } catch (err) {
       if (!firstErr) firstErr = err
@@ -793,9 +793,11 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const authGroup = async (group) => {
     const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
       // Short fuse on purpose: a hung batch must fail fast into offline
-      // fallback instead of pinning the "Writing question…" screen.
-      // Must stay above the relay's 25s per-key cap or the client aborts first.
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 40000, schema: ROWS_SCHEMA
+      // fallback instead of pinning the "Writing question…" screen. Must
+      // stay above the relay's worst case — one 25s Gemini key timeout plus
+      // one 25s Groq fallback attempt — or the client aborts a rescue that
+      // was still in flight and reports a misleading 'timeout'.
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 55000, schema: ROWS_SCHEMA, shape: 'array'
     })
     return extractJSONArray(raw) || []
   }
@@ -937,7 +939,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
 
   const authBatch = async (unit, state, group) => {
     const raw = await chatJSON(examAuthorPrompt(group, unit.topic, [weakHint, diffHint].filter(Boolean).join('\n'), unit.termBank), {
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000, schema: ROWS_SCHEMA
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000, schema: ROWS_SCHEMA, shape: 'array'
     })
     return takeRows(extractJSONArray(raw) || [], unit, state)
   }

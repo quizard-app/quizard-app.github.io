@@ -193,26 +193,43 @@ export class QuizPage implements OnInit, OnDestroy {
     if (cfg.fresh || !this.cachedQuiz[doc.id]) {
       let gen: any = null;
       let choiceNote: string | null = null;
+      // Only hard quota/key failures stop the quiz at the ai-choice screen.
+      // Transient relay trouble (server_busy, one-off errors) gets ONE quiet
+      // retry, then the built-in questions take over — the same contract as
+      // the AI reviewer, which never blocks the learner on a relay hiccup.
+      const blockingNote = (n: string) => n === 'quota' || n === 'invalid_key' || n === 'no_key';
+      const transientNote = (n: string) => n === 'server_busy' || n === 'error';
       if (cfg.aiAuthor && !this.forceOffline) {
         this.phase.set('generating');
-        let authorErr: any = null;
-        try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { console.error('[QZ] authorExamQuestions threw:', e); gen = null; authorErr = e; }
-        const enough = (gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2);
-        if (!enough) {
+        for (let attempt = 0; attempt < 2 && !gen && !choiceNote; attempt++) {
+          let authorErr: any = null;
+          try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { console.error('[QZ] authorExamQuestions threw:', e); gen = null; authorErr = e; }
+          if ((gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2)) { this.byok.notifyAiOk(); break; }
           const note = authorErr ? classifyAIError(authorErr)
             : (gen?.error && gen.error !== 'not_enough_content' ? gen.error : 'author_empty');
-          if (byokHelps(note)) choiceNote = note;
-          else { this.toast.toast('AI authoring unavailable — using built-in questions', true); this.byok.notifyAiFailure(note); }
           gen = null;
+          if (blockingNote(note)) choiceNote = note;
+          else if (!transientNote(note) || attempt === 1) {
+            this.toast.toast('AI authoring unavailable — using built-in questions', true);
+            this.byok.notifyAiFailure(note);
+          }
         }
-        else this.byok.notifyAiOk();
       }
       if (!gen && !choiceNote && cfg.ai && !this.forceOffline) {
         this.phase.set('generating');
-        try { gen = await generateQuizAI(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch { gen = null; }
-        if (gen?.aiNote && byokHelps(gen.aiNote)) { choiceNote = gen.aiNote; gen = null; }
-        else if (gen?.aiNote) { this.toast.toast(`Gemini unavailable (${gen.aiNote}) — used built-in questions`, true); this.byok.notifyAiFailure(gen.aiNote); }
-        else if (gen?.questions?.length) this.byok.notifyAiOk();
+        for (let attempt = 0; attempt < 2 && !gen && !choiceNote; attempt++) {
+          let genErr: any = null;
+          try { gen = await generateQuizAI(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { gen = null; genErr = e; }
+          // A throw carries no aiNote — classify it so thrown transient
+          // failures get the same quiet retry instead of skipping it.
+          const note = (gen?.aiNote as string) || (genErr ? classifyAIError(genErr) : null);
+          if (!note) { if (gen?.questions?.length) this.byok.notifyAiOk(); break; }
+          if (blockingNote(note)) { gen = null; choiceNote = note; break; }
+          if (transientNote(note) && attempt === 0) { gen = null; continue; }
+          this.toast.toast(`Gemini unavailable (${note}) — used built-in questions`, true);
+          this.byok.notifyAiFailure(note);
+          break; // keep whatever usable questions came back
+        }
       }
       if (choiceNote) {
         // Relay quota exhausted (or no key on device): stop and let the
