@@ -1,1 +1,0 @@
-import"./chunk-CCnQ1X3m.js";var t=[{path:``,loadComponent:()=>import(`./chunk-BOGI7eWG2.js`).then(o=>o.ExamsPage)},{path:`:id`,loadComponent:()=>import(`./chunk-BOGI7eWG2.js`).then(o=>o.ExamsPage)}];export{t as EXAMS_ROUTES};
