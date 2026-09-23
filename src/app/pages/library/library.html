@@ -96,6 +96,7 @@
               <button class="btn btn-secondary doc-review-btn" (click)="openReviewer(doc); $event.stopPropagation()" data-tooltip="Read this document as a study reviewer">
                 <span [innerHTML]="'book' | ico"></span> Reviewer
               </button>
+              <button class="icon-btn doc-delete-btn" (click)="removeDoc(doc); $event.stopPropagation()" [attr.aria-label]="'Delete ' + doc.name" data-tooltip="Delete document" [innerHTML]="'trash' | ico"></button>
             </div>
           </div>
         }
