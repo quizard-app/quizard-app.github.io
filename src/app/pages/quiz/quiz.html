@@ -64,8 +64,8 @@
   </div>
   <div class="quiz-body">
     <img class="q-wiz" [src]="wizThinking" alt="" />
-    @if (question.imageId && imgUrlMap[question.imageId]) {
-      <img class="q-image" [src]="imgUrlMap[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap[question.imageId])" />
+    @if (question.imageId && imgUrlMap()[question.imageId]) {
+      <img class="q-image" [src]="imgUrlMap()[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap()[question.imageId])" />
     }
     <div class="q-type-badge">
       <span class="chip on">{{ metaShort }}</span>
@@ -110,8 +110,8 @@
       } @else {
         <p class="q-stem" [innerHTML]="blankStem(question.stem)"></p>
       }
-      @if (question.imageId && imgUrlMap[question.imageId]) {
-        <img class="q-image" [src]="imgUrlMap[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap[question.imageId])" />
+      @if (question.imageId && imgUrlMap()[question.imageId]) {
+        <img class="q-image" [src]="imgUrlMap()[question.imageId]" alt="Question image" loading="lazy" (click)="openViewer(imgUrlMap()[question.imageId])" />
       }
 
       @if (question.type === 'mcq' || question.type === 'except' || question.type === 'fib') {

@@ -9,7 +9,7 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
-import { generateQuizAI, grounded, byokHelps, classifyAIError, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
+import { generateQuizAI, authorExamQuestions, grounded, byokHelps, classifyAIError, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
 import { authorQuizPrompt, AUTHOR_RULES } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
@@ -146,6 +146,24 @@ describe('full AI authoring', () => {
     const request = vi.mocked(chatJSON).mock.calls[0][1]
     expect(request.shape).toBe('array')
     expect(request.schema.items.required).toContain('explanation')
+  })
+
+  it('returns the first structured batch without a slow top-up request', async () => {
+    const group = materialGroup()
+    const rows = [0, 1, 2, 3].map(k => validRow(group, k))
+    const progress = []
+    vi.mocked(chatJSON).mockResolvedValueOnce(JSON.stringify(rows))
+
+    const gen = await authorExamQuestions(
+      makeDoc(),
+      { ...CFG, count: 5 },
+      (done, total) => progress.push([done, total])
+    )
+
+    expect(gen.questions).toHaveLength(4)
+    expect(vi.mocked(chatJSON)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(chatJSON).mock.calls[0][0]).toContain('Return exactly 5')
+    expect(progress.at(-1)).toEqual([4, 5])
   })
 
   it('falls back to built-in questions when authoring fails', async () => {

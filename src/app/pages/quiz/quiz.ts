@@ -64,7 +64,7 @@ export class QuizPage implements OnInit, OnDestroy {
   // set by "use offline questions" so boot skips AI entirely; cleared on beginAttempt
   private forceOffline = false;
   private timerInterval: any = null;
-  imgUrlMap: Record<string, string> = {};
+  imgUrlMap = signal<Record<string, string>>({});
   private keyCleanup: (() => void) | null = null;
   private gradedThisCard = true;
 
@@ -277,15 +277,23 @@ export class QuizPage implements OnInit, OnDestroy {
     st.startTime = Date.now();
     this.forceOffline = false;
     this.adaptiveOn = this.cfg?.difficulty === 'adaptive' && !st.mistakeMode && !st.examMode;
+    this.genPct.set(100);
+    this.genLabel.set('Quiz ready');
 
     if (loadSettings().aiExplain !== false && hasApiKey()) {
       explainQuestions(this.session).catch((e: any) => this.byok.notifyAiFailure(String(e?.message || e || 'error')));
     }
+    this.draw();
     const imgIds = [...new Set(this.session.filter((q: any) => q.imageId).map((q: any) => q.imageId))];
     for (const id of imgIds) {
-      try { const rec = await getImageById(id); if (rec?.blob) this.imgUrlMap[id] = URL.createObjectURL(rec.blob); } catch { /* ignore */ }
+      try {
+        const rec = await getImageById(id);
+        if (rec?.blob) {
+          const url = URL.createObjectURL(rec.blob);
+          this.imgUrlMap.update(current => ({ ...current, [id]: url }));
+        }
+      } catch { /* ignore */ }
     }
-    this.draw();
   }
 
   private currentQ() { return this.session[this.st.index]; }
@@ -653,7 +661,10 @@ export class QuizPage implements OnInit, OnDestroy {
   zoomOut() { this.zoom?.zoomOut(); }
   zoomReset() { this.zoom?.reset(); }
 
-  private revokeImages() { for (const u of Object.values(this.imgUrlMap)) URL.revokeObjectURL(u); }
+  private revokeImages() {
+    for (const url of Object.values(this.imgUrlMap())) URL.revokeObjectURL(url);
+    this.imgUrlMap.set({});
+  }
 
   onKey(e: KeyboardEvent) {
     if (this.phase() !== 'active' && this.phase() !== 'feedback') return;

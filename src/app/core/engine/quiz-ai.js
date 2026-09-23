@@ -640,7 +640,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
 
   const authGroup = async (group) => {
     try {
-      return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
+      return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
         maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7, schema: ROWS_SCHEMA, shape: 'array'
       })) || []
     } catch (err) {
@@ -657,9 +657,6 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const waveRows = await runPool(groups.slice(0, firstWave).map(g => () => authGroup(g)), AUTHOR_POOL)
   waveRows.forEach((rows, i) => takeRows(rows, groups[i]))
 
-  for (let g = firstWave; g < groups.length && out.length < cfg.count; g++) {
-    takeRows(await authGroup(groups[g]), groups[g])
-  }
   return { questions: out, error: firstErr }
 }
 
@@ -792,7 +789,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   }
 
   const authGroup = async (group) => {
-    const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank), {
+    const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
       // Short fuse on purpose: a hung batch must fail fast into offline
       // fallback instead of pinning the "Writing question…" screen. Must
       // stay above the relay's worst case — one 25s Gemini key timeout plus
@@ -803,21 +800,9 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
     return extractJSONArray(raw) || []
   }
 
-  // First wave: the minimum number of batches that can cover the requested
-  // count, fired in parallel. Only top up sequentially when a batch under-
-  // delivered (rejected stems, grounding misses).
   const firstWave = Math.min(groups.length, Math.max(1, Math.ceil(cfg.count / AUTHOR_BATCH)))
   const waveRows = await runPool(groups.slice(0, firstWave).map(g => () => authGroup(g)), AUTHOR_POOL)
   waveRows.forEach((rows, i) => takeRows(rows, groups[i]))
-
-  // Top-ups are sequential and capped: a few extra batches may rescue an
-  // under-filled quiz, but we never grind through all remaining groups —
-  // whatever is missing falls back to built-in questions instead of
-  // pinning the loader for minutes.
-  const MAX_TOPUPS = 3
-  for (let g = firstWave, topUps = 0; g < groups.length && out.length < cfg.count && topUps < MAX_TOPUPS; g++, topUps++) {
-    takeRows(await authGroup(groups[g]), groups[g])
-  }
 
   return {
     questions: out,
@@ -947,7 +932,6 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
 
   // Batches per unit (AUTHOR_BATCH sentences each), all fired in parallel.
   const jobs = []
-  const remaining = []
   units.forEach((unit, u) => {
     const want = alloc[u]
     const pick = unit.sentences.slice(0, Math.min(unit.sentences.length, Math.max(want * 2, 4)))
@@ -955,20 +939,10 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       const group = pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
       jobs.push({ unit, state: unitState[u], group })
     }
-    remaining.push({ unit, state: unitState[u], next: pick.length, want })
   })
   if (!jobs.length) return { questions: [], error: 'not_enough_content' }
 
   await runPool(jobs.map(j => () => authBatch(j.unit, j.state, j.group)), AUTHOR_POOL)
-
-  // Sequential top-up: units that came in under quota get one more batch.
-  for (const rem of remaining) {
-    while (out.length < total && rem.state.taken < rem.want && rem.next < rem.unit.sentences.length) {
-      const group = rem.unit.sentences.slice(rem.next, rem.next + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text }))
-      rem.next += AUTHOR_BATCH
-      await authBatch(rem.unit, rem.state, group).catch(() => 0)
-    }
-  }
 
   return {
     questions: out,

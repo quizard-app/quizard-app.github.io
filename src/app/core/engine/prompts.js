@@ -222,9 +222,12 @@ export const AUTHOR_RULES = [
   'Reply ONLY with a JSON array: [{"src":0,"kind":"mcq","stem":"An investigator receives digital evidence from a suspected cybercrime case and immediately secures it so it cannot be altered or lost. Why is this step important?","correct":"To prevent digital evidence from being lost or altered","wrong":["To immediately convict the suspect","To replace the need for a court order","To automatically identify the attacker"],"explanation":"Digital evidence is fragile — securing it first keeps the chain of custody intact"}}]'
 ].join('\n')
 
-export function authorQuizPrompt(group, weakHint, terms) {
+export function authorQuizPrompt(group, weakHint, terms, count) {
   const lines = group.map(s => `[${s.i}] ${s.text}`).join('\n')
   let prompt = AUTHOR_RULES + '\n\nSource sentences:\n' + lines
+  if (Number.isInteger(count) && count > 0) {
+    prompt += `\n\nReturn exactly ${count} high-quality question${count === 1 ? '' : 's'} in the JSON array.`
+  }
   if (terms && terms.length) {
     prompt += '\n\nConcepts from this document (use these as wrong options where they fit the same family): ' + terms.join(', ')
   }
