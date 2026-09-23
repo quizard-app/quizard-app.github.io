@@ -121,16 +121,83 @@ function gemIsThrottled(key) {
   return true
 }
 function gemMarkThrottled(key) { gemThrottled.set(key, Date.now() + THROTTLE_MS) }
-// Priority order: the first key in .env is always tried first for every
-// request; the rest are fallbacks in listed order. Throttled keys sink to
-// the back until their 60s park expires. The personal key stays last resort.
+// Enhanced key cycling: distribute load more evenly across all available keys
+// and implement smarter throttling detection.
+let lastUsedKeyIndex = 0;
+let keyUsageCount = new Map();
+
 function gemCombo(extra) {
   const keys = getGemKeys()
   if (extra && !keys.includes(extra)) keys.push(extra)
+  
+  // Separate live and parked keys
   const live = keys.filter(k => !gemIsThrottled(k))
   const parked = keys.filter(k => gemIsThrottled(k))
-  return [...live, ...parked]
+  
+  // Sort live keys by health (better keys first) and then by usage count
+  const sortedLive = live.sort((a, b) => {
+    // Prefer healthier keys
+    const healthDiff = getKeyHealth(b) - getKeyHealth(a);
+    if (healthDiff !== 0) return healthDiff;
+    
+    // If health is equal, prefer less used keys
+    const usageA = (keyUsageCount.get(a) || { successes: 0, failures: 0 }).successes;
+    const usageB = (keyUsageCount.get(b) || { successes: 0, failures: 0 }).successes;
+    return usageA - usageB;
+  });
+  
+  // Rotate the starting position periodically for better load distribution
+  if (sortedLive.length > 0) {
+    lastUsedKeyIndex = (lastUsedKeyIndex + 1) % Math.max(1, sortedLive.length);
+    const rotatedLive = [
+      ...sortedLive.slice(lastUsedKeyIndex),
+      ...sortedLive.slice(0, lastUsedKeyIndex)
+    ];
+    return [...rotatedLive, ...parked];
+  }
+  
+  return [...live, ...parked];
 }
+
+// Track key performance for better decision making
+function recordKeyUsage(key, success) {
+  const count = keyUsageCount.get(key) || { successes: 0, failures: 0 };
+  if (success) {
+    count.successes++;
+  } else {
+    count.failures++;
+  }
+  // Prevent the map from growing too large and implement decay
+  const total = count.successes + count.failures;
+  if (total > 1000) {
+    count.successes = Math.floor(count.successes * 0.9);
+    count.failures = Math.floor(count.failures * 0.9);
+  }
+  keyUsageCount.set(key, count);
+}
+
+// Get key health score (higher is better)
+function getKeyHealth(key) {
+  const count = keyUsageCount.get(key) || { successes: 0, failures: 0 };
+  const total = count.successes + count.failures;
+  if (total === 0) return 1.0; // No data, assume healthy
+  return count.successes / Math.max(1, total); // Success rate
+}
+
+// Reset key usage statistics (for periodic cleanup)
+function cleanupKeyUsageStats() {
+  // Decay very old statistics to prevent memory growth
+  for (const [key, stats] of keyUsageCount.entries()) {
+    const total = stats.successes + stats.failures;
+    // If stats are very large, decay them
+    if (total > 10000) {
+      stats.successes = Math.floor(stats.successes * 0.8);
+      stats.failures = Math.floor(stats.failures * 0.8);
+    }
+  }
+}
+
+
 
 function isQuota(msg, status) {
   if (status === 429) return true
@@ -163,6 +230,8 @@ async function callGemini(model, key, payload) {
     })
   } catch (err) {
     const msg = String(err?.message || err || '')
+    // Record the failed attempt
+    recordKeyUsage(key, false);
     // Timeout means the model (or network) is slow for this payload — not a
     // per-key problem. Rotating through every remaining key just multiplies
     // the wait and the client aborts first. Stop after the first timeout.
@@ -175,11 +244,14 @@ async function callGemini(model, key, payload) {
     let msg = `gemini_http_${res.status}`
     try { const b = await res.json(); msg = b?.error?.message || msg } catch { /* keep */ }
     if (isCapacity(msg, res.status)) return { capacity: msg }
-    if (isQuota(msg, res.status)) { gemMarkThrottled(key); return { error: msg } }
+    if (isQuota(msg, res.status)) { gemMarkThrottled(key); recordKeyUsage(key, false); return { error: msg } }
+    recordKeyUsage(key, false);
     return { fatal: msg }
   }
   const data = await res.json()
   const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') ?? ''
+  // Record the successful attempt
+  recordKeyUsage(key, true);
   return { text }
 }
 
@@ -289,6 +361,27 @@ function groqIsThrottled(key) {
 }
 function groqMarkThrottled(key) { groqThrottled.set(key, Date.now() + THROTTLE_MS) }
 
+// Enhanced key cycling for Groq keys too
+let groqLastUsedKeyIndex = 0;
+
+function getGroqKeyOrder() {
+  const keys = getGroqKeys();
+  const live = keys.filter(k => !groqIsThrottled(k));
+  const parked = keys.filter(k => groqIsThrottled(k));
+  
+  // Rotate the starting position for better load distribution
+  if (live.length > 0) {
+    groqLastUsedKeyIndex = (groqLastUsedKeyIndex + 1) % Math.max(1, live.length);
+    const rotatedLive = [
+      ...live.slice(groqLastUsedKeyIndex),
+      ...live.slice(0, groqLastUsedKeyIndex)
+    ];
+    return [...rotatedLive, ...parked];
+  }
+  
+  return [...live, ...parked];
+}
+
 async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'object') {
   const keys = getGroqKeys()
   if (!keys.length) return null
@@ -311,9 +404,7 @@ async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'obj
   // caller that relies on the relay's default (json !== false) might not, so
   // make the request self-sufficient.
   const groqPrompt = !wantArray && json && !/json/i.test(prompt) ? prompt + '\n\nRespond with valid JSON.' : prompt
-  const live = keys.filter(k => !groqIsThrottled(k))
-  const parked = keys.filter(k => groqIsThrottled(k))
-  const order = [...live, ...parked]
+  const order = getGroqKeyOrder()
   let lastErr = null
   for (const key of order) {
     let res
@@ -333,6 +424,7 @@ async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'obj
       })
     } catch (err) {
       lastErr = String(err?.message || err || 'groq_error')
+      recordKeyUsage(key, false);
       continue
     }
     if (!res.ok) {
@@ -361,19 +453,30 @@ async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'obj
           if (retry.ok) {
             const rd = await retry.json().catch(() => null)
             const rt = rd?.choices?.[0]?.message?.content ?? ''
-            if (rt) return { text: rt }
+            if (rt) { 
+              recordKeyUsage(key, true);
+              return { text: rt } 
+            }
           }
-        } catch { /* fall through to the error path */ }
+        } catch { 
+          recordKeyUsage(key, false);
+          /* fall through to the error path */ 
+        }
       }
       lastErr = msg
       // Rate limited on this account: park the key, let the next one through.
       if (res.status === 429 || /rate[\s_-]?limit|quota|too many requests/i.test(msg)) {
         groqMarkThrottled(key)
+        recordKeyUsage(key, false);
         continue
       }
       // Auth/other hard errors are key-specific too, but a 401 is likely a
       // bad key — skip it rather than returning failure while others remain.
-      if (res.status === 401 || res.status === 403) continue
+      if (res.status === 401 || res.status === 403) {
+        recordKeyUsage(key, false);
+        continue
+      }
+      recordKeyUsage(key, false);
       return { error: msg }
     }
     const data = await res.json().catch(() => null)
@@ -401,8 +504,12 @@ async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'obj
           const rt = rd?.choices?.[0]?.message?.content ?? ''
           if (rt) text = rt
         }
-      } catch { /* fall through with the original text */ }
+      } catch { 
+        recordKeyUsage(key, false);
+        /* fall through with the original text */ 
+      }
     }
+    recordKeyUsage(key, true);
     return { text: text || null }
   }
   return { error: lastErr || 'groq_error' }
@@ -467,6 +574,10 @@ function fail(status, msg, headers = {}) {
   return new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json', ...headers } })
 }
 
+// Periodic cleanup flag
+let lastCleanupTime = 0;
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
 export default {
   async fetch(request, workerEnv) {
     env = workerEnv
@@ -475,6 +586,13 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: sec })
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: sec })
     if (!isAllowedOrigin(origin)) return fail(403, 'origin_not_allowed', sec)
+
+    // Periodic cleanup of key usage stats
+    const now = Date.now();
+    if (now - lastCleanupTime > CLEANUP_INTERVAL) {
+      cleanupKeyUsageStats();
+      lastCleanupTime = now;
+    }
 
     const route = (new URL(request.url).pathname.replace(/\/+$/, '').split('/').pop() || '').toLowerCase()
     if (route === 'gemini') {
