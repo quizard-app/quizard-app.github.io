@@ -209,7 +209,7 @@ export class ImportPage {
       await saveDocImages(doc.id, this.extracted.images.map((img, i) => ({ ...img, index: i })));
     }
     this.toast.toast('Document saved ✓');
-    this.router.navigate(['/doc', doc.id, 'setup']);
+    this.router.navigateByUrl('/tabs/library');
   }
 
   discard() {
