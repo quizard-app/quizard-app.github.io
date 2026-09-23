@@ -39,7 +39,7 @@ const ROWS_SCHEMA = {
       wrong: { type: 'ARRAY', items: { type: 'STRING' } },
       explanation: { type: 'STRING' }
     },
-    required: ['src', 'kind', 'stem', 'correct', 'wrong']
+    required: ['src', 'kind', 'stem', 'correct', 'wrong', 'explanation']
   }
 }
 
@@ -415,6 +415,7 @@ export async function generateQuizAI(doc, cfg, onProgress) {
   const docTf = termFreq(doc.text)
   const termBank = keyTerms(doc.text, docTf).map(r => r.term.toLowerCase())
   const stTok = s => new Set((String(s).toLowerCase().match(/[a-z0-9]{3,}/g) || []))
+  const relatedRng = mulberry32((base.seed ^ 0x9e3779b9) >>> 0)
   const relatedFor = q => {
     const st = stTok(q.meta.sentence + ' ' + q.meta.term)
     const term = String(q.meta.term).toLowerCase()
@@ -426,7 +427,7 @@ export async function generateQuizAI(doc, cfg, onProgress) {
         for (const w of tt) if (st.has(w)) overlap++
         return [t, overlap]
       })
-      .sort((a, b) => b[1] - a[1] || (optionRng() - 0.5))
+      .sort((a, b) => b[1] - a[1] || (relatedRng() - 0.5))
     return scored.slice(0, 10).map(s => s[0])
   }
 

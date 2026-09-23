@@ -56,7 +56,8 @@ function validRow(group, k) {
       'It stores water for the dry season ahead.',
       'It attracts insects that spread pollen widely.',
       'It cools the roots during hot afternoons.'
-    ]
+    ],
+    explanation: `The source explains why ${w1} and ${w2} matter in this process.`
   }
 }
 
@@ -130,6 +131,7 @@ describe('full AI authoring', () => {
     const gen = await generateQuizAI(makeDoc(), { ...CFG }, () => {})
     expect(gen.questions).toHaveLength(4)
     expect(gen.aiPolished).toBe(true)
+    expect(gen.questions.every(q => q.explanation)).toBe(true)
     for (const [n, q] of gen.questions.entries()) {
       expect(q.type).toBe('mcq')
       expect(q.options).toHaveLength(4)
@@ -141,6 +143,9 @@ describe('full AI authoring', () => {
     }
     // one model call for the whole quiz (single batch of 4)
     expect(vi.mocked(chatJSON).mock.calls.length).toBe(1)
+    const request = vi.mocked(chatJSON).mock.calls[0][1]
+    expect(request.shape).toBe('array')
+    expect(request.schema.items.required).toContain('explanation')
   })
 
   it('falls back to built-in questions when authoring fails', async () => {
@@ -152,11 +157,29 @@ describe('full AI authoring', () => {
     expect(gen.aiNote).toBe('error')
   })
 
-  it('does not author when aiAuthor is off', async () => {
-    const gen = await generateQuizAI(makeDoc(), { ...CFG, aiAuthor: false }, () => {})
-    // polish path: chatJSON mock returns undefined → no replacements
-    expect(gen.questions.length).toBeGreaterThan(0)
-    expect(gen.questions.every(q => !q.meta?.authored)).toBe(true)
+  it('polishes generated questions when aiAuthor is off', async () => {
+    vi.mocked(chatJSON).mockImplementation(prompt => {
+      const rows = []
+      const item = /(\d+) \[mcq\] source sentence: "[^"]+" \| correct answer: "([^"]+)"/g
+      for (const match of prompt.matchAll(item)) {
+        rows.push({
+          i: Number(match[1]),
+          kind: 'mcq',
+          stem: `Which option matches study concept ${Number(match[1]) + 1}?`,
+          correct: match[2],
+          wrong: ['Alpha process', 'Beta process', 'Gamma process']
+        })
+      }
+      return Promise.resolve(JSON.stringify(rows))
+    })
+
+    const gen = await generateQuizAI(makeDoc(), { ...CFG, aiAuthor: false, mix: { mcq: true } }, () => {})
+
+    expect(vi.mocked(chatJSON)).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ shape: 'array' }))
+    expect(gen.questions).toHaveLength(CFG.count)
+    expect(gen.aiPolished).toBe(true)
+    expect(gen.aiNote).toBeNull()
+    expect(gen.questions.every(q => q.options?.length === 4 && q.answerIndex >= 0 && q.answerIndex < 4)).toBe(true)
   })
 })
 

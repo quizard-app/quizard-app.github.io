@@ -60,7 +60,7 @@ export class SetupPage implements OnInit {
   timerSec = 0;
   fresh = true;
   aiOn = true;
-  aiAuthor = false;
+  aiAuthor = true;
   focusWeak = false;
   deepVisual = true;
   detectedTopics: any[] = [];
@@ -116,17 +116,22 @@ export class SetupPage implements OnInit {
       count: 10,
       mix: { ...MCQ_ONLY_MIX },
       difficulty: 'medium', shuffle: false, timerSec: 0, fresh: true,
-      topics: [] as string[], ai: true, aiAuthor: false, focusWeak: false, deepVisual: true
+      topics: [] as string[], ai: true, aiAuthor: true, focusWeak: false, deepVisual: true
     };
   }
 
   private configs: Record<string, any> = {};
   private loadConfig(docId: string) {
     try { this.configs = JSON.parse(localStorage.getItem('quizard-quiz-configs') || '{}'); } catch { this.configs = {}; }
-    return { ...this.defaultConfig(), ...(this.configs[docId] || {}) };
+    const stored = this.configs[docId] || {};
+    return {
+      ...this.defaultConfig(),
+      ...stored,
+      aiAuthor: stored.aiAuthorVersion === 2 ? !!stored.aiAuthor : true
+    };
   }
   private saveConfig(docId: string, cfg: any) {
-    this.configs[docId] = cfg;
+    this.configs[docId] = { ...cfg, aiAuthorVersion: 2 };
     try { localStorage.setItem('quizard-quiz-configs', JSON.stringify(this.configs)); } catch { /* ignore */ }
   }
 

@@ -64,9 +64,9 @@
           <div><div class="label">AI-written questions</div><div class="sub">{{ aiReady ? 'Gemini · built-in relay' : 'Gemini · needs the relay or a key (Settings)' }}</div></div>
           <div class="switch" [class.on]="aiOn" (click)="toggleAi()" data-tooltip="Toggle AI question writing"></div>
         </div>
-        <div class="row" data-tooltip="Gemini authors the whole quiz from scratch — why and scenario questions, not just rephrased sentences">
-          <div><div class="label">↳ Full AI authoring</div><div class="sub">AI writes every question from the whole document</div></div>
-          <div class="switch" [class.on]="aiAuthor" (click)="aiAuthor = !aiAuthor" data-tooltip="Toggle full AI authoring"></div>
+        <div class="row" data-tooltip="Gemini returns the complete quiz as structured JSON, with each answer explanation in the same response">
+          <div><div class="label">↳ Full AI authoring</div><div class="sub">Structured questions + explanations together</div></div>
+          <div class="switch" [class.on]="aiAuthor" (click)="aiAuthor = !aiAuthor" data-tooltip="Toggle structured full AI authoring"></div>
         </div>
         <div class="row" data-tooltip="When on, the next attempt uses a new random order">
           <div><div class="label">Shuffle questions</div><div class="sub">Randomize order every attempt</div></div>
