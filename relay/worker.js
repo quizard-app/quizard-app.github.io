@@ -290,11 +290,17 @@ async function handleGemini(request, sec) {
     }
   }
 
-  // The client may carry its own personal key (Settings → AI question writing).
-  // Server keys rotate first; the personal key is the last resort.
   const personal = (request.headers.get('x-quizard-key') || '').trim().slice(0, 300) || null
-  if (!getGemKeys().length && !personal) {
+  const groqAvailable = getGroqKeys().length > 0
+  if (!getGemKeys().length && !personal && !groqAvailable) {
     return fail(503, 'no_keys_configured', sec)
+  }
+
+  let groqTried = false
+  if (shape === 'array' && images.length === 0 && groqAvailable) {
+    groqTried = true
+    const fast = await callGroq(prompt, Math.min(maxOutputTokens, 8192), temperature, json, shape)
+    if (fast?.text) return ok(fast.text, sec)
   }
 
   const model = getGemModel()
@@ -326,10 +332,7 @@ async function handleGemini(request, sec) {
   if (text == null && capacitySeen) {
     text = await runPool(getFallbackModel(model))
   }
-  // Every Gemini attempt failed and a Groq key is configured — try the
-  // independent provider before giving up. Groq's JSON mode needs the word
-  // "JSON" in the prompt, which every generation prompt already contains.
-  if (text == null) {
+  if (text == null && !groqTried) {
     const g = await callGroq(prompt, Math.min(maxOutputTokens, 8192), temperature, json, shape)
     if (g?.text) return ok(g.text, sec)
   }

@@ -10,6 +10,7 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
 
 import { generateQuizAI } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON, chatMultimodal } from '../src/app/core/engine/gemini.js'
+import relay from '../relay/worker.js'
 
 const DOC = [
   'Photosynthesis Practice',
@@ -179,5 +180,83 @@ describe('Groq fallback fix for array-shaped responses', () => {
     expect(arrayCalls).toBeGreaterThan(0)
     // May have made object-shaped calls for other purposes
     expect(objectCalls).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('relay structured request routing', () => {
+  it('uses the fast provider first for text array responses', async () => {
+    const fetchMock = vi.fn(async url => {
+      if (String(url).includes('api.groq.com')) {
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: mockGroqArrayResponse() } }]
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      throw new Error(`Unexpected provider request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      const request = new Request('https://relay.test/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: 'Return JSON array',
+          json: true,
+          maxOutputTokens: 2048,
+          temperature: 0.5,
+          shape: 'array'
+        })
+      })
+      const response = await relay.fetch(request, {
+        GEMINI_KEYS: 'AIza-test-key',
+        GROQ_API_KEY: 'gsk-test-key',
+        GEMINI_MODEL: 'gemini-test'
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toContain('"src"')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(String(fetchMock.mock.calls[0][0])).toContain('api.groq.com')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps Gemini first for object responses', async () => {
+    const fetchMock = vi.fn(async url => {
+      if (String(url).includes('generativelanguage.googleapis.com')) {
+        return new Response(JSON.stringify({
+          candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }]
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      throw new Error(`Unexpected provider request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      const request = new Request('https://relay.test/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: 'Return JSON object',
+          json: true,
+          maxOutputTokens: 256,
+          temperature: 0.4,
+          shape: 'object'
+        })
+      })
+      const response = await relay.fetch(request, {
+        GEMINI_KEYS: 'AIza-test-key',
+        GROQ_API_KEY: 'gsk-test-key',
+        GEMINI_MODEL: 'gemini-test'
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe('{"ok":true}')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(String(fetchMock.mock.calls[0][0])).toContain('generativelanguage.googleapis.com')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

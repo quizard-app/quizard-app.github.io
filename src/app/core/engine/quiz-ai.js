@@ -740,7 +740,8 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
   const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
 
-  const pick = ranked.slice(0, Math.min(ranked.length, Math.max(cfg.count * 2, 12)))
+  const materialCount = cfg.count <= AUTHOR_BATCH ? Math.max(cfg.count + 2, 6) : cfg.count * 2
+  const pick = ranked.slice(0, Math.min(ranked.length, materialCount))
   const groups = []
   for (let i = 0; i < pick.length; i += AUTHOR_BATCH) {
     groups.push(pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text })))
@@ -790,12 +791,8 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
 
   const authGroup = async (group) => {
     const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
-      // Short fuse on purpose: a hung batch must fail fast into offline
-      // fallback instead of pinning the "Writing question…" screen. Must
-      // stay above the relay's worst case — one 25s Gemini key timeout plus
-      // one 25s Groq fallback attempt — or the client aborts a rescue that
-      // was still in flight and reports a misleading 'timeout'.
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 55000, schema: ROWS_SCHEMA, shape: 'array'
+      maxOutputTokens: cfg.count <= AUTHOR_BATCH ? Math.max(2048, 512 + 320 * cfg.count) : 1024 + 320 * group.length,
+      temperature: 0.5, timeoutMs: 45000, schema: ROWS_SCHEMA, shape: 'array'
     })
     return extractJSONArray(raw) || []
   }
