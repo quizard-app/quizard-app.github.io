@@ -2,6 +2,8 @@
 
 **Quizard** (a.k.a. QuizForge) is an offline-first study app: drop in the PDFs, slides and notes your teacher sends, and it forges them into quizzes, flashcards and exam-ready reviewers. Built with **Ionic 8 + Angular** as a PWA, plus an Android app via Capacitor. (The original vanilla-JS version is preserved under `legacy/`.)
 
+> ✨ **Recent Improvement**: AI generation now has robust fallback handling for consistent high-quality questions even when primary services are unavailable.
+
 > The magic-wielding mascot is not just decoration — the whole app is themed around a wizard who "forges" your documents into quizzes.
 
 ## Features
@@ -19,7 +21,7 @@
 
 Everything core — import, quiz generation, flashcards, SRS, reviewer, PDF export, encrypted backups — works with **zero internet**. Two features are optional and use the network when online: AI question polish and answer explanations. Both degrade gracefully to the built-in offline engines.
 
-AI runs through the **built-in relay** (`relay/`, a free Cloudflare Worker) which holds the Gemini keys server-side and rotates across them when one hits its limit — users never need a key. A personal Gemini key (Settings) is supported as an optional fallback. The reviewer's wizard voice uses Fish Audio through the same relay; without it the app falls back to on-device synthesis.
+AI runs through the **built-in relay** (`relay/`, a free Cloudflare Worker) which holds the Gemini keys server-side and rotates across them when one hits its limit — users never need a key. The relay now includes intelligent fallback handling to ensure consistent high-quality AI questions even when primary services are unavailable. A personal Gemini key (Settings) is supported as an optional fallback. The reviewer's wizard voice uses Fish Audio through the same relay; without it the app falls back to on-device synthesis.
 
 ## Development
 
