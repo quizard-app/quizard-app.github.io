@@ -48,6 +48,9 @@ export async function exportReviewerPdf(element, documentName) {
     bodyStyle.backgroundColor,
     rootStyle.backgroundColor
   ])
+  const surfaceColor = elementStyle.getPropertyValue('--surface').trim() || backgroundColor
+  const warnBackground = elementStyle.getPropertyValue('--warn-bg').trim() || surfaceColor
+  const warnBorder = elementStyle.getPropertyValue('--warn-border').trim() || warnBackground
   const width = Math.max(1, Math.ceil(element.getBoundingClientRect().width || element.scrollWidth))
   const height = Math.ceil(element.scrollHeight)
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4', compress: true })
@@ -67,18 +70,37 @@ export async function exportReviewerPdf(element, documentName) {
     width,
     windowWidth: Math.max(width, document.documentElement.clientWidth || width),
     windowHeight: Math.max(height, document.documentElement.clientHeight || 0),
-    onclone: clonedDocument => {
+    onclone: async clonedDocument => {
       const clone = clonedDocument.getElementById('review-content')
       if (!clone) return
       clone.classList.add('reviewer-pdf-export')
       clone.style.backgroundColor = backgroundColor
+      clone.querySelectorAll('.ai-term').forEach(node => { node.style.backgroundColor = surfaceColor })
+      clone.querySelectorAll('.ai-gaps').forEach(node => {
+        node.style.backgroundColor = warnBackground
+        node.style.borderColor = warnBorder
+      })
+      clone.querySelectorAll('.ai-table').forEach(node => {
+        node.style.display = 'table'
+        node.style.overflow = 'visible'
+        node.style.tableLayout = 'fixed'
+      })
+      await new Promise(resolve => clonedDocument.defaultView?.requestAnimationFrame(resolve) || setTimeout(resolve, 0))
     }
   }
 
   let pageIndex = 0
+  let foreignObjectRendering = false
   for (let y = 0; y < height; y += sliceHeight) {
     const captureHeight = Math.min(sliceHeight, height - y)
-    const canvas = await html2canvas(element, { ...captureOptions, x: 0, y, height: captureHeight })
+    let canvas
+    try {
+      canvas = await html2canvas(element, { ...captureOptions, x: 0, y, height: captureHeight, foreignObjectRendering })
+    } catch (error) {
+      if (foreignObjectRendering || !/unsupported color function/i.test(String(error?.message || error))) throw error
+      foreignObjectRendering = true
+      canvas = await html2canvas(element, { ...captureOptions, x: 0, y, height: captureHeight, foreignObjectRendering })
+    }
     if (pageIndex) pdf.addPage()
     const imageHeight = canvas.height * contentWidth / canvas.width
     pdf.addImage(canvas, 'PNG', margin, margin, contentWidth, imageHeight, undefined, 'FAST')

@@ -354,7 +354,7 @@ describe('reviewer PDF export', () => {
     vi.unstubAllGlobals()
   })
 
-  it('captures the displayed reviewer as themed multi-page A4 slices', async () => {
+  it('captures themed multi-page A4 slices and falls back from unsupported modern colors', async () => {
     const pdf = {
       internal: { pageSize: { getWidth: () => 595.28, getHeight: () => 841.89 } },
       addPage: vi.fn(),
@@ -363,10 +363,33 @@ describe('reviewer PDF export', () => {
       save: vi.fn().mockResolvedValue(undefined)
     }
     pdfExportMocks.jsPDF.mockImplementation(function () { return pdf })
-    pdfExportMocks.html2canvas.mockImplementation(async (_element, options) => ({
-      width: options.width * options.scale,
-      height: Math.ceil(options.height * options.scale)
-    }))
+    const term = { style: {} }
+    const gaps = { style: {} }
+    const table = { style: {} }
+    const cloneRoot = {
+      style: {},
+      classList: { add: vi.fn() },
+      querySelectorAll: vi.fn(selector => ({
+        '.ai-term': [term],
+        '.ai-gaps': [gaps],
+        '.ai-table': [table]
+      }[selector] || []))
+    }
+    const cloneDocument = {
+      getElementById: () => cloneRoot,
+      defaultView: { requestAnimationFrame: callback => { callback(); return 1 } }
+    }
+    let standardAttempts = 0
+    pdfExportMocks.html2canvas.mockImplementation(async (_element, options) => {
+      await options.onclone(cloneDocument)
+      if (!options.foreignObjectRendering && standardAttempts++ === 0) {
+        throw new Error('Attempting to parse an unsupported color function "oklab"')
+      }
+      return {
+        width: options.width * options.scale,
+        height: Math.ceil(options.height * options.scale)
+      }
+    })
 
     const element = {
       id: 'review-content',
@@ -381,20 +404,32 @@ describe('reviewer PDF export', () => {
       documentElement: { clientWidth: 640, clientHeight: 800 },
       getElementById: () => element
     }
+    const palette = {
+      '--surface': '#140F2E',
+      '--warn-bg': '#2A241F',
+      '--warn-border': '#6B4E1A'
+    }
     vi.stubGlobal('document', documentStub)
     vi.stubGlobal('window', { devicePixelRatio: 2 })
     vi.stubGlobal('requestAnimationFrame', callback => { callback(); return 1 })
     vi.stubGlobal('getComputedStyle', target => ({
-      backgroundColor: target === documentStub.body ? '#0b1020' : 'rgba(0, 0, 0, 0)'
+      backgroundColor: target === documentStub.body ? '#0b1020' : 'rgba(0, 0, 0, 0)',
+      getPropertyValue: name => palette[name] || ''
     }))
 
     await expect(exportReviewerPdf(element, 'Ethics / Cyber Security.pdf')).resolves.toBe(true)
 
     const captures = pdfExportMocks.html2canvas.mock.calls
-    expect(captures).toHaveLength(3)
-    expect(captures[0][1]).toMatchObject({ y: 0, backgroundColor: '#0b1020', scale: 2 })
-    expect(captures[1][1].y).toBeGreaterThan(900)
-    expect(captures[2][1].y).toBeGreaterThan(1800)
+    expect(captures).toHaveLength(4)
+    expect(captures[0][1]).toMatchObject({ y: 0, backgroundColor: '#0b1020', scale: 2, foreignObjectRendering: false })
+    expect(captures[1][1]).toMatchObject({ y: 0, foreignObjectRendering: true })
+    expect(captures[2][1].y).toBeGreaterThan(900)
+    expect(captures[2][1].foreignObjectRendering).toBe(true)
+    expect(captures[3][1].y).toBeGreaterThan(1800)
+    expect(captures[3][1].foreignObjectRendering).toBe(true)
+    expect(term.style.backgroundColor).toBe('#140F2E')
+    expect(gaps.style).toMatchObject({ backgroundColor: '#2A241F', borderColor: '#6B4E1A' })
+    expect(table.style).toMatchObject({ display: 'table', overflow: 'visible', tableLayout: 'fixed' })
     expect(pdf.addPage).toHaveBeenCalledTimes(2)
     expect(pdf.addImage).toHaveBeenCalledTimes(3)
     expect(pdf.setProperties).toHaveBeenCalledWith(expect.objectContaining({ creator: 'Quizard' }))
