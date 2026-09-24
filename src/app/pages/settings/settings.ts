@@ -146,7 +146,7 @@ export class SettingsPage implements OnInit {
     if (!name) return;
     const target = others.find(o => o.name.toLowerCase() === name.trim().toLowerCase());
     if (!target) { this.toast.toast('No profile with that name', true); return; }
-    if (!await this.confirm.confirm(`Delete "${target.name}"?`, `All documents, quizzes and mistakes for <b>${target.name}</b> will be permanently removed.`)) return;
+    if (!await this.confirm.confirm(`Delete "${target.name}"?`, `All documents, quizzes and mistakes for ${target.name} will be permanently removed.`)) return;
     await deleteAccount(target.id);
     this.toast.toast(`Removed ${target.name}`);
     await this.renderAccountSection();

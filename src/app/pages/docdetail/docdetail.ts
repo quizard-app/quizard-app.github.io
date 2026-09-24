@@ -107,7 +107,7 @@ export class DocDetailPage implements OnInit {
 
   async remove() {
     const doc = this.doc();
-    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for <b>${doc.name}</b> will be removed.`)) return;
+    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for ${doc.name} will be removed.`)) return;
     await deleteDoc(doc.id);
     this.toast.toast('Document deleted');
     this.goLibrary();

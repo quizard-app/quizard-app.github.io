@@ -132,7 +132,7 @@ export class LibraryPage {
   openExamDetail(exam: any) { this.router.navigate(['/exams', exam.id]); }
 
   async removeDoc(doc: any) {
-    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for <b>${doc.name}</b> will be removed.`)) return;
+    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for ${doc.name} will be removed.`)) return;
     await deleteDoc(doc.id);
     this.toast.toast('Document deleted');
     this.ionViewWillEnter();
