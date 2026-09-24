@@ -41,10 +41,10 @@
 .doc-list { display: flex; flex-direction: column; gap: 12px; }
 
 .lib-tools {
-  display: flex; gap: 10px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   margin-bottom: 16px;
 }
-.lib-tools .text-input { flex: 1; min-width: 0; padding: 11px 16px; }
+.lib-tools .text-input { flex: 1 1 170px; min-width: 170px; padding: 11px 16px; }
 .lib-tools .seg button { padding: 8px 14px; font-size: 12px; white-space: nowrap; }
 @media (min-width: 720px) {
   .lib-tools { gap: 14px; }
@@ -2089,4 +2089,11 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 @media (min-width: 760px) {
   .org-overlay { place-items: center center; }
   .org-sheet { width: min(100%, 420px); border-radius: var(--radius-lg); padding-bottom: 20px; }
+}
+
+/* The floating tab pill (≥768px) overlays the viewport bottom — lift the
+   organize bar above it so neither hides the other. */
+@media (min-width: 768px) {
+  .org-bar { bottom: calc(90px + env(safe-area-inset-bottom)); }
+  .lib-screen.organizing { padding-bottom: 140px; }
 }
