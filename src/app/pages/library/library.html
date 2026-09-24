@@ -8,7 +8,7 @@
       <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
     </div>
   </header>
-  <div class="screen lib-screen" [class.screen-center]="!docs().length">
+  <div class="screen lib-screen" [class.screen-center]="!docs().length" [class.organizing]="selectMode()">
     @if (nextExam(); as exam) {
       <button class="exam-card exam-card-lib" (click)="openExamDetail(exam)">
         <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
@@ -42,44 +42,45 @@
             <button [class.on]="sort() === s.id" (click)="setSort(s.id)" [attr.data-tooltip]="'Sort by ' + s.label.toLowerCase()">{{ s.label }}</button>
           }
         </div>
+        <button class="select-toggle" [class.on]="selectMode()" (click)="toggleSelectMode()" data-tooltip="Select documents to organize into folders">{{ selectMode() ? 'Cancel' : 'Select' }}</button>
       </div>
       <button class="exam-entry" (click)="openExams()" data-tooltip="Prepare for an upcoming exam">
         <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
         <span>Exam prep</span>
         <span [innerHTML]="'chevronRight' | ico"></span>
       </button>
-      @if (folders().length || tags().length) {
-        <div class="lib-filters">
-          @if (folders().length) {
-            <div class="filter-row">
-              <span class="filter-label" [innerHTML]="'folder' | ico"></span>
-              <div class="filter-chips">
-                <button class="fchip" [class.on]="!folderFilter()" (click)="setFolder(null)">All</button>
-                @for (f of folders(); track f) {
-                  <button class="fchip" [class.on]="folderFilter() === f" (click)="setFolder(f)">{{ f }}</button>
-                }
-              </div>
-            </div>
-          }
-          @if (tags().length) {
-            <div class="filter-row">
-              <span class="filter-label" [innerHTML]="'tag' | ico"></span>
-              <div class="filter-chips">
-                <button class="fchip" [class.on]="!tagFilter()" (click)="setTag(null)">All</button>
-                @for (t of tags(); track t) {
-                  <button class="fchip" [class.on]="tagFilter() === t" (click)="setTag(t)">{{ t }}</button>
-                }
-              </div>
-            </div>
-          }
+      <div class="lib-filters">
+        <div class="filter-row">
+          <span class="filter-label" [innerHTML]="'folder' | ico"></span>
+          <div class="filter-chips">
+            <button class="fchip" [class.on]="!folderFilter()" (click)="setFolder(null)">All</button>
+            @for (f of folders(); track f) {
+              <button class="fchip" [class.on]="folderFilter() === f" (click)="setFolder(f)" [attr.data-tooltip]="folderCount(f) + ' document' + (folderCount(f) === 1 ? '' : 's')">{{ f }} <span class="fchip-count">{{ folderCount(f) }}</span><span class="fchip-x" role="button" [attr.aria-label]="'Remove folder ' + f" (click)="removeFolder(f, $event)" [innerHTML]="'x' | ico"></span></button>
+            }
+            <button class="fchip fchip-new" (click)="openCreateFolder()" data-tooltip="Create a new empty folder">＋ New</button>
+          </div>
         </div>
-      }
+        @if (tags().length) {
+          <div class="filter-row">
+            <span class="filter-label" [innerHTML]="'tag' | ico"></span>
+            <div class="filter-chips">
+              <button class="fchip" [class.on]="!tagFilter()" (click)="setTag(null)">All</button>
+              @for (t of tags(); track t) {
+                <button class="fchip" [class.on]="tagFilter() === t" (click)="setTag(t)">{{ t }}</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
     }
 
     @if (visibleDocs().length) {
       <div class="doc-list">
         @for (doc of visibleDocs(); track doc.id) {
-          <div class="doc-card stagger" (click)="openDoc(doc)" data-tooltip="Open document details">
+          <div class="doc-card stagger" [class.selecting]="selectMode()" [class.picked]="selected().has(doc.id)" (click)="selectMode() ? toggleSelected(doc.id) : openDoc(doc)" [attr.data-tooltip]="selectMode() ? '' : 'Open document details'">
+            @if (selectMode()) {
+              <div class="pick-circle"><span [innerHTML]="'check' | ico"></span></div>
+            }
             <div class="doc-icon {{ doc.type }}" [innerHTML]="'fileText' | ico"></div>
             <div class="doc-info">
               <div class="doc-name">{{ doc.name }}</div>
@@ -89,20 +90,60 @@
                 @if (doc.bestScore != null) { <span class="score-pill {{ pillOf(doc) }}">{{ doc.bestScore }}%</span> }
               </div>
             </div>
-            <div class="doc-actions">
-              <button class="btn btn-primary doc-quiz-btn" (click)="startQuiz(doc); $event.stopPropagation()" data-tooltip="Create a quiz from this document">
-                <span [innerHTML]="'play' | ico"></span> Quiz
-              </button>
-              <button class="btn btn-secondary doc-review-btn" (click)="openReviewer(doc); $event.stopPropagation()" data-tooltip="Read this document as a study reviewer">
-                <span [innerHTML]="'book' | ico"></span> Reviewer
-              </button>
-              <button class="icon-btn doc-delete-btn" (click)="removeDoc(doc); $event.stopPropagation()" [attr.aria-label]="'Delete ' + doc.name" data-tooltip="Delete document" [innerHTML]="'trash' | ico"></button>
-            </div>
+            @if (!selectMode()) {
+              <div class="doc-actions">
+                <button class="btn btn-primary doc-quiz-btn" (click)="startQuiz(doc); $event.stopPropagation()" data-tooltip="Create a quiz from this document">
+                  <span [innerHTML]="'play' | ico"></span> Quiz
+                </button>
+                <button class="btn btn-secondary doc-review-btn" (click)="openReviewer(doc); $event.stopPropagation()" data-tooltip="Read this document as a study reviewer">
+                  <span [innerHTML]="'book' | ico"></span> Reviewer
+                </button>
+                <button class="icon-btn doc-delete-btn" (click)="removeDoc(doc); $event.stopPropagation()" [attr.aria-label]="'Delete ' + doc.name" data-tooltip="Delete document" [innerHTML]="'trash' | ico"></button>
+              </div>
+            }
           </div>
         }
       </div>
+      <button class="select-all-link" (click)="selectAllVisible()">Select all shown</button>
     } @else if (docs().length) {
-      <p class="center faint" style="padding:32px 0;font-size:13px">No documents match “{{ query() }}”.</p>
+      <p class="center faint" style="padding:32px 0;font-size:13px">
+        @if (folderFilter()) { This folder is empty — tap <b>Select</b> to move documents into it. } @else { No documents match “{{ query() }}”. }
+      </p>
+    }
+
+    @if (selectMode() && selectedCount()) {
+      <div class="org-bar">
+        <span class="org-count">{{ selectedCount() }} selected</span>
+        <div class="org-actions">
+          <button class="btn btn-primary org-move-btn" (click)="openMoveSheet()"><span [innerHTML]="'folder' | ico"></span> Move</button>
+          <button class="btn btn-secondary" (click)="unfileSelected()">Unfile</button>
+          <button class="icon-btn" (click)="deleteSelected()" [attr.aria-label]="'Delete ' + selectedCount() + ' documents'" data-tooltip="Delete selected documents" [innerHTML]="'trash' | ico"></button>
+        </div>
+      </div>
+    }
+
+    @if (moveOpen()) {
+      <div class="org-overlay" (click)="moveOpen.set(false)">
+        <div class="org-sheet" (click)="$event.stopPropagation()">
+          @if (moveMode() === 'move') {
+            <h3>Move {{ selectedCount() }} document{{ selectedCount() === 1 ? '' : 's' }}</h3>
+            <div class="org-list">
+              @for (f of folders(); track f) {
+                <button class="org-row" (click)="moveTo(f)"><span class="org-row-ico" [innerHTML]="'folder' | ico"></span><span class="org-row-name">{{ f }}</span><span class="org-row-count">{{ folderCount(f) }}</span></button>
+              }
+            </div>
+            <div class="org-divider">or create a new folder</div>
+          } @else {
+            <h3>New folder</h3>
+            <p class="faint" style="font-size:12.5px;margin:2px 0 10px">Creates an empty folder you can move documents into with Select.</p>
+          }
+          <input class="text-input" placeholder="Folder name" [attr.aria-label]="'Folder name'" maxlength="40" autocomplete="off" [value]="newFolderName()" (input)="newFolderName.set($any($event.target).value)" (keydown.enter)="moveMode() === 'move' ? createAndMove() : createFolder()" />
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="moveOpen.set(false)">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!newFolderName().trim()" (click)="moveMode() === 'move' ? createAndMove() : createFolder()">{{ moveMode() === 'move' ? 'Create & move' : 'Create folder' }}</button>
+          </div>
+        </div>
+      </div>
     }
 
     @if (!docs().length) {

@@ -3,8 +3,9 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams
+  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc
 } from '../../core/engine/storage.js';
+import { folderCounts, mergeFolders } from '../../core/engine/taxonomy.js';
 import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
 import { icon } from '../../shared/icons.js';
@@ -46,6 +47,13 @@ export class LibraryPage {
   folders = signal<string[]>([]);
   tags = signal<string[]>([]);
 
+  // Bulk organize: select documents in the grid, then move/unfile/delete them
+  // in one action instead of editing each document's page.
+  selectMode = signal(false);
+  selected = signal<Set<string>>(new Set());
+  moveOpen = signal(false);
+  newFolderName = signal('');
+
   query = signal('');
   private searchTimer: any = null;
   sort = signal<string>('recent');
@@ -53,6 +61,9 @@ export class LibraryPage {
   tagFilter = signal<string | null>(null);
 
   readonly totalAttempts = computed(() => this.docs().reduce((s, d) => s + (d.attempts || 0), 0));
+  readonly selectedCount = computed(() => this.selected().size);
+  readonly folderDocCounts = computed(() => folderCounts(this.docs()));
+  readonly folderCount = (f: string) => this.folderDocCounts().get(f) || 0;
   readonly avg = computed(() => {
     const scored = this.docs().filter(d => d.bestScore != null);
     return scored.length ? Math.round(scored.reduce((s, d) => s + d.bestScore, 0) / scored.length) : null;
@@ -90,7 +101,7 @@ export class LibraryPage {
     this.docs.set(docs);
     const exams = await listExams().catch(() => []);
     this.nextExam.set(exams.find((e: any) => (e.status || 'upcoming') === 'upcoming') || null);
-    this.folders.set(deriveFolders(docs));
+    this.folders.set(mergeFolders(deriveFolders(docs), loadSettings().customFolders || []));
     this.tags.set(deriveTags(docs));
     this.sort.set(loadSettings().sortDocs || 'recent');
     this.loading.set(false);
@@ -144,6 +155,102 @@ export class LibraryPage {
       }
     });
     setTimeout(() => { void purgeDeletedDoc(id); }, 8000);
+  }
+
+  // ── Bulk organize (select mode) ──
+  moveMode = signal<'move' | 'create'>('move');
+
+  toggleSelectMode() {
+    if (this.selectMode()) this.exitSelect();
+    else this.selectMode.set(true);
+  }
+  exitSelect() {
+    this.selectMode.set(false);
+    this.selected.set(new Set());
+    this.moveOpen.set(false);
+  }
+  toggleSelected(id: string) {
+    const next = new Set(this.selected());
+    if (next.has(id)) next.delete(id); else next.add(id);
+    this.selected.set(next);
+  }
+  selectAllVisible() {
+    const next = new Set(this.selected());
+    for (const d of this.visibleDocs()) next.add(d.id);
+    this.selected.set(next);
+  }
+
+  private persistCustomFolder(name: string) {
+    const custom = loadSettings().customFolders || [];
+    if (!custom.includes(name)) saveSettings({ customFolders: [...custom, name] });
+  }
+
+  openMoveSheet() { this.moveMode.set('move'); this.newFolderName.set(''); this.moveOpen.set(true); }
+  openCreateFolder() { this.moveMode.set('create'); this.newFolderName.set(''); this.moveOpen.set(true); }
+
+  async moveTo(folder: string | null) {
+    const ids = [...this.selected()];
+    if (!ids.length) return;
+    for (const id of ids) await updateDoc(id, { folder });
+    this.moveOpen.set(false);
+    this.exitSelect();
+    await this.ionViewWillEnter();
+    this.toast.toast(folder ? `Moved ${ids.length} document${ids.length === 1 ? '' : 's'} to ${folder}` : `Removed ${ids.length} document${ids.length === 1 ? '' : 's'} from folders`);
+  }
+
+  async createAndMove() {
+    const name = this.newFolderName().trim();
+    if (!name) return;
+    this.persistCustomFolder(name);
+    await this.moveTo(name);
+  }
+
+  async createFolder() {
+    const name = this.newFolderName().trim();
+    if (!name) return;
+    this.persistCustomFolder(name);
+    this.moveOpen.set(false);
+    await this.ionViewWillEnter();
+    this.toast.toast(`Folder "${name}" created`);
+  }
+
+  async unfileSelected() {
+    const ids = [...this.selected()];
+    if (!ids.length) return;
+    for (const id of ids) await updateDoc(id, { folder: null });
+    this.exitSelect();
+    await this.ionViewWillEnter();
+    this.toast.toast(`Removed ${ids.length} document${ids.length === 1 ? '' : 's'} from folders`);
+  }
+
+  async deleteSelected() {
+    const ids = [...this.selected()];
+    if (!ids.length) return;
+    const docs = this.docs().filter(d => ids.includes(d.id));
+    const names = docs.slice(0, 3).map(d => d.name).join(', ') + (docs.length > 3 ? ` +${docs.length - 3} more` : '');
+    if (!await this.confirm.confirm(`Delete ${ids.length} document${ids.length === 1 ? '' : 's'}?`, 'This also removes their quiz history, mistakes, and saved progress.', 'Delete', names)) return;
+    for (const id of ids) await deleteDoc(id);
+    this.exitSelect();
+    await this.ionViewWillEnter();
+    this.toast.toast(`${ids.length} document${ids.length === 1 ? '' : 's'} deleted`, false, {
+      text: 'Undo',
+      handler: async () => {
+        for (const id of ids) await restoreDoc(id);
+        await this.ionViewWillEnter();
+      }
+    });
+    setTimeout(() => { for (const id of ids) void purgeDeletedDoc(id); }, 8000);
+  }
+
+  async removeFolder(f: string, ev: Event) {
+    ev.stopPropagation();
+    if (!await this.confirm.confirm(`Remove folder "${f}"?`, 'Documents inside are kept — they just become unfiled.', 'Remove folder')) return;
+    for (const d of this.docs().filter(d => d.folder === f)) await updateDoc(d.id, { folder: null });
+    const custom = ((loadSettings().customFolders || []) as string[]).filter(x => x !== f);
+    saveSettings({ customFolders: custom });
+    if (this.folderFilter() === f) this.setFolder(null);
+    await this.ionViewWillEnter();
+    this.toast.toast(`Folder "${f}" removed`);
   }
 
   // template helpers for innerHTML art
