@@ -338,6 +338,12 @@ html[data-theme='dark'] .stepper button { color: var(--accent); }
 .review-explain { margin-top: 10px; }
 
 /* ── Toast ── */
+ion-toast.qz-toast {
+  --background: var(--text); --color: var(--bg); --border-radius: 14px; --box-shadow: var(--shadow-lg);
+  --font-size: 13.5px; --font-weight: 700; --min-height: 48px; --button-color: var(--accent);
+  --button-background: transparent; --button-text-transform: none;
+}
+ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --button-font-size: 13px; --button-font-weight: 800; }
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);
   transform: translateX(-50%) translateY(16px) scale(0.95);
@@ -539,19 +545,30 @@ svg { max-width: 100%; }
 
 /* ── Confirm modal ── */
 .confirm-mask {
-  position: fixed; inset: 0; z-index: 98;
-  background: rgba(9, 7, 26, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(9, 7, 26, 0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   display: grid; place-items: center; padding: 20px; animation: fadeIn 0.18s ease;
 }
 .confirm-modal {
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  width: 100%; max-width: 390px; padding: 24px; box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 420px; padding: 24px; box-shadow: var(--shadow-lg);
   animation: pop 0.24s cubic-bezier(0.16, 1.4, 0.3, 1);
 }
-.confirm-head h3 { font-size: 16px; font-weight: 700; margin-bottom: 0; }
-.confirm-body { font-size: 14px; color: var(--text-dim); line-height: 1.55; margin-top: 10px; }
-.confirm-actions { display: flex; gap: 10px; margin-top: 20px; }
-.confirm-actions .btn { flex: 1; }
+.confirm-icon {
+  width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center;
+  color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-border); margin-bottom: 16px;
+}
+.confirm-icon.destructive { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-border); }
+.confirm-icon svg { width: 22px; height: 22px; }
+.confirm-head h3 { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+.confirm-subject {
+  margin-top: 8px; padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.confirm-body { font-size: 14px; color: var(--text-dim); line-height: 1.55; margin: 12px 0 0; }
+.confirm-actions { display: flex; gap: 10px; margin-top: 22px; }
+.confirm-actions .btn { flex: 1; min-height: 46px; }
 .btn-danger {
   background: var(--bad); color: #fff; font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -560,7 +577,11 @@ svg { max-width: 100%; }
 .btn-danger:hover { filter: brightness(1.08); }
 @media (max-width: 767px) {
   .confirm-mask { align-items: end; padding: 0; }
-  .confirm-modal { max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .confirm-modal {
+    max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+  }
+  .confirm-actions .btn { min-height: 48px; }
 }
 
 /* ── Library filters ── */

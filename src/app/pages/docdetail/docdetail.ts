@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
-import { getDoc, updateDoc, deleteDoc, listDocs, deriveFolders } from '../../core/engine/storage.js';
+import { getDoc, updateDoc, deleteDoc, restoreDoc, purgeDeletedDoc, listDocs, deriveFolders } from '../../core/engine/storage.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
 import { ensureVisualAnalysis } from '../../core/engine/quiz-ai.js';
 import { icon } from '../../shared/icons.js';
@@ -107,9 +107,17 @@ export class DocDetailPage implements OnInit {
 
   async remove() {
     const doc = this.doc();
-    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for ${doc.name} will be removed.`)) return;
-    await deleteDoc(doc.id);
-    this.toast.toast('Document deleted');
-    this.goLibrary();
+    if (!await this.confirm.confirm('Delete document?', 'This also removes its quiz history, mistakes, and saved progress.', 'Delete', doc.name)) return;
+    const id = doc.id;
+    await deleteDoc(id);
+    await this.router.navigateByUrl('/tabs/library');
+    this.toast.toast('Document deleted', false, {
+      text: 'Undo',
+      handler: async () => {
+        await restoreDoc(id);
+        await this.router.navigateByUrl('/tabs/library');
+      }
+    });
+    setTimeout(() => { void purgeDeletedDoc(id); }, 8000);
   }
 }

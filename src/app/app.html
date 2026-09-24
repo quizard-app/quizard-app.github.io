@@ -41,3 +41,38 @@
     </div>
   </div>
 }
+
+@if (confirm.visible()) {
+  <div class="confirm-mask" tabindex="-1" (click)="confirm.cancel()" (keydown.escape)="confirm.cancel()">
+    <section
+      class="confirm-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="confirm-icon" [class.destructive]="confirm.destructive()">
+        <span [innerHTML]="(confirm.icon() === 'trash' ? 'trash' : 'alert') | ico"></span>
+      </div>
+      <div class="confirm-head">
+        <h3 id="confirm-title">{{ confirm.title() }}</h3>
+        @if (confirm.subject()) {
+          <div class="confirm-subject" [title]="confirm.subject()">{{ confirm.subject() }}</div>
+        }
+      </div>
+      <p class="confirm-body" id="confirm-message">{{ confirm.message() }}</p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel" type="button" (click)="confirm.cancel()">Cancel</button>
+        <button
+          class="btn"
+          id="confirm-accept"
+          type="button"
+          [class.btn-danger]="confirm.destructive()"
+          [class.btn-primary]="!confirm.destructive()"
+          (click)="confirm.accept()"
+        >{{ confirm.okLabel() }}</button>
+      </div>
+    </section>
+  </div>
+}

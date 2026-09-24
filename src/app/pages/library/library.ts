@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams
+  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams
 } from '../../core/engine/storage.js';
 import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
@@ -132,10 +132,18 @@ export class LibraryPage {
   openExamDetail(exam: any) { this.router.navigate(['/exams', exam.id]); }
 
   async removeDoc(doc: any) {
-    if (!await this.confirm.confirm(`Delete "${doc.name}"?`, `All quiz history for ${doc.name} will be removed.`)) return;
-    await deleteDoc(doc.id);
-    this.toast.toast('Document deleted');
-    this.ionViewWillEnter();
+    if (!await this.confirm.confirm('Delete document?', 'This also removes its quiz history, mistakes, and saved progress.', 'Delete', doc.name)) return;
+    const id = doc.id;
+    await deleteDoc(id);
+    await this.ionViewWillEnter();
+    this.toast.toast('Document deleted', false, {
+      text: 'Undo',
+      handler: async () => {
+        await restoreDoc(id);
+        await this.ionViewWillEnter();
+      }
+    });
+    setTimeout(() => { void purgeDeletedDoc(id); }, 8000);
   }
 
   // template helpers for innerHTML art

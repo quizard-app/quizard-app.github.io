@@ -13,6 +13,10 @@ if (typeof globalThis.localStorage === 'undefined') {
 }
 import {
   saveDoc,
+  getDoc,
+  listDocs,
+  deleteDoc,
+  restoreDoc,
   bankMistake,
   upsertSrsFromMistake,
   listDueCards,
@@ -66,6 +70,25 @@ describe('reviewer: long-press note save', () => {
     expect(b.id).toBe(a.id)
     const due = await listDueCards(99)
     expect(due.filter(d => d.term === 'Stomata').length).toBe(1)
+  })
+})
+
+describe('document deletion undo', () => {
+  it('hides a deleted document and restores it with its content', async () => {
+    const doc = await saveDoc({
+      name: 'Undo deletion.pdf',
+      type: 'pdf',
+      text: SAMPLE_TEXT,
+      topics: []
+    })
+
+    await deleteDoc(doc.id)
+    expect(await getDoc(doc.id)).toBeNull()
+    expect((await listDocs()).some(item => item.id === doc.id)).toBe(false)
+
+    const restored = await restoreDoc(doc.id)
+    expect(restored?.id).toBe(doc.id)
+    expect((await listDocs()).some(item => item.id === doc.id)).toBe(true)
   })
 })
 

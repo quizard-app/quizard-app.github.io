@@ -24,6 +24,10 @@ html[data-theme='dark'] {
   --ion-item-background: var(--surface);
   --ion-toolbar-background: var(--bg);
   --ion-tab-bar-background: var(--surface);
+  --ion-tab-bar-background-focused: var(--surface-hover);
+  --ion-tab-bar-border-color: var(--border-strong);
+  --ion-tab-bar-color: var(--text-dim);
+  --ion-tab-bar-color-selected: var(--accent-strong);
 }
 
 html[data-theme='light'] {
@@ -35,6 +39,10 @@ html[data-theme='light'] {
   --ion-item-background: var(--surface);
   --ion-toolbar-background: var(--bg);
   --ion-tab-bar-background: var(--surface);
+  --ion-tab-bar-background-focused: var(--surface-hover);
+  --ion-tab-bar-border-color: var(--border-strong);
+  --ion-tab-bar-color: var(--text-dim);
+  --ion-tab-bar-color-selected: var(--accent-strong);
 }
 
 /* ── Global reduced motion ──

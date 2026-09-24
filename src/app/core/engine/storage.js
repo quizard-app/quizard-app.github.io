@@ -255,6 +255,8 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2)
 }
 
+const DOC_TRASH_TTL_MS = 60_000
+
 function mistakeId(docId, term, sentence) {
   let h = 5381 >>> 0
   for (let i = 0; i < sentence.length; i++) h = ((h << 5) + h + sentence.charCodeAt(i)) | 0
@@ -292,6 +294,7 @@ export async function getDoc(id) {
   if (!id) return null
   const db = await dbPromise
   const doc = await db.get('docs', id)
+  if (doc?.deletedAt) return null
   if (doc && activeAccountId && doc.accountId !== activeAccountId) return null
   return doc
 }
@@ -304,15 +307,21 @@ export async function listDocs() {
   // metadata, so we avoid pulling megabytes of prose into memory on every
   // Library / History / Import render.
   const out = []
+  const stale = []
   let cursor = await db.transaction('docs').store.openCursor()
   while (cursor) {
     const d = cursor.value
     if (d.accountId === accountId) {
-      const { text, original, visualAnalysis, ...meta } = d
-      out.push(meta)
+      if (d.deletedAt) {
+        if (Date.now() - d.deletedAt >= DOC_TRASH_TTL_MS) stale.push(d.id)
+      } else {
+        const { text, original, visualAnalysis, ...meta } = d
+        out.push(meta)
+      }
     }
     cursor = await cursor.continue()
   }
+  if (stale.length) await Promise.all(stale.map(id => purgeDocRecords(id)))
   out.sort((a, b) => b.createdAt - a.createdAt)
   return out
 }
@@ -331,7 +340,35 @@ export async function updateDoc(id, patch) {
 export async function deleteDoc(id) {
   if (!id) return
   const db = await dbPromise
+  const doc = await db.get('docs', id)
+  if (!doc || (activeAccountId && doc.accountId !== activeAccountId)) return
+  await db.put('docs', { ...doc, deletedAt: Date.now() })
+}
+
+export async function restoreDoc(id) {
+  if (!id) return null
+  const db = await dbPromise
+  const doc = await db.get('docs', id)
+  if (!doc || (activeAccountId && doc.accountId !== activeAccountId)) return null
+  if (!doc.deletedAt) return doc
+  const { deletedAt, ...restored } = doc
+  await db.put('docs', restored)
+  return restored
+}
+
+export async function purgeDeletedDoc(id) {
+  if (!id) return
+  await purgeDocRecords(id)
+}
+
+async function purgeDocRecords(id) {
+  const db = await dbPromise
   const tx = db.transaction(['docs', 'attempts', 'images', 'srs', 'mistakes'], 'readwrite')
+  const current = await tx.objectStore('docs').get(id)
+  if (!current?.deletedAt) {
+    await tx.done
+    return false
+  }
   tx.objectStore('docs').delete(id)
   const idx = tx.objectStore('attempts').index('docId')
   let cursor = await idx.openCursor(IDBKeyRange.only(id))
@@ -358,6 +395,7 @@ export async function deleteDoc(id) {
     mCursor = await mCursor.continue()
   }
   await tx.done
+  return true
 }
 
 export async function saveDocImages(docId, images) {

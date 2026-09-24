@@ -4,6 +4,7 @@ import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
 import { IdlePreloadService } from './core/services/idle-preload.service';
 import { ByokService } from './core/services/byok.service';
+import { ConfirmService } from './core/services/confirm.service';
 import { IcoPipe } from './shared/ico.pipe';
 import { afterNextRender } from '@angular/core';
 
@@ -23,6 +24,7 @@ export class App {
   private preload = inject(IdlePreloadService);
   private swUpdate = inject(SwUpdate, { optional: true });
   readonly byok = inject(ByokService);
+  readonly confirm = inject(ConfirmService);
 
   openKeyPage() { window.open('https://aistudio.google.com/apikey', '_blank', 'noopener'); }
 

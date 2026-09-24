@@ -21,6 +21,31 @@ ion-content {
   --padding-end: var(--pad-x);
 }
 
+ion-tab-bar {
+  --background: var(--surface);
+  --border-color: var(--border-strong);
+  padding-top: 6px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+ion-tab-button {
+  --color: var(--text-dim);
+  --color-selected: var(--accent-strong);
+  --background-focused: var(--surface-hover);
+  min-width: 64px;
+}
+ion-tab-bar ion-icon {
+  font-size: 22px;
+  opacity: 1;
+}
+ion-tab-bar ion-label {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+  opacity: 1;
+}
+
 /* ── Wide screens: cap line length and float the tab bar ── */
 @media (min-width: 1100px) {
   .lib-screen { max-width: 1120px; margin-inline: auto; }
@@ -28,7 +53,7 @@ ion-content {
 @media (min-width: 768px) {
   ion-tab-bar {
     position: fixed;
-    bottom: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     max-width: 560px;
