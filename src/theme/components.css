@@ -363,13 +363,20 @@ ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --butt
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(2, 6, 23, 0.72);
   backdrop-filter: blur(3px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
   padding: 22px;
+  /* The modal can be taller than a small phone — the overlay itself scrolls,
+     and overscroll-behavior keeps that scroll from chaining into the page
+     behind (which made the browser UI jump while reading the steps). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: byokFadeIn .18s ease-out;
 }
 @keyframes byokFadeIn { from { opacity: 0; } }
 .byok-modal {
   width: 100%; max-width: 400px;
+  margin: auto;
   background: var(--surface, #12141f);
   border: 1px solid var(--accent-border, color-mix(in srgb, #6366f1 35%, transparent));
   border-radius: 18px;
@@ -406,8 +413,10 @@ ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --butt
 .byok-step-btn { flex-basis: 100%; margin-top: 4px; }
 .byok-input { width: 100%; margin-bottom: 8px; }
 .byok-status { font-size: 12px; color: var(--warn, #f59e0b); margin: 0 0 8px; }
-.byok-actions { display: flex; gap: 8px; margin-top: 4px; }
-.byok-actions .btn { flex: 1; }
+.byok-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+/* Both buttons share the row; the long "Not now" label may wrap to two lines
+   on narrow phones instead of crushing "Save my key" into a sliver. */
+.byok-actions .btn { flex: 1 1 150px; min-width: 0; white-space: normal; line-height: 1.25; padding-block: 10px; }
 .byok-hint { font-size: 11.5px; color: var(--text-faint, #64748b); margin: 12px 0 2px; line-height: 1.5; }
 .byok-link { color: var(--accent-strong, #818cf8); font-weight: 700; cursor: pointer; text-decoration: underline; }
 
@@ -548,6 +557,7 @@ svg { max-width: 100%; }
   position: fixed; inset: 0; z-index: 10000;
   background: rgba(9, 7, 26, 0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   display: grid; place-items: center; padding: 20px; animation: fadeIn 0.18s ease;
+  overflow-y: auto; overscroll-behavior: contain;
 }
 .confirm-modal {
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
