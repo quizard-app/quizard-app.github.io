@@ -1,10 +1,23 @@
 /* Quizard global styles (Ionic brings its own per-component defaults) */
-html { scroll-behavior: smooth; }
+/* The document itself must never scroll — all scrolling lives inside
+   ion-content. Without this lockdown, swiping past the top/bottom of a list
+   chains into the page body, which drags the whole app (and the Chrome
+   mobile URL bar) up and down mid-swipe — the page looked like it was
+   ghosting/double-painting while scrolling. */
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  scroll-behavior: auto;
+}
 
 /* Utility: toggled via Angular [class.hidden] bindings */
 .hidden { display: none !important; }
 
 body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
