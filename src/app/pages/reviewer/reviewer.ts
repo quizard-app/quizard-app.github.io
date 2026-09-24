@@ -10,7 +10,7 @@ import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.
 import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
-import { exportSummary, printStudySheet, exportPdfHandout } from '../../core/engine/export.js';
+import { exportSummary, printStudySheet, exportReviewerPdf } from '../../core/engine/export.js';
 import { assetUrl } from '../../shared/assets.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
@@ -54,6 +54,8 @@ export class ReviewerPage implements AfterViewInit {
   private aiTried = false;
   findVisible = signal(false);
   findCount = signal('');
+  reviewerReady = signal(false);
+  buildingPdf = signal(false);
 
   private nlp: any = null;
   private nlpBuilding = false;
@@ -72,6 +74,7 @@ export class ReviewerPage implements AfterViewInit {
     const id = this.route.snapshot.paramMap.get('id') || '';
     const doc = await getDoc(id);
     if (!doc) { this.router.navigateByUrl('/tabs/library'); return; }
+    this.reviewerReady.set(false);
     this.doc.set(doc);
     if ((doc.reviewerAI as any)?.parts?.length) {
       this.aiReviewer.set(doc.reviewerAI);
@@ -299,6 +302,7 @@ export class ReviewerPage implements AfterViewInit {
       return;
     }
     this.contentHtml.set(this.trust(this.aiMode() && this.aiReviewer() ? this.aiReviewHtml() : this.summaryHtml()));
+    this.reviewerReady.set(true);
     content.classList.add('summary-mode');
     if (fc) fc.style.visibility = 'hidden';
     this.clearFind();
@@ -421,10 +425,17 @@ export class ReviewerPage implements AfterViewInit {
   }
   exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded study sheet (.md)'); }
   async exportPdf() {
+    const content = this.content?.nativeElement;
+    if (this.buildingPdf() || !content || !this.reviewerReady()) return;
+    this.buildingPdf.set(true);
     try {
-      await exportPdfHandout(this.doc(), { keyTermDefs: this.nlp?.keyTermDefs || [], reviewQs: this.nlp?.reviewQs || [] });
-      this.toast.toast('PDF handout downloaded ✓');
-    } catch { this.toast.toast('Could not build the PDF', true); }
+      await exportReviewerPdf(content, this.doc().name);
+      this.toast.toast('Reviewer PDF downloaded ✓');
+    } catch {
+      this.toast.toast('Could not build the PDF', true);
+    } finally {
+      this.buildingPdf.set(false);
+    }
   }
   print() { if (!printStudySheet(this.doc())) this.toast.toast('Allow pop-ups to print'); }
 }

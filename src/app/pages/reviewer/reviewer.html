@@ -31,7 +31,10 @@
       <article class="reader summary-mode" id="review-content" #content [innerHTML]="contentHtml()"></article>
       <div class="reader-actions">
         <button class="btn btn-primary" (click)="quizMe()"><span [innerHTML]="'play' | ico"></span> Quiz me on this</button>
-        <button class="btn btn-primary" (click)="exportPdf()" style="margin-top:10px;width:100%" data-tooltip="Download this reviewer as a formatted PDF handout"><span [innerHTML]="'download' | ico"></span> Export PDF handout</button>
+        <button class="btn btn-primary" (click)="exportPdf()" [disabled]="buildingPdf() || !reviewerReady() || (aiMode() && aiState() === 'generating')" [attr.aria-busy]="buildingPdf()" style="margin-top:10px;width:100%" data-tooltip="Download the exact Reviewer shown on screen as a PDF">
+          <span [innerHTML]="'download' | ico"></span>
+          {{ buildingPdf() ? 'Building PDF…' : (aiMode() && aiReviewer() ? 'Export AI Reviewer PDF' : 'Export Reviewer PDF') }}
+        </button>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:10px">
           <button class="btn btn-secondary" (click)="exportMd()" data-tooltip="Download the study sheet as Markdown"><span [innerHTML]="'download' | ico"></span> Export .md</button>
           <button class="btn btn-secondary" (click)="print()" data-tooltip="Open a printable study sheet"><span [innerHTML]="'print' | ico"></span> Print sheet</button>

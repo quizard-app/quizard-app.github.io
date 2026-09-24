@@ -19,6 +19,82 @@ function stamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+function firstOpaqueColor(colors) {
+  return colors.find(color => color && color !== 'transparent' && !/rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/i.test(color)) || '#ffffff'
+}
+
+async function waitForReviewerPaint() {
+  if (document.fonts?.ready) await document.fonts.ready
+  await new Promise(resolve => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(resolve))
+    else setTimeout(resolve, 0)
+  })
+}
+
+export async function exportReviewerPdf(element, documentName) {
+  if (!element?.isConnected || !element.scrollHeight) throw new Error('Reviewer content is not ready')
+
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf')
+  ])
+  await waitForReviewerPaint()
+
+  const rootStyle = getComputedStyle(document.documentElement)
+  const bodyStyle = getComputedStyle(document.body)
+  const elementStyle = getComputedStyle(element)
+  const backgroundColor = firstOpaqueColor([
+    elementStyle.backgroundColor,
+    bodyStyle.backgroundColor,
+    rootStyle.backgroundColor
+  ])
+  const width = Math.max(1, Math.ceil(element.getBoundingClientRect().width || element.scrollWidth))
+  const height = Math.ceil(element.scrollHeight)
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4', compress: true })
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 36
+  const contentWidth = pageWidth - margin * 2
+  const contentHeight = pageHeight - margin * 2
+  const sliceHeight = contentHeight * width / contentWidth
+  const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1))
+  const captureOptions = {
+    backgroundColor,
+    logging: false,
+    scale,
+    useCORS: true,
+    imageTimeout: 15000,
+    width,
+    windowWidth: Math.max(width, document.documentElement.clientWidth || width),
+    windowHeight: Math.max(height, document.documentElement.clientHeight || 0),
+    onclone: clonedDocument => {
+      const clone = clonedDocument.getElementById('review-content')
+      if (!clone) return
+      clone.classList.add('reviewer-pdf-export')
+      clone.style.backgroundColor = backgroundColor
+    }
+  }
+
+  let pageIndex = 0
+  for (let y = 0; y < height; y += sliceHeight) {
+    const captureHeight = Math.min(sliceHeight, height - y)
+    const canvas = await html2canvas(element, { ...captureOptions, x: 0, y, height: captureHeight })
+    if (pageIndex) pdf.addPage()
+    const imageHeight = canvas.height * contentWidth / canvas.width
+    pdf.addImage(canvas, 'PNG', margin, margin, contentWidth, imageHeight, undefined, 'FAST')
+    pageIndex++
+  }
+
+  pdf.setProperties({
+    title: `${documentName || 'Document'} — AI Reviewer`,
+    subject: 'Reviewer exported from Quizard',
+    creator: 'Quizard'
+  })
+  const fileSlug = slug(String(documentName || 'doc').replace(/\.[^.]+$/, ''))
+  await pdf.save(`quizard-reviewer-${fileSlug}.pdf`)
+  return true
+}
+
 function optionLetters(n) {
   return 'ABCDEFGH'.slice(0, n).split('')
 }

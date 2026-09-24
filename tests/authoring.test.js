@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import 'fake-indexeddb/auto'
 
 // quiz-ai.js pulls in gemini.js (network) and storage.js (idb) — stub the
@@ -9,11 +9,19 @@ vi.mock('../src/app/core/engine/gemini.js', () => ({
   chatMultimodal: vi.fn()
 }))
 
+const pdfExportMocks = vi.hoisted(() => ({
+  html2canvas: vi.fn(),
+  jsPDF: vi.fn()
+}))
+
+vi.mock('html2canvas', () => ({ default: pdfExportMocks.html2canvas }))
+vi.mock('jspdf', () => ({ jsPDF: pdfExportMocks.jsPDF }))
+
 import { generateQuizAI, authorExamQuestions, grounded, byokHelps, classifyAIError, polishQuestionSet, leaksOption } from '../src/app/core/engine/quiz-ai.js'
 import { chatJSON } from '../src/app/core/engine/gemini.js'
 import { authorQuizPrompt, AUTHOR_RULES } from '../src/app/core/engine/prompts.js'
 import { sentences, termFreq, scoreSentences, stripHeadings } from '../src/app/core/engine/textproc.js'
-import { buildQuizMarkdown } from '../src/app/core/engine/export.js'
+import { buildQuizMarkdown, exportReviewerPdf } from '../src/app/core/engine/export.js'
 
 const DOC = [
   'Photosynthesis Practice',
@@ -336,5 +344,60 @@ describe('quiz export for new types', () => {
     expect(md).toContain('**Answer:** B')
     expect(md).toContain('### True or False')
     expect(md).toContain('**3. The CPU is the brain of the computer.**')
+  })
+})
+
+describe('reviewer PDF export', () => {
+  afterEach(() => {
+    pdfExportMocks.html2canvas.mockReset()
+    pdfExportMocks.jsPDF.mockReset()
+    vi.unstubAllGlobals()
+  })
+
+  it('captures the displayed reviewer as themed multi-page A4 slices', async () => {
+    const pdf = {
+      internal: { pageSize: { getWidth: () => 595.28, getHeight: () => 841.89 } },
+      addPage: vi.fn(),
+      addImage: vi.fn(),
+      setProperties: vi.fn(),
+      save: vi.fn().mockResolvedValue(undefined)
+    }
+    pdfExportMocks.jsPDF.mockImplementation(function () { return pdf })
+    pdfExportMocks.html2canvas.mockImplementation(async (_element, options) => ({
+      width: options.width * options.scale,
+      height: Math.ceil(options.height * options.scale)
+    }))
+
+    const element = {
+      id: 'review-content',
+      isConnected: true,
+      scrollHeight: 2000,
+      scrollWidth: 640,
+      getBoundingClientRect: () => ({ width: 640 })
+    }
+    const documentStub = {
+      fonts: { ready: Promise.resolve() },
+      body: {},
+      documentElement: { clientWidth: 640, clientHeight: 800 },
+      getElementById: () => element
+    }
+    vi.stubGlobal('document', documentStub)
+    vi.stubGlobal('window', { devicePixelRatio: 2 })
+    vi.stubGlobal('requestAnimationFrame', callback => { callback(); return 1 })
+    vi.stubGlobal('getComputedStyle', target => ({
+      backgroundColor: target === documentStub.body ? '#0b1020' : 'rgba(0, 0, 0, 0)'
+    }))
+
+    await expect(exportReviewerPdf(element, 'Ethics / Cyber Security.pdf')).resolves.toBe(true)
+
+    const captures = pdfExportMocks.html2canvas.mock.calls
+    expect(captures).toHaveLength(3)
+    expect(captures[0][1]).toMatchObject({ y: 0, backgroundColor: '#0b1020', scale: 2 })
+    expect(captures[1][1].y).toBeGreaterThan(900)
+    expect(captures[2][1].y).toBeGreaterThan(1800)
+    expect(pdf.addPage).toHaveBeenCalledTimes(2)
+    expect(pdf.addImage).toHaveBeenCalledTimes(3)
+    expect(pdf.setProperties).toHaveBeenCalledWith(expect.objectContaining({ creator: 'Quizard' }))
+    expect(pdf.save).toHaveBeenCalledWith('quizard-reviewer-ethics-cyber-security.pdf')
   })
 })

@@ -711,6 +711,10 @@ html[data-theme='dark'] .ai-myth-row.good span { color: var(--accent); }
 .ai-gaps-head { font-weight: 800; margin-bottom: 4px; }
 .ai-gaps ul { margin: 4px 0 0; padding-left: 18px; }
 .ai-gaps li { margin-bottom: 4px; }
+.reviewer-pdf-export .ai-term { background: var(--surface); }
+.reviewer-pdf-export .ai-gaps { background: var(--warn-bg); border-color: var(--warn-border); }
+.reviewer-pdf-export .ai-table { display: table; overflow: visible; table-layout: fixed; }
+.reviewer-pdf-export .ai-table th, .reviewer-pdf-export .ai-table td { overflow-wrap: anywhere; }
 
 /* 📝 identification drills: clue → Answer */
 .ai-idq {
