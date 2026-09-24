@@ -118,30 +118,12 @@
 .doc-actions { display: flex; align-items: center; gap: 8px; }
 .doc-card .doc-delete-btn { color: var(--bad); border-color: transparent; }
 .doc-card .doc-delete-btn:hover { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-border); }
-.doc-more { display: none; position: relative; }
-.doc-more summary { list-style: none; cursor: pointer; }
-.doc-more summary::-webkit-details-marker { display: none; }
-.doc-more[open] summary { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-border); }
-.doc-menu-popover {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; min-width: 164px; padding: 6px;
-  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
-}
-.doc-menu-popover button {
-  width: 100%; min-height: 42px; padding: 9px 11px; display: flex; align-items: center; gap: 9px;
-  border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 700; text-align: left;
-}
-.doc-menu-popover button:hover { background: var(--surface-hover); }
-.doc-menu-popover button.danger { color: var(--bad); }
-.doc-menu-popover button.danger:hover { background: var(--bad-bg); }
-.doc-menu-popover svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .doc-card .btn-primary { padding: 9px 16px; font-size: 13px; border-radius: var(--radius-sm); font-weight: 700; }
 .doc-card .btn-secondary { padding: 9px 14px; font-size: 13px; border-radius: var(--radius-sm); font-weight: 700; }
 .doc-card .btn-secondary svg { width: 15px; height: 15px; }
-@media (max-width: 767px) {
+@media (max-width: 480px) {
   .doc-card { grid-template-columns: 44px minmax(0, 1fr); }
   .doc-actions { grid-column: 2; justify-content: flex-start; margin-top: 6px; }
-  .doc-actions .doc-review-btn, .doc-actions .doc-delete-btn { display: none; }
-  .doc-more { display: block; }
 }
 
 /* ── Import ── */
