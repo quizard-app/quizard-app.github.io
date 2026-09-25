@@ -132,7 +132,7 @@ export class OnboardingPage implements OnDestroy {
     saveSettings({ onboarded: true });
     const accounts = await listAccounts();
     const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
-    this.nav(fresh ? '/accounts?mode=create' : '/tabs/library');
+    this.nav(fresh ? '/accounts?mode=create' : '/accounts');
   }
 
   onKey(e: KeyboardEvent) {
