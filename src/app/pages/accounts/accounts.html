@@ -54,6 +54,25 @@
   </div>
 }
 
+@if (mode() === 'restore') {
+  <div class="acc-screen">
+    <div class="acc-brand"><span class="mark" [innerHTML]="icons.logo"></span>Quizard</div>
+    <h1 class="acc-title">Restore your library</h1>
+    <p class="acc-sub">Enter the sync code and password from your other device — your documents, scores and mistakes are merged in.</p>
+    <div class="acc-form">
+      <label class="section-title" for="rst-code">Sync code</label>
+      <input class="text-input" id="rst-code" placeholder="ABCD-2345" autocomplete="off" spellcheck="false" [(ngModel)]="restoreCode" />
+      <label class="section-title" for="rst-pass" style="margin-top:16px">Password</label>
+      <input class="text-input" id="rst-pass" type="password" autocomplete="off" placeholder="The password that locks that library" [(ngModel)]="restorePass" (keyup.enter)="restoreNow()" />
+      @if (restoreMsg()) { <p class="faint" style="color:var(--warn,#f59e0b);font-size:12.5px;margin:10px 2px 0">{{ restoreMsg() }}</p> }
+      <button class="btn btn-primary acc-create" [disabled]="restoreBusy() || !restoreCode.trim() || !restorePass.trim()" (click)="restoreNow()">
+        {{ restoreBusy() ? 'Restoring…' : 'Restore' }}
+      </button>
+      <button class="btn btn-secondary acc-back" (click)="go({ mode: 'picker' })">Back</button>
+    </div>
+  </div>
+}
+
 @if (mode() === 'lock' && lockAccount(); as acc) {
   <div class="acc-screen">
     <div class="acc-brand"><span class="mark" [innerHTML]="icons.logo"></span>Quizard</div>

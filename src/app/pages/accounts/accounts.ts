@@ -10,12 +10,13 @@ import {
 import type { Account } from '../../core/engine/db-types.js';
 import { icon } from '../../shared/icons.js';
 import { IcoPipe } from '../../shared/ico.pipe';
+import { pullSync, normalizeSyncCode } from '../../core/engine/sync.js';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 
 const COLORS = ['#C4713B', '#1A7F37', '#0A66C2', '#7C5CBF', '#B54708', '#475569'];
 
-type Mode = 'picker' | 'create' | 'lock';
+type Mode = 'picker' | 'create' | 'lock' | 'restore';
 
 @Component({
   selector: 'app-accounts',
@@ -70,7 +71,29 @@ export class AccountsPage implements OnInit {
 
   // Returning student on a new device: their library lives behind a sync code.
   restoreWithCode() {
-    this.router.navigateByUrl('/tabs/settings?sync=restore');
+    this.go({ mode: 'restore' });
+  }
+
+  // restore form state
+  restoreCode = '';
+  restorePass = '';
+  restoreBusy = signal(false);
+  restoreMsg = signal('');
+
+  async restoreNow() {
+    const code = normalizeSyncCode(this.restoreCode);
+    if (!code) return;
+    this.restoreBusy.set(true);
+    this.restoreMsg.set('');
+    try {
+      const out = await pullSync(code, this.restorePass);
+      this.toast.toast(`Restored — ${out.docs ?? '?'} documents merged ✓`);
+      this.router.navigateByUrl('/tabs/library');
+    } catch (err: any) {
+      this.restoreMsg.set(String(err?.message || 'Restore failed'));
+    } finally {
+      this.restoreBusy.set(false);
+    }
   }
 
   avatarStyle(color: string) { return { background: color }; }

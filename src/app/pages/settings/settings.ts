@@ -77,10 +77,11 @@ export class SettingsPage implements OnInit {
   }
 
   ngOnInitSyncRestore() {
-    // deep link: /tabs/settings?sync=restore (Welcome → "I have a sync code")
+    // deep link: /tabs/settings?sync=restore (profile picker → "Use your sync
+    // code") — send them to the dedicated restore screen.
     try {
       const q = new URLSearchParams(this.router.url.split('?')[1] || '');
-      if (q.get('sync') === 'restore') { this.syncPanel.set('restore'); this.router.navigate([], { queryParams: { sync: null }, replaceUrl: true }).catch(() => {}); }
+      if (q.get('sync') === 'restore') this.router.navigateByUrl('/accounts?mode=restore');
     } catch { /* ignore */ }
   }
 
