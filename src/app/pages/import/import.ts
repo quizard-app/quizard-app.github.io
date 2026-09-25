@@ -91,6 +91,32 @@ export class ImportPage {
     this.folders = deriveFolders(await listDocs());
   }
 
+  async ionViewWillEnter() {
+    // refresh folder suggestions every time the tab is opened
+    this.folders = deriveFolders(await listDocs());
+  }
+
+  /** Clear everything after a save (or discard) so the next upload starts fresh —
+   * Ionic keeps this page alive, so stale state would otherwise resurface. */
+  private resetImport() {
+    this.extracted = null;
+    this.stage.set('drop');
+    this.docName = '';
+    this.docFolder = '';
+    this.docTags = '';
+    this.wordCount = 0;
+    this.imageCount = 0;
+    this.tldr = '';
+    this.topics = [];
+    this.preview = '';
+    this.pasteName = '';
+    this.pasteText = '';
+    this.linkUrl = '';
+    this.linkBusy.set(false);
+    this.linkError.set('');
+    this.ytGuide.set(null);
+  }
+
   setMode(stage: Stage) {
     if (stage === 'link') { this.linkError.set(''); this.ytGuide.set(null); }
     this.stage.set(stage);
@@ -257,11 +283,13 @@ export class ImportPage {
       await saveDocImages(doc.id, this.extracted.images.map((img, i) => ({ ...img, index: i })));
     }
     this.toast.toast('Document saved ✓');
+    this.resetImport();
+    this.folders = deriveFolders(await listDocs());
     this.router.navigateByUrl('/tabs/library');
   }
 
   discard() {
-    this.extracted = null;
+    this.resetImport();
     this.stage.set('drop');
   }
 

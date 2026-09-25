@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc
+  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc, listAttempts
 } from '../../core/engine/storage.js';
 import { folderCounts, mergeFolders } from '../../core/engine/taxonomy.js';
 import { countdownLabel } from '../../core/engine/exam.js';
@@ -46,6 +46,8 @@ export class LibraryPage {
   nextExam = signal<any>(null);
   folders = signal<string[]>([]);
   tags = signal<string[]>([]);
+  // rounds finished in the last 7 days (docs + exam practice)
+  weekTaken = signal(0);
 
   // Bulk organize: select documents in the grid, then move/unfile/delete them
   // in one action instead of editing each document's page.
@@ -104,6 +106,11 @@ export class LibraryPage {
     this.folders.set(mergeFolders(deriveFolders(docs), loadSettings().customFolders || []));
     this.tags.set(deriveTags(docs));
     this.sort.set(loadSettings().sortDocs || 'recent');
+    try {
+      const weekAgo = Date.now() - 7 * 864e5;
+      const attempts = await listAttempts(null);
+      this.weekTaken.set(attempts.filter((a: any) => a.date >= weekAgo).length);
+    } catch { this.weekTaken.set(0); }
     this.loading.set(false);
   }
 

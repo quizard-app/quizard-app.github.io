@@ -31,7 +31,7 @@
       <div class="stats-row">
         <div class="stat"><div class="num">{{ docs().length }}</div><div class="lbl">Documents</div></div>
         <div class="stat-div"></div>
-        <div class="stat"><div class="num">{{ totalAttempts() }}</div><div class="lbl">Quizzes taken</div></div>
+        <div class="stat"><div class="num">{{ weekTaken() }}</div><div class="lbl">This week</div></div>
         <div class="stat-div"></div>
         <div class="stat"><div class="num">{{ avg() != null ? avg() + '%' : '—' }}</div><div class="lbl">Best Avg</div></div>
       </div>
@@ -87,6 +87,7 @@
               <div class="doc-meta">
                 <span>{{ typeOf(doc) }}</span>·<span>{{ doc.wordCount.toLocaleString() }} words</span>·<span>{{ dateOf(doc.createdAt) }}</span>
                 @if (doc.folder) { <span class="doc-folder"><span [innerHTML]="'folder' | ico"></span> {{ doc.folder }}</span> }
+                @if (doc.attempts) { <span class="taken-pill">{{ doc.attempts }} taken</span> }
                 @if (doc.bestScore != null) { <span class="score-pill {{ pillOf(doc) }}">{{ doc.bestScore }}%</span> }
               </div>
             </div>

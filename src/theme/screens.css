@@ -115,6 +115,12 @@
 .score-pill.high { background: var(--good-bg); color: var(--good); border-color: var(--good-border); }
 .score-pill.mid { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-border); }
 .score-pill.low { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-border); }
+.taken-pill {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-faint);
+}
 .doc-actions { display: flex; align-items: center; gap: 8px; }
 .doc-card .doc-delete-btn { color: var(--bad); border-color: transparent; }
 .doc-card .doc-delete-btn:hover { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-border); }
