@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { IonContent } from '@ionic/angular';
+import { IonContent, NavController } from '@ionic/angular';
 import {
   getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake,
   gradeSrsItem, getImageById, loadSettings, saveAttempt
@@ -43,6 +43,7 @@ export class QuizPage implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
   private qs = inject(QuizStateService);
+  private navCtrl = inject(NavController);
   readonly byok = inject(ByokService);
 
   // boot phases
@@ -244,6 +245,7 @@ export class QuizPage implements OnInit, OnDestroy {
         this.phase.set('ai-choice');
         return;
       }
+      const aiCount = gen && !gen.error && gen.questions.length ? gen.questions.length : 0;
       if (!gen || gen.error === 'not_enough_content' || !gen.questions.length) {
         gen = generateQuiz(doc, cfg);
         if (cfg.difficulty === 'adaptive' && !gen.error && gen.questions.length) {
@@ -256,6 +258,19 @@ export class QuizPage implements OnInit, OnDestroy {
           }
           const merged = [...pools['medium'], ...pools['easy'], ...pools['hard']];
           if (merged.length >= 4) { gen = { questions: merged.slice(0, cfg.count), seed: gen.seed, error: null, adaptive: true }; }
+        }
+      }
+      // AI authoring regularly under-delivers on big requests (per-batch
+      // validation rejects and timeouts shrink its output): top up with
+      // built-in questions so a requested 20 doesn't come back as 10.
+      if (aiCount && gen.questions.length < cfg.count) {
+        const used = new Set(gen.questions.map((q: any) => String(q.meta?.sentence || '').toLowerCase()).filter(Boolean));
+        for (const q of (generateQuiz(doc, cfg).questions || [])) {
+          if (gen.questions.length >= cfg.count) break;
+          const key = String(q.meta?.sentence || '').toLowerCase();
+          if (key && used.has(key)) continue;
+          if (key) used.add(key);
+          gen.questions.push(q);
         }
       }
       if (gen.error === 'not_enough_content' || !gen.questions.length) {
@@ -616,6 +631,10 @@ export class QuizPage implements OnInit, OnDestroy {
     });
     if (!st.mistakeMode && this.doc) delete this.cachedQuiz[this.doc.id];
     this.clearResumeState();
+    // Root direction so Ionic rebuilds /results instead of re-showing a stale
+    // one still sitting in the page stack from an earlier quiz — otherwise
+    // finishing ANY quiz can pop the old results screen back up.
+    this.navCtrl.setDirection('root', false);
     this.router.navigateByUrl('/results');
   }
 
@@ -648,6 +667,9 @@ export class QuizPage implements OnInit, OnDestroy {
     this.clearResumeState();
     // exam practice belongs to its exam plan — return there, not to the library
     const examId = this.st?.examId;
+    // root direction: drop this quiz page from the stack so a later quiz can't
+    // be handed this frozen, half-finished instance
+    this.navCtrl.setDirection('root', false);
     if (examId) this.router.navigateByUrl('/exams/' + examId);
     else this.router.navigateByUrl('/tabs/library');
   }

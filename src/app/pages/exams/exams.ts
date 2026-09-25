@@ -188,6 +188,7 @@ export class ExamsPage implements OnInit {
     this.qs.examSession.set({ examId: exam.id, questions: quiz.questions, docName: exam.title });
     this.qs.currentDocId.set(null);
     this.qs.mistakeReview.set(null);
+    this.navCtrl.setDirection('root', false);
     this.router.navigateByUrl('/quiz-review');
   }
 

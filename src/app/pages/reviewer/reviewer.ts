@@ -53,6 +53,17 @@ export class ReviewerPage implements AfterViewInit {
   aiMode = signal(true);
   private aiTried = false;
   findVisible = signal(false);
+
+  toggleFind() {
+    const next = !this.findVisible();
+    this.findVisible.set(next);
+    if (next) {
+      setTimeout(() => (document.querySelector('input[aria-label="Find in document"]') as HTMLInputElement | null)?.focus(), 60);
+    } else {
+      this.findQuery = '';
+      this.clearFind();
+    }
+  }
   findCount = signal('');
   reviewerReady = signal(false);
   buildingPdf = signal(false);

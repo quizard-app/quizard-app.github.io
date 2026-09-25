@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { IonContent } from '@ionic/angular';
+import { IonContent, NavController } from '@ionic/angular';
 import { getDoc, getWeakTerms } from '../../core/engine/storage.js';
 import { hasApiKey, hasRelay } from '../../core/engine/gemini.js';
 import { icon } from '../../shared/icons.js';
@@ -50,6 +50,7 @@ export class SetupPage implements OnInit {
   ui = inject(UiStateService);
   private quizState = inject(QuizStateService);
   private toast = inject(ToastService);
+  private navCtrl = inject(NavController);
 
   doc = signal<any>(null);
   typeLabel = typeLabel;
@@ -192,6 +193,10 @@ export class SetupPage implements OnInit {
     }
     this.saveConfig(doc.id, cfg);
     this.quizState.currentDocId.set(doc.id);
+    // Root direction so Ionic starts a NEW quiz page instead of re-showing a
+    // frozen one left in the stack by an earlier quiz (which made every new
+    // file open the previous quiz).
+    this.navCtrl.setDirection('root', false);
     this.router.navigateByUrl('/quiz');
   }
 

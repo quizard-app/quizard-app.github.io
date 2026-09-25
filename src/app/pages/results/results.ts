@@ -181,9 +181,20 @@ export class ResultsPage implements OnInit {
 
   retake() {
     const r = this.r();
-    if (r.mistakeMode) this.router.navigateByUrl('/tabs/library');
-    else {
-      this.navCtrl.setDirection('root', false);
+    // Root direction everywhere: Ionic must rebuild the target page, never
+    // re-show a frozen quiz/results instance left in the stack.
+    this.navCtrl.setDirection('root', false);
+    if (r.mistakeMode) {
+      // "Review Again" on a review round restarts the same question set —
+      // dumping the learner back in the library just loses the round.
+      if (r.questions?.length) {
+        this.qs.mistakeReview.set({ questions: r.questions.map((q: any) => ({ ...q })), docName: r.docName || 'Mistake Review' });
+        this.router.navigateByUrl('/quiz-review');
+      } else {
+        this.router.navigateByUrl('/tabs/library');
+      }
+    } else {
+      if (r.docId) this.qs.currentDocId.set(r.docId);
       this.router.navigateByUrl('/quiz-review');
     }
   }
@@ -193,8 +204,9 @@ export class ResultsPage implements OnInit {
   private readonly ladder = ['easy', 'medium', 'hard'];
 
   private bumpDifficulty(d?: string) {
-    const i = this.ladder.indexOf(d || 'medium');
-    return this.ladder[Math.min(this.ladder.length - 1, Math.max(0, i + 1))];
+    // unknown levels (e.g. 'adaptive') bump up from medium, not easy
+    const cur = d != null && this.ladder.includes(d) ? d : 'medium';
+    return this.ladder[Math.min(this.ladder.length - 1, this.ladder.indexOf(cur) + 1)];
   }
 
   moreQuestions() { void this.followUp({ count: 20, bump: false }); }
@@ -214,13 +226,32 @@ export class ResultsPage implements OnInit {
         const exam = await getExam(r.examId);
         if (!exam) throw new Error('exam gone');
         const docs = (await Promise.all((exam.docIds || []).map((id: string) => getDoc(id).catch(() => null)))).filter(Boolean);
+        const diff = difficulty || r.cfg?.difficulty || 'medium';
         let questions: any[] = [];
         try {
-          const gen = await authorExamQuiz(exam, docs, { count: want, weakTerms: weak, difficulty: difficulty || 'hard' });
+          const gen = await authorExamQuiz(exam, docs, { count: want, weakTerms: weak, difficulty: diff });
           questions = gen.questions || [];
         } catch { this.byok.notifyAiFailure('quota'); /* AI unavailable — offline set below */ }
-        if (questions.length < Math.min(4, want)) {
-          questions = buildExamQuiz(exam, docs, weak, { count: want, difficulty: difficulty || 'hard' }).questions || [];
+        // AI batches under-deliver on big requests (per-topic quotas, validation
+        // rejects, timeouts) — "20 more" used to come back as 4-7 questions.
+        // Top up with the built-in generator so the requested size is met.
+        if (questions.length < want) {
+          const seen = new Set(questions.map((q: any) => String(q.meta?.sentence || q.stem || '').toLowerCase()).filter(Boolean));
+          // buildExamQuiz is seeded from the exam id — without this it would
+          // re-serve the sentences of the round the user just finished
+          for (const q of (r.questions || [])) {
+            const k = String((q as any).meta?.sentence || (q as any).stem || '').toLowerCase();
+            if (k) seen.add(k);
+          }
+          const offline = buildExamQuiz(exam, docs, weak, { count: want, difficulty: diff }).questions || [];
+          for (const q of offline) {
+            if (questions.length >= want) break;
+            const key = String((q as any).meta?.sentence || (q as any).stem || '').toLowerCase();
+            if (key && seen.has(key)) continue;
+            if (key) seen.add(key);
+            questions.push(q);
+          }
+          questions = questions.slice(0, want);
         }
         if (!questions.length) { this.toast.toast('Not enough material in these files for another set', true); this.crafting.set(''); return; }
         this.qs.examSession.set({ examId: exam.id, questions, docName: exam.title });
@@ -266,7 +297,11 @@ export class ResultsPage implements OnInit {
   weakReview() { this.mistakes.startWeakReview(); }
   dueReview() { this.mistakes.startDueReview(); }
   alsoLike() { this.router.navigate(['/reviewer', this.suggestion().doc.id]); }
-  goLibrary() { this.router.navigateByUrl('/tabs/library'); }
+  goLibrary() {
+    // root direction drops lingering quiz/results pages from the Ionic stack
+    this.navCtrl.setDirection('root', false);
+    this.router.navigateByUrl('/tabs/library');
+  }
 }
 
 // small helper to lazily reach the MistakesService (avoids circular template deps)
