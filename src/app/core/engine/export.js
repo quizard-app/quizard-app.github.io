@@ -117,6 +117,137 @@ export async function exportReviewerPdf(element, documentName) {
   return true
 }
 
+// Text-based AI reviewer PDF: built from the reviewer data instead of a
+// screenshot — instant on phones, selectable text, no html2canvas hangs.
+function pdfSafe(s) {
+  return String(s || '')
+    .replace(/→/g, ' -> ')
+    .replace(/[←-⇿⌀-➿️ἀ0-ᾯF]/g, '')
+}
+
+export async function exportAiReviewerPdf(reviewer, documentName) {
+  if (!reviewer?.parts?.length) throw new Error('Reviewer is not ready')
+  const { jsPDF } = await import('jspdf')
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+  const W = 595.28, H = 841.89, M = 56
+  let y = 0
+
+  const page = () => { pdf.addPage(); y = M }
+  const need = h => { if (y + h > H - M) page() }
+  const text = (str, { size = 11, bold = false, color = '#1c2438', gap = 6, indent = 0 } = {}) => {
+    pdf.setFont('helvetica', bold ? 'bold' : 'normal')
+    pdf.setFontSize(size)
+    pdf.setTextColor(color)
+    const lines = pdf.splitTextToSize(pdfSafe(str), W - M * 2 - indent)
+    need(lines.length * (size + 3))
+    lines.forEach(line => { pdf.text(line, M + indent, y + size); y += size + 3 })
+    y += gap
+  }
+  const rule = () => { need(14); pdf.setDrawColor('#d9d2f2'); pdf.line(M, y + 6, W - M, y + 6); y += 14 }
+  const section = (label) => { rule(); need(24); text(label, { size: 13, bold: true, color: '#5b3df5', gap: 6 }) }
+
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
+  pdf.text('A I   E X A M   R E V I E W E R', M, M + 8)
+  y = M + 26
+  text(reviewer.title, { size: 20, bold: true, gap: 2 })
+  if (reviewer.intro) text(reviewer.intro, { size: 10.5, color: '#475069', gap: 10 })
+  text(documentName ? documentName + ' · prepared ' + stamp() : 'prepared ' + stamp(), { size: 9, color: '#868ea8', gap: 10 })
+  rule()
+
+  const acronyms = reviewer.acronyms || []
+  if (acronyms.length) {
+    section('Key Acronyms')
+    acronyms.forEach(a => {
+      need(26)
+      text(a.acr + ' - ' + a.expansion, { size: 11, bold: true, gap: 1, indent: 0 })
+      if (a.meaning) text(a.meaning, { size: 10, color: '#475069', indent: 12, gap: 4 })
+    })
+  }
+
+  let num = 0
+  for (const part of reviewer.parts) {
+    rule()
+    need(26)
+    num++
+    text('PART ' + roman(num) + ' - ' + (part.title || ''), { size: 13, bold: true, color: '#5b3df5', gap: 6 })
+    for (const sec of part.sections) {
+      need(40)
+      const stars = sec.stars ? ' (' + '*'.repeat(sec.stars) + ')' : ''
+      text(sec.num + '. ' + sec.heading + stars, { size: 12, bold: true, gap: 2 })
+      if (sec.mustKnow) text('[' + sec.mustKnow + ']', { size: 9.5, bold: true, color: '#b54708', indent: 12, gap: 3 })
+      if (sec.definition) text(sec.definition, { size: 11, bold: true, indent: 12, gap: 3 })
+      if (sec.explanation) text(sec.explanation, { size: 10.5, color: '#475069', indent: 12, gap: 4 })
+      for (const t of (sec.terms || [])) {
+        need(30)
+        text('  ' + t.term, { size: 11, bold: true, indent: 12, gap: 1 })
+        if (t.meaning) text('Meaning: ' + t.meaning, { size: 10, color: '#475069', indent: 24, gap: 2 })
+        ;(t.bullets || []).forEach(b => text('-  ' + b, { size: 10, color: '#475069', indent: 24, gap: 1 }))
+        if (t.memory) text('Memory: ' + t.memory, { size: 10, bold: true, color: '#5b3df5', indent: 24, gap: 5 })
+      }
+      ;(sec.bullets || []).forEach(b => text('-  ' + b, { size: 10.5, color: '#475069', indent: 12, gap: 1 }))
+      ;(sec.steps || []).forEach((st, i) => text((i + 1) + '.  ' + st, { size: 10.5, color: '#475069', indent: 12, gap: 1 }))
+      if (sec.table) {
+        const headers = sec.table.headers || []
+        for (const row of sec.table.rows) {
+          text(row.map((c, k) => (headers[k] ? headers[k] + ': ' : '') + c).join('  |  '), { size: 10, color: '#475069', indent: 12, gap: 2 })
+        }
+      }
+      if (sec.mnemonic) text('Memorize: ' + sec.mnemonic, { size: 10.5, bold: true, color: '#5b3df5', indent: 12, gap: 4 })
+      if (sec.important) text('Important: ' + sec.important, { size: 10, color: '#b54708', indent: 12, gap: 3 })
+      if (sec.example) text('Example: ' + sec.example, { size: 10, color: '#475069', indent: 12, gap: 3 })
+      if (sec.memory) text('Memory trick: ' + sec.memory, { size: 10, bold: true, color: '#5b3df5', indent: 12, gap: 3 })
+      if (sec.examClue) text('Exam clue: ' + sec.examClue, { size: 10, color: '#0f9d6a', indent: 12, gap: 6 })
+    }
+  }
+
+  const acr2 = reviewer.acronyms || []
+  const highYield = reviewer.highYield || []
+  if (highYield.length) {
+    section('Super Important Exam Points')
+    text('If you are short on study time, memorize these first:', { size: 10.5, color: '#475069', gap: 5 })
+    for (const h of highYield) {
+      need(30)
+      text(h.label, { size: 11, bold: true, gap: 1 })
+      h.items.forEach(i => text('-  ' + i, { size: 10.5, color: '#475069', indent: 12, gap: 1 }))
+    }
+  }
+  const idq = reviewer.idQuestions || []
+  if (idq.length) {
+    section('Possible Identification Questions')
+    idq.forEach(q => {
+      need(30)
+      text(q.clue, { size: 10.5, gap: 1 })
+      text('Answer: ' + q.answer, { size: 10.5, bold: true, color: '#0f9d6a', indent: 12, gap: 5 })
+    })
+  }
+  const myths = reviewer.myths || []
+  if (myths.length) {
+    section('Myths vs Facts')
+    myths.forEach(m => {
+      need(36)
+      text('Myth: ' + m.myth, { size: 10.5, color: '#b54708', gap: 1 })
+      text('Fact: ' + m.fact, { size: 10.5, color: '#0f9d6a', indent: 12, gap: 6 })
+    })
+  }
+  const finalReview = reviewer.finalReview || []
+  if (finalReview.length) {
+    section('One-Minute Final Review')
+    finalReview.forEach(line => text('-  ' + line, { size: 10.5, gap: 2 }))
+  }
+  const gaps = reviewer.gaps || []
+  if (gaps.length) {
+    section('Coverage notes')
+    gaps.forEach(g => text('-  ' + g, { size: 10, color: '#868ea8', gap: 3 }))
+  }
+
+  rule()
+  text('Generated ' + stamp() + ' · exported from Quizard', { size: 9, color: '#868ea8' })
+  pdf.setProperties({ title: (documentName || 'Document') + ' - AI Reviewer', subject: 'Reviewer exported from Quizard', creator: 'Quizard' })
+  const fileSlug = slug(String(documentName || 'doc').replace(/.[^.]+$/, ''))
+  await pdf.save('quizard-reviewer-' + fileSlug + '.pdf')
+  return true
+}
+
 function optionLetters(n) {
   return 'ABCDEFGH'.slice(0, n).split('')
 }
@@ -469,6 +600,13 @@ export function printStudySheet(doc) {
   return true
 }
 
+
+function roman(n) {
+  const map = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
+  let out = ''
+  for (const [v, r] of map) { while (n >= v) { out += r; n -= v } }
+  return out
+}
 function slug(name) {
   return String(name || 'doc').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'doc'
 }

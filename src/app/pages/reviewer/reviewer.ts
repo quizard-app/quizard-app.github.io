@@ -10,7 +10,7 @@ import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.
 import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
-import { exportSummary, printStudySheet, exportReviewerPdf } from '../../core/engine/export.js';
+import { exportSummary, printStudySheet, exportReviewerPdf, exportAiReviewerPdf } from '../../core/engine/export.js';
 import { assetUrl } from '../../shared/assets.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { ToastService } from '../../core/services/toast.service';
@@ -429,7 +429,10 @@ export class ReviewerPage implements AfterViewInit {
     if (this.buildingPdf() || !content || !this.reviewerReady()) return;
     this.buildingPdf.set(true);
     try {
-      await exportReviewerPdf(content, this.doc().name);
+      // AI reviewers build as a text-based PDF (instant, even for huge docs);
+      // the quick-notes fallback still uses the screenshot renderer.
+      if (this.aiMode() && this.aiReviewer()) await exportAiReviewerPdf(this.aiReviewer(), this.doc().name);
+      else await exportReviewerPdf(content, this.doc().name);
       this.toast.toast('Reviewer PDF downloaded ✓');
     } catch {
       this.toast.toast('Could not build the PDF', true);
