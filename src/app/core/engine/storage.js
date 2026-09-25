@@ -822,8 +822,38 @@ export async function importAll(data, mode = 'merge') {
   const accountsNow = await db.getAll('accounts')
   if (!accountsNow.some(a => a.id === activeAccountId)) {
     setActiveAccount(accountsNow[0]?.id || null)
+  } else {
+    // Fresh-device restore: the active account was just auto-created and owns
+    // nothing, while the import brought a library under another (local)
+    // account id — adopt that account so the restored docs are visible.
+    const activeDocCount = await countDocsFor(activeAccountId)
+    if (activeDocCount === 0) {
+      const counts = new Map()
+      let c = await db.transaction('docs').store.openCursor()
+      while (c) {
+        const v = c.value
+        if (!v.deletedAt && v.accountId) counts.set(v.accountId, (counts.get(v.accountId) || 0) + 1)
+        c = await c.continue()
+      }
+      let best = null, bestN = 0
+      for (const [accId, n] of counts) if (n > bestN) { best = accId; bestN = n }
+      if (best && best !== activeAccountId) setActiveAccount(best)
+    }
   }
   return { added, docs: data.docs.length, attempts: (data.attempts || []).length }
+}
+
+async function countDocsFor(accountId) {
+  if (!accountId) return 0
+  const db = await dbPromise
+  let n = 0
+  let cursor = await db.transaction('docs').store.openCursor()
+  while (cursor) {
+    const v = cursor.value
+    if (v.accountId === accountId && !v.deletedAt) n++
+    cursor = await cursor.continue()
+  }
+  return n
 }
 
 export async function clearAllData() {
