@@ -53,23 +53,45 @@ import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcq
  * Build MCQ/ID questions from previously banked mistakes.
  * @param {Array<{docId: string, sentence: string, term: string, type: string}>} mistakes
  * @param {Map<string, Array<{term: string, freq: number}>>} docTerms - Per-doc term map
+ * @param {Map<string, string[]> | null} [docSentences] - Per-doc sentence list; when
+ *        supplied, each review question is rebuilt from a different document
+ *        sentence (or an ID format) so the exact missed question never repeats.
  * @returns {QuizQuestion[]}
  */
-export function buildMistakeQuestions(mistakes, docTerms) {
+export function buildMistakeQuestions(mistakes, docTerms, docSentences = null) {
   const rng = mulberry32((Date.now() ^ 0x9e3779b9) >>> 0)
   // Banked sentences may predate inline-furniture cleaning — re-clean them.
   mistakes = mistakes.map(m => ({ ...m, sentence: cleanSentence(m.sentence) }))
   return mistakes.map(m => {
+    // The review must re-test the missed CONCEPT, never replay the exact
+    // question just missed. When the document's sentences are supplied, the
+    // review becomes an identification drill (pure recall — a different
+    // format than the MCQ just missed): a different sentence that uses the
+    // term when one exists, the banked sentence blanked otherwise. The term
+    // is never left in the clue.
+    if (docSentences) {
+      const sents = docSentences.get(m.docId) || []
+      const termRe = new RegExp(m.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      const others = sents.filter(s => s !== m.sentence && termRe.test(s))
+      const base = others.length ? others[Math.floor(rng() * others.length)] : m.sentence
+      return {
+        type: 'id',
+        clue: base.replace(termRe, '\u2026\u2026\u2026'),
+        answer: m.term,
+        meta: { sentence: base, term: m.term, docId: m.docId }
+      }
+    }
+    const sentence = m.sentence
     const pool = (docTerms.get(m.docId) || []).filter(t => t.term !== m.term.toLowerCase())
     if (pool.length >= 3) {
       const distractors = pickImprovedDistractors({ term: m.term, proper: false, phrase: false }, pool, rng, 3, {
-        avoidSentence: m.sentence
+        avoidSentence: sentence
       })
       if (distractors.length === 3) {
         // Direct exam-style stem (never a blank) with source-cased options
         // ("MVVM", not "Mvvm") so the fallback matches AI quality.
-        const { stem } = buildMcqStem(m.sentence, m.term)
-        const options = shuffleArr([m.term, ...distractors], rng).map(t => surfaceOption(t, m.sentence))
+        const { stem } = buildMcqStem(sentence, m.term)
+        const options = shuffleArr([m.term, ...distractors], rng).map(t => surfaceOption(t, sentence))
         const answerIndex = options.findIndex(o => o.toLowerCase() === m.term.toLowerCase())
         if (stem && stem.endsWith('?') && answerIndex !== -1
           && new Set(options.map(o => o.toLowerCase())).size === 4) {
@@ -78,7 +100,7 @@ export function buildMistakeQuestions(mistakes, docTerms) {
             stem,
             options,
             answerIndex,
-            meta: { sentence: m.sentence, term: m.term, docId: m.docId }
+            meta: { sentence, term: m.term, docId: m.docId }
           }
         }
       }
@@ -86,9 +108,9 @@ export function buildMistakeQuestions(mistakes, docTerms) {
     const re = new RegExp(m.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
     return {
       type: 'id',
-      clue: m.sentence.replace(re, '\u2026\u2026\u2026'),
+      clue: sentence.replace(re, '\u2026\u2026\u2026'),
       answer: m.term,
-      meta: { sentence: m.sentence, term: m.term, docId: m.docId }
+      meta: { sentence, term: m.term, docId: m.docId }
     }
   }).filter(Boolean)
 }

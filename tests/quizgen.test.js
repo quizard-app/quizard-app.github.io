@@ -476,3 +476,31 @@ describe('TF swap grammar', () => {
     }
   })
 })
+
+describe('mistake review never replays the missed question', () => {
+  const mistakes = [
+    { docId: 'd', sentence: 'The CPU executes the main instructions of the program.', term: 'CPU', type: 'mcq' }
+  ]
+  const docTerms = new Map([['d', [
+    { term: 'gpu', freq: 3 }, { term: 'ram', freq: 3 }, { term: 'bus', freq: 2 }, { term: 'cache', freq: 2 }
+  ]]])
+
+  it('rebuilds the question from a different sentence when one exists', async () => {
+    const { sentences } = await import('../src/app/core/engine/textproc.js')
+    const docSentences = new Map([['d', sentences('The CPU executes the main instructions of the program. A multicore CPU runs several programs at once. The GPU renders graphics quickly.')]])
+    const qs = buildMistakeQuestions(mistakes, docTerms, docSentences)
+    expect(qs.length).toBe(1)
+    expect(qs[0].type).toBe('id')
+    expect(qs[0].meta.sentence).not.toBe(mistakes[0].sentence) // different angle
+    expect(qs[0].clue).not.toContain('CPU') // term blanked out of the clue
+  })
+
+  it('falls back to the ID format when no other sentence uses the term', async () => {
+    const { sentences } = await import('../src/app/core/engine/textproc.js')
+    const docSentences = new Map([['d', sentences('The CPU executes the main instructions of the program.')]])
+    const qs = buildMistakeQuestions(mistakes, docTerms, docSentences)
+    expect(qs[0].type).toBe('id')
+    expect(qs[0].answer).toBe('CPU')
+    expect(qs[0].clue).not.toContain('CPU')
+  })
+})

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavController } from '@ionic/angular';
 import { listMistakes, getDoc, listDueCards, getWeakTerms, listDocs } from '../engine/storage.js';
-import { keyTerms } from '../engine/textproc.js';
+import { keyTerms, sentences } from '../engine/textproc.js';
 import { buildMistakeQuestions, generateQuiz, MCQ_ONLY_MIX } from '../engine/quizgen.js';
 import { ToastService } from './toast.service';
 import { QuizStateService } from './quiz-state.service';
@@ -28,11 +28,13 @@ export class MistakesService {
     if (!mistakes.length) { this.toast.toast('No mistakes to review — great job! 🎉'); return; }
     const docIds = [...new Set(mistakes.map(m => m.docId))];
     const docTerms = new Map();
+    const docSentences = new Map();
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
+      docSentences.set(id, doc ? sentences(doc.text) : []);
     }
-    const questions = buildMistakeQuestions(mistakes, docTerms);
+    const questions = buildMistakeQuestions(mistakes, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }
     this.qs.mistakeReview.set({ questions, docName: docId ? null : `All documents (${docIds.length})` });
     this.go();
@@ -43,11 +45,13 @@ export class MistakesService {
     if (!due.length) { this.toast.toast('Nothing due — come back later!'); return; }
     const docIds = [...new Set(due.map(m => m.docId))];
     const docTerms = new Map();
+    const docSentences = new Map();
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
+      docSentences.set(id, doc ? sentences(doc.text) : []);
     }
-    const questions = buildMistakeQuestions(due, docTerms);
+    const questions = buildMistakeQuestions(due, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }
     this.qs.mistakeReview.set({ questions, docName: `Spaced review (${due.length} due)` });
     this.go();
@@ -72,11 +76,13 @@ export class MistakesService {
     }
     const docIds = [...new Set(chosen.map(m => m.docId))];
     const docTerms = new Map();
+    const docSentences = new Map();
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
+      docSentences.set(id, doc ? sentences(doc.text) : []);
     }
-    const questions = buildMistakeQuestions(chosen, docTerms);
+    const questions = buildMistakeQuestions(chosen, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }
     this.qs.mistakeReview.set({ questions, docName: `Weak spots (${chosen.length} terms)` });
     this.go();
@@ -92,10 +98,11 @@ export class MistakesService {
     }
     const [mistakes, due] = await Promise.all([listMistakes(null), listDueCards(60)]);
     const docTerms = new Map();
+    const docSentences = new Map();
     for (const d of docs) docTerms.set(d.id, keyTerms(d.text));
 
     const questions: any[] = [];
-    if (due.length) questions.push(...buildMistakeQuestions(due.slice(0, 8), docTerms));
+    if (due.length) questions.push(...buildMistakeQuestions(due.slice(0, 8), docTerms, docSentences));
     const perDoc = 3;
     const pools = docs.map(d => {
       const r = generateQuiz(d, { count: perDoc, mix: { ...MCQ_ONLY_MIX }, difficulty: 'medium', shuffle: true });
@@ -106,7 +113,7 @@ export class MistakesService {
     }
     const seenSentences = new Set(questions.map(q => q.meta?.sentence));
     const banked = mistakes.filter(m => !seenSentences.has(m.sentence));
-    if (banked.length) questions.push(...buildMistakeQuestions(banked.slice(0, 8), docTerms));
+    if (banked.length) questions.push(...buildMistakeQuestions(banked.slice(0, 8), docTerms, docSentences));
     const final = questions.slice(0, 25);
     if (!final.length) { this.toast.toast('Nothing to review yet — take a quiz first'); return; }
     this.qs.mistakeReview.set({ questions: final, docName: `Master review (${docs.length} document${docs.length === 1 ? '' : 's'})` });
