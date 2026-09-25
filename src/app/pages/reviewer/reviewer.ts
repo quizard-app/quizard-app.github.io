@@ -432,7 +432,8 @@ export class ReviewerPage implements AfterViewInit {
     this.router.navigate(['/doc', this.doc().id, 'setup']);
   }
   back() {
-    this.router.navigate(['/doc', this.doc().id]);
+    // straight to the homepage — the doc page is one tap away in the library
+    this.router.navigateByUrl('/tabs/library');
   }
   exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded study sheet (.md)'); }
   async exportPdf() {
