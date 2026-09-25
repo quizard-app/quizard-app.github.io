@@ -345,8 +345,8 @@ ion-toast.qz-toast {
 }
 ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --button-font-size: 13px; --button-font-weight: 800; }
 .toast {
-  position: fixed; left: 50%; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);
-  transform: translateX(-50%) translateY(16px) scale(0.95);
+  position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top));
+  transform: translateX(-50%) translateY(-16px) scale(0.95);
   background: var(--text); color: var(--bg);
   padding: 12px 24px; border-radius: var(--radius-pill);
   font-size: 13.5px; font-weight: 600;

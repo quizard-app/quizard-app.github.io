@@ -14,7 +14,8 @@ export class ToastService {
     const t = await this.toastCtrl.create({
       message,
       duration: action ? 7000 : 2600,
-      position: 'bottom',
+      // Top placement: bottom toasts covered the tab bar on every screen.
+      position: 'top',
       color: isError ? 'danger' : 'dark',
       cssClass: action ? 'qz-toast qz-toast-action' : 'qz-toast',
       buttons: action ? [{
