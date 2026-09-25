@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { IonContent } from '@ionic/angular';
 import {
   listAccounts, createAccount, hashPin, verifyPin, setActiveAccount,
   getAccount, deleteAccount, accountHasData, updateAccount,
@@ -18,7 +19,7 @@ type Mode = 'picker' | 'create' | 'lock';
 
 @Component({
   selector: 'app-accounts',
-  imports: [FormsModule, IcoPipe],
+  imports: [IonContent, FormsModule, IcoPipe],
   templateUrl: './accounts.html',
 })
 export class AccountsPage implements OnInit {

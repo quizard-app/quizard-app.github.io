@@ -2102,3 +2102,7 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 .yt-guide-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .yt-guide-steps li { font-size: 12.5px; line-height: 1.55; color: var(--text-dim); }
 .yt-guide-steps b { color: var(--text); }
+
+/* The account screens render inside ion-content (restores scrolling on short
+   phones) but bring their own padding — zero the global content padding. */
+.acc-content { --padding-start: 0; --padding-end: 0; }
