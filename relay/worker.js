@@ -704,10 +704,18 @@ async function handleSync(request, sec) {
     const blob = String(body?.blob || '')
     if (!blob) return fail(400, 'empty_blob', sec)
     if (blob.length > SYNC_MAX_BLOB) return fail(413, 'blob_too_large', sec)
+    // Optional newVerifier: a password change. The request must still be
+    // authorized with the CURRENT verifier; the replacement replaces it, so
+    // the old password stops working everywhere immediately.
+    let newVerifier = null
+    if (body?.newVerifier != null) {
+      newVerifier = String(body.newVerifier)
+      if (!/^[0-9a-f]{64}$/.test(newVerifier)) return fail(400, 'bad_verifier', sec)
+    }
     const existing = await kv.get(key, 'json')
     if (existing?.verifier && existing.verifier !== verifier) return fail(403, 'code_pass_mismatch', sec)
     const rec = {
-      verifier,
+      verifier: newVerifier || verifier,
       blob,
       docs: Number(body?.docs) || null,
       words: Number(body?.words) || null,

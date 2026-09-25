@@ -16,8 +16,9 @@ import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ByokService } from '../../core/services/byok.service';
 import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js';
-import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync } from '../../core/engine/sync.js';
+import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync, changeSyncPassword } from '../../core/engine/sync.js';
 import { normalizeSyncCode } from '../../core/engine/sync.js';
+import { hashPin, verifyPin, updateAccount } from '../../core/engine/storage.js';
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -145,6 +146,86 @@ export class SettingsPage implements OnInit {
     this.toast.toast('Sync turned off on this device');
   }
 
+  // ── Change sync password (kill switch: old password stops working) ──
+  syncPassPanel = signal(false);
+  syncOldPass = '';
+  syncNewPass = '';
+  syncNewPass2 = '';
+
+  openSyncPassPanel() {
+    this.syncOldPass = '';
+    this.syncNewPass = '';
+    this.syncNewPass2 = '';
+    this.syncMsg.set('');
+    this.syncPassPanel.set(true);
+  }
+  closeSyncPassPanel() {
+    this.syncPassPanel.set(false);
+    this.syncOldPass = '';
+    this.syncNewPass = '';
+    this.syncNewPass2 = '';
+  }
+
+  async submitSyncPassword() {
+    this.syncBusy.set(true);
+    this.syncMsg.set('');
+    try {
+      await changeSyncPassword(this.syncOldPass, this.syncNewPass);
+      this.closeSyncPassPanel();
+      this.toast.toast('Password changed — the old one no longer opens the cloud copy ✓');
+    } catch (err: any) {
+      this.syncMsg.set(String(err?.message || 'Password change failed'));
+    } finally {
+      this.syncBusy.set(false);
+    }
+  }
+
+  // ── Change profile PIN ──
+  pinPanel = signal(false);
+  pinOld = '';
+  pinNew = '';
+  pinNew2 = '';
+  pinBusy = signal(false);
+  pinMsg = signal('');
+
+  openPinChange() {
+    this.pinOld = '';
+    this.pinNew = '';
+    this.pinNew2 = '';
+    this.pinMsg.set('');
+    this.pinPanel.set(true);
+  }
+  closePinPanel() {
+    this.pinPanel.set(false);
+    this.pinOld = '';
+    this.pinNew = '';
+    this.pinNew2 = '';
+  }
+
+  async submitPinChange() {
+    const acc = this.account;
+    if (!acc) return;
+    if (!/^\d{4}$/.test(this.pinNew)) { this.pinMsg.set('The PIN must be exactly 4 digits'); return; }
+    if (this.pinNew !== this.pinNew2) { this.pinMsg.set('The two new PINs do not match'); return; }
+    this.pinBusy.set(true);
+    this.pinMsg.set('');
+    try {
+      if (acc.pinHash) {
+        const res = await verifyPin(this.pinOld, acc.pinHash);
+        if (!res.ok) { this.pinMsg.set('Current PIN is wrong'); return; }
+      }
+      const pinHash = await hashPin(this.pinNew);
+      await updateAccount(acc.id, { pinHash });
+      await this.renderAccountSection();
+      this.closePinPanel();
+      this.toast.toast('Profile PIN updated ✓');
+    } catch (err: any) {
+      this.pinMsg.set(String(err?.message || 'Could not update the PIN'));
+    } finally {
+      this.pinBusy.set(false);
+    }
+  }
+
   async ngOnInit() {
     this.docCount = (await listDocs()).length;
     await this.renderAccountSection();
@@ -167,9 +248,14 @@ export class SettingsPage implements OnInit {
   }
 
   private async renderAccountSection() {
-    const acc = this.ui.account() || await getAccount(localStorage.getItem('quizard-active-account') || '');
-    this.account = acc || null;
+    // Fresh devices auto-create a default account without ever writing the
+    // localStorage id, so fall back to the first existing account.
     this.accounts = await listAccounts();
+    const acc = this.ui.account()
+      || await getAccount(localStorage.getItem('quizard-active-account') || '')
+      || await getAccount(getActiveAccountId() || '')
+      || (this.accounts.length ? await getAccount(this.accounts[0].id) : null);
+    this.account = acc || null;
   }
 
   saveKey() {

@@ -125,3 +125,26 @@ export async function maybeAutoPush() {
     return false
   }
 }
+
+/** Kill switch: re-seal the locker under a new passphrase (same code). The
+ * request is authorized with the CURRENT password; the replacement takes
+ * over immediately, so the old password stops working on every device. */
+export async function changeSyncPassword(oldPass, newPass) {
+  const code = readStore('quizard.sync.code')
+  if (!code) throw new Error('Sync is not on')
+  if (!newPass || newPass.length < 6) throw new Error('New password must be at least 6 characters')
+  if (newPass === oldPass) throw new Error('The new password is the same as the current one')
+  const data = await exportAll()
+  const blob = await encryptBackup(data, newPass)
+  const verifier = await syncVerifier(oldPass, code)
+  const newVerifier = await syncVerifier(newPass, code)
+  try {
+    await callSync({ op: 'push', code, verifier, newVerifier, blob, docs: Array.isArray(data.docs) ? data.docs.length : null })
+  } catch (err) {
+    if (err?.code === 'code_pass_mismatch') throw new Error('Current password is wrong')
+    throw err
+  }
+  writeStore('quizard.sync.pass', newPass)
+  writeStore('quizard.sync.lastPush', String(Date.now()))
+  return { updatedAt: new Date().toISOString() }
+}

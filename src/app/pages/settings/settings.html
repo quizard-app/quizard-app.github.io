@@ -20,6 +20,26 @@
           <button class="btn btn-secondary" (click)="switchAccount()" data-tooltip="Change profile"><span [innerHTML]="icons.refresh"></span> Switch</button>
         </div>
         <div class="row" style="border-bottom:none">
+          <div><div class="label">Change profile PIN</div><div class="sub">{{ acc.pinHash ? 'Verify the current PIN, then set a new one' : 'Add or set a PIN for this profile' }}</div></div>
+          <button class="btn btn-secondary" (click)="openPinChange()" [disabled]="pinBusy()">Change</button>
+        </div>
+        @if (pinPanel()) {
+          <div class="row" style="border-bottom:none;flex-direction:column;align-items:stretch;gap:8px">
+            @if (account.pinHash) {
+              <input class="text-input" id="pin-old" type="password" inputmode="numeric" maxlength="4" placeholder="Current PIN" autocomplete="off" [(ngModel)]="pinOld" />
+            }
+            <input class="text-input" id="pin-new" type="password" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" autocomplete="new-password" [(ngModel)]="pinNew" />
+            <input class="text-input" id="pin-new2" type="password" inputmode="numeric" maxlength="4" placeholder="Repeat new PIN" autocomplete="new-password" [(ngModel)]="pinNew2" />
+            @if (pinMsg()) { <p class="faint" style="font-size:12px;margin:0;color:var(--warn,#f59e0b)">{{ pinMsg() }}</p> }
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" style="flex:1" [disabled]="pinBusy() || pinNew.length !== 4 || pinNew !== pinNew2 || (account.pinHash && pinOld.length !== 4)" (click)="submitPinChange()">
+                {{ pinBusy() ? 'Saving…' : 'Save PIN' }}
+              </button>
+              <button class="btn btn-secondary" style="flex:1" (click)="closePinPanel()">Cancel</button>
+            </div>
+          </div>
+        }
+        <div class="row" style="border-bottom:none">
           <div><div class="label">Add another profile</div><div class="sub">Separate progress for a family member or classmate</div></div>
           <button class="icon-btn" (click)="addAccount()" data-tooltip="Create new profile" style="color:var(--text)" [innerHTML]="icons.plus"></button>
         </div>
@@ -125,6 +145,18 @@
         <button class="btn btn-secondary" style="margin-top:10px;width:100%" [disabled]="syncBusy()" (click)="restoreFromSync()">
           <span [innerHTML]="icons.database"></span> Restore from cloud (merge)
         </button>
+        @if (!syncPassPanel()) {
+          <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="openSyncPassPanel()">Change password</button>
+        } @else {
+          <div class="label" style="margin:14px 0 4px">Change sync password</div>
+          <input class="text-input" id="sync-old-pass" type="password" autocomplete="off" placeholder="Current password" [(ngModel)]="syncOldPass" />
+          <input class="text-input" id="sync-new-pass" type="password" autocomplete="new-password" placeholder="New password (min 6 characters)" style="margin-top:8px" [(ngModel)]="syncNewPass" />
+          <input class="text-input" id="sync-new-pass2" type="password" autocomplete="new-password" placeholder="Repeat new password" style="margin-top:8px" [(ngModel)]="syncNewPass2" />
+          <button class="btn btn-primary" style="width:100%;margin-top:10px" [disabled]="syncBusy() || !syncOldPass || syncNewPass.length < 6 || syncNewPass !== syncNewPass2" (click)="submitSyncPassword()">
+            {{ syncBusy() ? 'Re-sealing…' : 'Set new password (old one stops working)' }}
+          </button>
+          <button class="btn btn-secondary" style="margin-top:8px;width:100%" (click)="closeSyncPassPanel()">Cancel</button>
+        }
         <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="turnOffSyncAsk()">Turn off sync on this device</button>
       } @else {
         @if (!syncPanel()) {
