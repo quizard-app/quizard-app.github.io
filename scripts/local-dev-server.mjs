@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 const PORT = Number(process.argv[2] || 4310)
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist', 'quizard-ng', 'browser')
 const RELAY = 'https://quizard-relay.quizard-app.workers.dev/gemini'
+const RELAY_EXTRACT = 'https://quizard-relay.quizard-app.workers.dev/extract'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -41,6 +42,23 @@ const server = createServer(async (req, res) => {
       let out = null
       try {
         out = await fetch(RELAY, { method: 'POST', headers, body })
+      } catch (e) {
+        res.writeHead(502, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'proxy_relay_unreachable: ' + e.message }))
+        return
+      }
+      res.writeHead(out.status, { 'Content-Type': out.headers.get('content-type') || 'application/json' })
+      res.end(Buffer.from(await out.arrayBuffer()))
+      return
+    }
+
+    // page-extraction proxy — same treatment as /gemini
+    if (url.pathname === '/extract' && req.method === 'POST') {
+      const chunks = []
+      for await (const c of req) chunks.push(c)
+      let out = null
+      try {
+        out = await fetch(RELAY_EXTRACT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: Buffer.concat(chunks) })
       } catch (e) {
         res.writeHead(502, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'proxy_relay_unreachable: ' + e.message }))

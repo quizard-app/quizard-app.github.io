@@ -9,12 +9,13 @@ import { detectTopics } from '../../core/engine/topics.js';
 import { oneLineSummary } from '../../core/engine/summarize.js';
 import { transcribeImage } from '../../core/engine/transcribe.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
+import { extractUrl, isProbablyArticleUrl } from '../../core/engine/web.js';
 import { dropzoneArt } from '../../shared/art.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 
-type Stage = 'drop' | 'paste' | 'photo' | 'progress' | 'result';
+type Stage = 'drop' | 'paste' | 'photo' | 'link' | 'progress' | 'result';
 
 interface Extracted {
   name: string; type: string; text: string;
@@ -67,6 +68,10 @@ export class ImportPage {
   pasteName = '';
   pasteText = '';
 
+  linkUrl = '';
+  linkBusy = signal(false);
+  linkError = signal('');
+
   docName = '';
   docFolder = '';
   docTags = '';
@@ -83,7 +88,10 @@ export class ImportPage {
     this.folders = deriveFolders(await listDocs());
   }
 
-  setMode(stage: Stage) { this.stage.set(stage); }
+  setMode(stage: Stage) {
+    if (stage === 'link') this.linkError.set('');
+    this.stage.set(stage);
+  }
 
   pickFile() { this.fileInput?.nativeElement.click(); }
 
@@ -116,6 +124,24 @@ export class ImportPage {
     const text = this.pasteText.trim();
     if (text.length < 20) { this.toast.toast('Paste a bit more text to study', true); return; }
     this.showExtracted({ name: this.pasteName.trim() || 'Pasted notes', type: 'txt', text, images: [], file: null });
+  }
+
+  async fetchLink() {
+    const url = this.linkUrl.trim();
+    if (!isProbablyArticleUrl(url)) { this.linkError.set('Enter a full link starting with https://'); return; }
+    this.linkBusy.set(true);
+    this.linkError.set('');
+    try {
+      const { title, text } = await extractUrl(url);
+      let host = 'Web page';
+      try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* keep */ }
+      this.showExtracted({ name: (title || host).slice(0, 80), type: 'link', text, images: [], file: null });
+      this.linkUrl = '';
+    } catch (err: any) {
+      this.linkError.set(String(err?.message || 'Could not extract that page'));
+    } finally {
+      this.linkBusy.set(false);
+    }
   }
 
   private setSteps(labels: string[]) {

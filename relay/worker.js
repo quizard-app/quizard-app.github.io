@@ -30,6 +30,7 @@
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const FISH_ENDPOINT = 'https://api.fish.audio/v1/tts'
+import { htmlToText, pickTitle } from './lib.js'
 const THROTTLE_MS = 60 * 1000
 
 // worker environment (secrets + vars), assigned on each request in fetch()
@@ -518,6 +519,72 @@ async function callGroq(prompt, maxOutputTokens, temperature, json, shape = 'obj
   return { error: lastErr || 'groq_error' }
 }
 
+// ── Web page extraction (public pages → study text) ──
+// The browser cannot read cross-origin pages (CORS), so the worker fetches
+// and strips the HTML. Public article-style pages only: logged-in walls and
+// JS-only apps yield nothing readable and the client says so.
+const EXTRACT_MAX_BYTES = 2 * 1024 * 1024
+
+function json(payload, sec) {
+  return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json', ...sec } })
+}
+
+async function handleExtract(request, sec) {
+  let body
+  try { body = await request.json() } catch { return fail(400, 'invalid_json', sec) }
+  const url = String(body?.url || '').trim()
+  if (!/^https?:\/\/.+/i.test(url) || url.length > 2048) return fail(400, 'bad_url', sec)
+
+  let res
+  try {
+    res = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(20_000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; QuizardStudyBot/1.0; +https://quizard-app.github.io)',
+        'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
+        'Accept-Language': 'en-US, en;q=0.9, *;q=0.5'
+      }
+    })
+  } catch (err) {
+    return fail(504, 'fetch_failed: ' + String(err?.message || err || '').slice(0, 80), sec)
+  }
+  if (!res.ok) return fail(502, `site_http_${res.status}`, sec)
+
+  const ct = (res.headers.get('content-type') || '').toLowerCase()
+  if (/^text\/plain|^application\/(json|ld\+json)/.test(ct)) {
+    const raw = (await res.text()).slice(0, EXTRACT_MAX_BYTES)
+    if (raw.replace(/\s+/g, '').length < 80) return fail(422, 'no_readable_text', sec)
+    return json({ title: '', text: raw, words: (raw.match(/\S+/g) || []).length }, sec)
+  }
+  if (!/text\/html|application\/xhtml/.test(ct)) return fail(415, 'unsupported_content_type', sec)
+
+  // HTMLRewriter drops non-content containers with their subtrees before we
+  // strip tags in lib.js (keeps nav junk out of the study text). Title comes
+  // from the raw HTML first — cleanup may remove the element holding the h1.
+  let html = await res.text()
+  if (html.length > EXTRACT_MAX_BYTES) html = html.slice(0, EXTRACT_MAX_BYTES)
+  const title = pickTitle(html).slice(0, 120)
+  let rewriterError = null
+  try {
+    const cleaned = new HTMLRewriter()
+      .on('script,style,noscript,template,svg,iframe,nav,aside,form,footer,header,menu,[role="navigation"],[role="banner"],[role="search"],[role="complementary"],[aria-hidden="true"]', {
+        element(e) { e.remove() }
+      })
+      .transform(new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } }))
+    const cleanedHtml = await cleaned.text()
+    if (cleanedHtml && cleanedHtml.length > 200) html = cleanedHtml
+  } catch (err) {
+    rewriterError = String(err?.message || err || '').slice(0, 120)
+  }
+
+  const text = htmlToText(html, { maxChars: 400_000 })
+  if (text.replace(/\s+/g, '').length < 80) return fail(422, 'no_readable_text', sec)
+  const out = { title, text, words: (text.match(/\S+/g) || []).length }
+  if (body?.debug) out.debug = { rewriterError, rawLen: html.length }
+  return json(out, sec)
+}
+
 // ── Fish Audio wizard voice ──
 async function handleTts(request, sec) {
   const key = (env.FISH_API_KEY || '').trim()
@@ -602,6 +669,12 @@ export default {
       if (rateLimit(clientIp(request), 40) === false) return fail(429, 'rate_limited', sec)
       if (tooLarge(request)) return fail(413, 'payload_too_large', sec)
       return handleGemini(request, sec)
+    }
+    if (route === 'extract') {
+      // Public page → clean text for the study pipeline (the browser cannot
+      // read cross-origin pages itself). Cheap: no AI involved.
+      if (rateLimit(clientIp(request), 30) === false) return fail(429, 'rate_limited', sec)
+      return handleExtract(request, sec)
     }
     if (route === 'tts') {
       if (rateLimit(clientIp(request), 60) === false) return fail(429, 'rate_limited', sec)

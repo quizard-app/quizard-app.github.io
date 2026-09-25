@@ -8,8 +8,28 @@
   <div class="seg" style="width:100%;margin-bottom:14px">
     <button [class.on]="stage() === 'drop'" (click)="setMode('drop')"><span [innerHTML]="'upload' | ico"></span> File</button>
     <button [class.on]="stage() === 'paste'" (click)="setMode('paste')"><span [innerHTML]="'pencil' | ico"></span> Paste</button>
+    <button [class.on]="stage() === 'link'" (click)="setMode('link')"><span [innerHTML]="'link' | ico"></span> Link</button>
     <button [class.on]="stage() === 'photo'" (click)="setMode('photo')"><span [innerHTML]="'camera' | ico"></span> Photo</button>
   </div>
+
+  @if (stage() === 'link') {
+    <div id="link-stage">
+      <div class="card">
+        <label class="section-title" for="link-input" style="margin:0 0 8px">Page link</label>
+        <input class="text-input" id="link-input" type="url" placeholder="https://en.wikipedia.org/wiki/…" autocomplete="off" spellcheck="false" [(ngModel)]="linkUrl" (keyup.enter)="fetchLink()" />
+        <p class="muted" style="font-size:12.5px;margin-top:10px;line-height:1.6">
+          Paste a public article or lesson page and Quizard reads it into a study set —
+          quiz and reviewer included. Works on sites that don't need a login;
+          for those, copy the text into the Paste tab instead.
+        </p>
+      </div>
+      @if (linkError()) { <p class="link-error" style="color:var(--warn,#f59e0b);font-size:12.5px;margin:12px 4px 0">{{ linkError() }}</p> }
+      <button class="btn btn-primary" id="link-fetch" style="margin-top:18px" [disabled]="linkBusy() || !linkUrl.trim()" (click)="fetchLink()">
+        <span [innerHTML]="(linkBusy() ? 'refresh' : 'link') | ico"></span> {{ linkBusy() ? 'Reading the page…' : 'Read the page' }}
+      </button>
+      <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="setMode('drop')">Back</button>
+    </div>
+  }
 
   @if (stage() === 'drop') {
     <div id="drop-stage">
