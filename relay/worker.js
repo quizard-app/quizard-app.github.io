@@ -568,7 +568,8 @@ async function handleExtract(request, sec) {
   let rewriterError = null
   try {
     const cleaned = new HTMLRewriter()
-      .on('script,style,noscript,template,svg,iframe,nav,aside,form,footer,header,menu,[role="navigation"],[role="banner"],[role="search"],[role="complementary"],[aria-hidden="true"]', {
+      .on('script,style,noscript,template,svg,iframe,nav,aside,form,footer,header,menu,[role="navigation"],[role="banner"],[role="search"],[role="complementary"],[aria-hidden="true"]' +
+        ',.reflist,.refbegin,.mw-references-wrap,.navbox,.infobox,.catlinks,.side-box,.sistersitebox,.metadata,.mw-editsection,sup.reference,.mw-jump-link,.ambox', {
         element(e) { e.remove() }
       })
       .transform(new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } }))
