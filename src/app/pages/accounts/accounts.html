@@ -12,11 +12,14 @@
         </button>
       }
       <button class="acc-card acc-add" (click)="go({ mode: 'create' })" data-tooltip="Create a new profile">
-        <span class="acc-avatar lg ghost" [innerHTML]="icons.plus"></span>
+        <span class="acc-avatar lg ghost" [innerHTML]="'plus' | ico"></span>
         <span class="acc-name">Add account</span>
       </button>
     </div>
     <p class="acc-foot">Accounts live only on this device.</p>
+    <button class="acc-sync-link" (click)="restoreWithCode()">
+      Have a library on another device? <b>Use your sync code</b>
+    </button>
   </div>
 }
 

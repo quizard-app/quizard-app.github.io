@@ -8,6 +8,7 @@ import {
 } from '../../core/engine/storage.js';
 import type { Account } from '../../core/engine/db-types.js';
 import { icon } from '../../shared/icons.js';
+import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 
@@ -17,7 +18,7 @@ type Mode = 'picker' | 'create' | 'lock';
 
 @Component({
   selector: 'app-accounts',
-  imports: [FormsModule],
+  imports: [FormsModule, IcoPipe],
   templateUrl: './accounts.html',
 })
 export class AccountsPage implements OnInit {
@@ -64,6 +65,11 @@ export class AccountsPage implements OnInit {
     if (params.id) qp['id'] = params.id;
     if (params.mode === 'create' && this.cameFromPicker) qp['from'] = 'picker';
     this.router.navigate(tree, { queryParams: qp });
+  }
+
+  // Returning student on a new device: their library lives behind a sync code.
+  restoreWithCode() {
+    this.router.navigateByUrl('/tabs/settings?sync=restore');
   }
 
   avatarStyle(color: string) { return { background: color }; }
