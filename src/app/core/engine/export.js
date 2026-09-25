@@ -122,7 +122,9 @@ export async function exportReviewerPdf(element, documentName) {
 function pdfSafe(s) {
   return String(s || '')
     .replace(/→/g, ' -> ')
-    .replace(/[←-⇿⌀-➿️ἀ0-ᾯF]/g, '')
+    // arrows, dingbats, emoji and variation selectors that the standard PDF
+    // fonts cannot render (→ is converted, the rest are dropped)
+    .replace(/[\u2190-\u21FF\u2300-\u27BF\uFE0F]|[\uD800-\uDFFF]/g, '')
 }
 
 export async function exportAiReviewerPdf(reviewer, documentName) {
@@ -243,7 +245,7 @@ export async function exportAiReviewerPdf(reviewer, documentName) {
   rule()
   text('Generated ' + stamp() + ' · exported from Quizard', { size: 9, color: '#868ea8' })
   pdf.setProperties({ title: (documentName || 'Document') + ' - AI Reviewer', subject: 'Reviewer exported from Quizard', creator: 'Quizard' })
-  const fileSlug = slug(String(documentName || 'doc').replace(/.[^.]+$/, ''))
+  const fileSlug = slug(String(documentName || 'doc').replace(/\.[^.]+$/, ''))
   await pdf.save('quizard-reviewer-' + fileSlug + '.pdf')
   return true
 }
