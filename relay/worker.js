@@ -30,7 +30,7 @@
 const GEMINI_ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const FISH_ENDPOINT = 'https://api.fish.audio/v1/tts'
-import { htmlToText, pickTitle } from './lib.js'
+import { htmlToText, pickTitle, youTubeVideoId, extractPlayerResponse, pickCaptionTrack, json3ToText, timedXmlToText } from './lib.js'
 const THROTTLE_MS = 60 * 1000
 
 // worker environment (secrets + vars), assigned on each request in fetch()
@@ -535,6 +535,10 @@ async function handleExtract(request, sec) {
   const url = String(body?.url || '').trim()
   if (!/^https?:\/\/.+/i.test(url) || url.length > 2048) return fail(400, 'bad_url', sec)
 
+  // YouTube links take the transcript path: captions are the study text.
+  const ytId = youTubeVideoId(url)
+  if (ytId) return handleYouTube(ytId, sec)
+
   let res
   try {
     res = await fetch(url, {
@@ -584,6 +588,83 @@ async function handleExtract(request, sec) {
   const out = { title, text, words: (text.match(/\S+/g) || []).length }
   if (body?.debug) out.debug = { rewriterError, rawLen: html.length }
   return json(out, sec)
+}
+
+// ── YouTube transcript extraction ──
+// YouTube rate-limits datacenter IPs on watch pages, so the player response
+// is fetched via the InnerTube ANDROID client first, watch-page HTML second.
+// The best caption track (English human → English asr → any) is flattened
+// into readable lines; the transcript becomes an ordinary document so the
+// same reviewer/quiz pipeline and formats apply as for uploaded files.
+const YT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+// Public InnerTube key used by the official Android client.
+const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
+
+async function fetchYouTubePlayer(videoId) {
+  try {
+    const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)',
+        'X-Youtube-Client-Name': '5',
+        'X-Youtube-Client-Version': '20.10.4',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      body: JSON.stringify({
+        context: { client: { clientName: 'IOS', clientVersion: '20.10.4', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82', hl: 'en', gl: 'US', utcOffsetMinutes: 0 } },
+        videoId,
+        contentCheckOk: true,
+        racyCheckOk: true
+      }),
+      signal: AbortSignal.timeout(20_000)
+    })
+    if (r.ok) {
+      const j = await r.json()
+      if (j?.captions || j?.playabilityStatus?.status === 'OK') return { pr: j, via: 'innertube' }
+    }
+  } catch { /* fall through to the watch page */ }
+  try {
+    const r = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en&bpctr=9999999999&has_verified=1`, {
+      headers: { 'User-Agent': YT_UA, 'Accept-Language': 'en-US,en;q=0.9', Cookie: 'CONSENT=YES+cb' },
+      signal: AbortSignal.timeout(20_000)
+    })
+    if (r.ok) {
+      const pr = extractPlayerResponse(await r.text())
+      if (pr) return { pr, via: 'watch' }
+    }
+  } catch { /* handled below */ }
+  return {}
+}
+
+async function handleYouTube(videoId, sec) {
+  const { pr, via } = await fetchYouTubePlayer(videoId)
+  const track = pickCaptionTrack(pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks)
+  if (!track?.baseUrl) {
+    const status = String(pr?.playabilityStatus?.status || '')
+    if (status === 'LOGIN_REQUIRED') return fail(422, 'yt_login_required', sec)
+    return fail(via ? 422 : 502, via ? 'no_captions' : 'youtube_unreachable', sec)
+  }
+
+  const capHeaders = { 'User-Agent': YT_UA, 'Accept-Language': 'en-US,en;q=0.9' }
+  let capText = ''
+  try {
+    const j3 = await fetch(track.baseUrl + '&fmt=json3', { headers: capHeaders, signal: AbortSignal.timeout(20_000) })
+    if (j3.ok) capText = json3ToText(await j3.text())
+  } catch { /* fall through to the XML form */ }
+  if (!capText) {
+    try {
+      const xml = await fetch(track.baseUrl, { headers: capHeaders, signal: AbortSignal.timeout(20_000) })
+      if (xml.ok) capText = timedXmlToText(await xml.text())
+    } catch { /* handled below */ }
+  }
+  if (capText.replace(/\s+/g, '').length < 80) return fail(422, 'no_captions', sec)
+
+  const title = String(pr?.videoDetails?.title || '').slice(0, 120) || 'YouTube video'
+  const author = String(pr?.videoDetails?.author || '')
+  const header = author ? `${title}\n${author}\n\n` : `${title}\n\n`
+  const text = header + capText
+  return json({ title, text, words: (text.match(/\S+/g) || []).length, kind: 'youtube' }, sec)
 }
 
 // ── Fish Audio wizard voice ──

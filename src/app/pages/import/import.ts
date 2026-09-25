@@ -9,7 +9,7 @@ import { detectTopics } from '../../core/engine/topics.js';
 import { oneLineSummary } from '../../core/engine/summarize.js';
 import { transcribeImage } from '../../core/engine/transcribe.js';
 import { hasApiKey } from '../../core/engine/gemini.js';
-import { extractUrl, isProbablyArticleUrl } from '../../core/engine/web.js';
+import { extractUrl, isProbablyArticleUrl, youTubeVideoId, youTubeTitle } from '../../core/engine/web.js';
 import { dropzoneArt } from '../../shared/art.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -71,6 +71,9 @@ export class ImportPage {
   linkUrl = '';
   linkBusy = signal(false);
   linkError = signal('');
+  // When YouTube refuses the automatic transcript read (it bot-blocks
+  // server-side readers), guide the user through copying it instead.
+  ytGuide = signal<{ title: string } | null>(null);
 
   docName = '';
   docFolder = '';
@@ -89,7 +92,7 @@ export class ImportPage {
   }
 
   setMode(stage: Stage) {
-    if (stage === 'link') this.linkError.set('');
+    if (stage === 'link') { this.linkError.set(''); this.ytGuide.set(null); }
     this.stage.set(stage);
   }
 
@@ -132,16 +135,35 @@ export class ImportPage {
     this.linkBusy.set(true);
     this.linkError.set('');
     try {
-      const { title, text } = await extractUrl(url);
+      const { title, text, kind } = await extractUrl(url);
       let host = 'Web page';
       try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* keep */ }
-      this.showExtracted({ name: (title || host).slice(0, 80), type: 'link', text, images: [], file: null });
+      this.showExtracted({ name: (title || host).slice(0, 80), type: kind === 'youtube' ? 'youtube' : 'link', text, images: [], file: null });
       this.linkUrl = '';
     } catch (err: any) {
-      this.linkError.set(String(err?.message || 'Could not extract that page'));
+      const code = String(err?.message || '');
+      // YouTube bot-blocks server-side transcript reads — fall back to the
+      // copy-the-transcript guide instead of a dead-end error.
+      if (youTubeVideoId(url) && /no_captions|yt_login_required|youtube_unreachable|site_http_429|fetch_failed/i.test(code)) {
+        try {
+          const { title } = await youTubeTitle(url);
+          this.ytGuide.set({ title: title.slice(0, 80) });
+        } catch {
+          this.ytGuide.set({ title: '' });
+        }
+      } else {
+        this.linkError.set(code || 'Could not extract that page');
+      }
     } finally {
       this.linkBusy.set(false);
     }
+  }
+
+  openPasteForTranscript() {
+    const guide = this.ytGuide();
+    this.pasteName = guide?.title ? `Transcript — ${guide.title}` : 'YouTube transcript';
+    this.ytGuide.set(null);
+    this.stage.set('paste');
   }
 
   private setSteps(labels: string[]) {

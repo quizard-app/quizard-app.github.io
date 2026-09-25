@@ -69,3 +69,39 @@ describe('pickTitle', () => {
     expect(pickTitle('<body><p>nothing</p></body>')).toBe('')
   })
 })
+
+describe('YouTube helpers', () => {
+  it('extracts video ids from every YouTube URL shape', async () => {
+    const { youTubeVideoId } = await import('../relay/lib.js')
+    expect(youTubeVideoId('https://www.youtube.com/watch?v=QnQe0xW_JY4&t=1s')).toBe('QnQe0xW_JY4')
+    expect(youTubeVideoId('https://youtube.com/shorts/QnQe0xW_JY4')).toBe('QnQe0xW_JY4')
+    expect(youTubeVideoId('https://youtu.be/QnQe0xW_JY4')).toBe('QnQe0xW_JY4')
+    expect(youTubeVideoId('https://en.wikipedia.org/wiki/X')).toBe('')
+  })
+
+  it('brace-matches JSON that contains tricky strings', async () => {
+    const { extractJsonAfter } = await import('../relay/lib.js')
+    const html = 'prefix ytInitialPlayerResponse = {"a":{"b":"} ; \\" c"},"d":1}; var x'
+    expect(extractJsonAfter(html, 'ytInitialPlayerResponse')).toEqual({ a: { b: '} ; " c' }, d: 1 })
+  })
+
+  it('prefers English human captions over asr over other languages', async () => {
+    const { pickCaptionTrack } = await import('../relay/lib.js')
+    const tracks = [{ languageCode: 'ja', kind: 'asr' }, { languageCode: 'en', kind: 'asr' }, { languageCode: 'en' }]
+    expect(pickCaptionTrack(tracks)).toEqual({ languageCode: 'en' })
+  })
+
+  it('flattens json3 and timedtext caption payloads', async () => {
+    const { json3ToText, timedXmlToText } = await import('../relay/lib.js')
+    // short caption events join into one readable line
+    const j3 = JSON.stringify({ events: [{ segs: [{ utf8: 'Photosynthesis ' }, { utf8: 'makes sugar.' }] }, { segs: [{ utf8: 'Light is needed.' }] }] })
+    expect(json3ToText(j3)).toBe('Photosynthesis makes sugar. Light is needed.')
+    // long runs break into readable ≤220-char lines instead of one blob
+    const big = JSON.stringify({ events: [{ segs: [{ utf8: 'word '.repeat(60) }] }, { segs: [{ utf8: 'next line ' + 'x'.repeat(180) }] }] })
+    const lines = json3ToText(big).split('\n')
+    expect(lines.length).toBeGreaterThan(1)
+    for (const l of lines) expect(l.length).toBeLessThanOrEqual(220)
+    expect(json3ToText(big)).toContain('next line')
+    expect(timedXmlToText('<text dur="2">&quot;Hi&quot;</text><text>there</text>')).toBe('"Hi" there')
+  })
+})

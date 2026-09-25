@@ -49,3 +49,97 @@ export function pickTitle(html) {
   if (h) return decodeEntities(h[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
   return ''
 }
+
+// ── YouTube transcript helpers ──
+export function youTubeVideoId(url) {
+  const m = /(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,20})/.exec(String(url || '').trim())
+  return m ? m[1] : ''
+}
+
+// Pull a balanced JSON object out of an HTML page right after `marker`
+// (brace-matching, string/escape aware — regex cuts through nested JSON).
+export function extractJsonAfter(html, marker) {
+  const i = html.indexOf(marker)
+  if (i < 0) return null
+  const start = html.indexOf('{', i)
+  if (start < 0) return null
+  let depth = 0, inStr = false, esc = false
+  for (let j = start; j < html.length; j++) {
+    const c = html[j]
+    if (inStr) {
+      if (esc) esc = false
+      else if (c === '\\') esc = true
+      else if (c === '"') inStr = false
+    } else {
+      if (c === '"') inStr = true
+      else if (c === '{') depth++
+      else if (c === '}') {
+        depth--
+        if (depth === 0) { try { return JSON.parse(html.slice(start, j + 1)) } catch { return null } }
+      }
+    }
+  }
+  return null
+}
+
+export function extractPlayerResponse(html) {
+  return extractJsonAfter(html, 'ytInitialPlayerResponse')
+}
+
+// Human captions beat auto-generated ones; English beats the rest.
+export function pickCaptionTrack(tracks) {
+  if (!Array.isArray(tracks) || !tracks.length) return null
+  const score = (t) => {
+    let s = 0
+    if (String(t.languageCode || '').toLowerCase().startsWith('en')) s += 4
+    if (t.kind !== 'asr') s += 2
+    return s
+  }
+  return [...tracks].sort((a, b) => score(b) - score(a))[0] || null
+}
+
+// YouTube's json3 caption format: { events: [ { segs: [ { utf8 } ] } ] }.
+// Events are grouped into readable ~200-char lines (paragraph-ish breaks).
+export function json3ToText(json3) {
+  try {
+    const data = typeof json3 === 'string' ? JSON.parse(json3) : json3
+    const events = Array.isArray(data?.events) ? data.events : []
+    const lines = []
+    let cur = ''
+    const pushLine = () => {
+      // Split oversized runs at word boundaries so lines stay readable.
+      while (cur.length > 220) {
+        let cut = cur.lastIndexOf(' ', 200)
+        if (cut < 80) cut = 200
+        lines.push(cur.slice(0, cut).trim())
+        cur = cur.slice(cut).trim()
+      }
+      if (cur) { lines.push(cur); cur = '' }
+    }
+    for (const ev of events) {
+      if (!ev.segs) { pushLine(); continue }
+      const piece = ev.segs.map(s => s.utf8 || '').join('').replace(/\s+/g, ' ').trim()
+      if (!piece) continue
+      cur = cur ? cur + ' ' + piece : piece
+      if (cur.length > 200) pushLine()
+    }
+    pushLine()
+    return lines.join('\n')
+  } catch { return '' }
+}
+
+// Legacy timedtext XML fallback: <text dur="…">words</text>
+export function timedXmlToText(xml) {
+  const out = []
+  let cur = ''
+  const re = /<text[^>]*>([\s\S]*?)<\/text>/g
+  let m
+  while ((m = re.exec(xml))) {
+    const piece = decodeEntities(m[1]).replace(/\s+/g, ' ').trim()
+    if (!piece) continue
+    cur = cur ? cur + ' ' + piece : piece
+    if (cur.length > 200) { out.push(cur); cur = '' }
+  }
+  if (cur) out.push(cur)
+  return out.join('\n')
+}

@@ -18,12 +18,26 @@
         <label class="section-title" for="link-input" style="margin:0 0 8px">Page link</label>
         <input class="text-input" id="link-input" type="url" placeholder="https://en.wikipedia.org/wiki/…" autocomplete="off" spellcheck="false" [(ngModel)]="linkUrl" (keyup.enter)="fetchLink()" />
         <p class="muted" style="font-size:12.5px;margin-top:10px;line-height:1.6">
-          Paste a public article or lesson page and Quizard reads it into a study set —
-          quiz and reviewer included. Works on sites that don't need a login;
-          for those, copy the text into the Paste tab instead.
+          Paste a public article, lesson page, or <b>YouTube video</b> (with captions) and Quizard reads it into a
+          study set — quiz and reviewer included. Sites that need a login won't work;
+          copy their text into the Paste tab instead.
         </p>
       </div>
       @if (linkError()) { <p class="link-error" style="color:var(--warn,#f59e0b);font-size:12.5px;margin:12px 4px 0">{{ linkError() }}</p> }
+      @if (ytGuide(); as guide) {
+        <div class="card" style="margin-top:14px">
+          <div class="section-title" style="margin:0 0 8px">YouTube needs a quick copy</div>
+          @if (guide.title) { <p class="faint" style="font-size:12.5px;margin:0 0 8px">{{ guide.title }}</p> }
+          <ol class="yt-guide-steps">
+            <li>Open the video and tap <b>…more</b> in the description</li>
+            <li>Tap <b>Show transcript</b>, then switch <b>timestamps</b> off</li>
+            <li>Tap the transcript, <b>select all</b> and <b>copy</b></li>
+          </ol>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px" (click)="openPasteForTranscript()">
+            <span [innerHTML]="'pencil' | ico"></span> Paste it in the Paste tab
+          </button>
+        </div>
+      }
       <button class="btn btn-primary" id="link-fetch" style="margin-top:18px" [disabled]="linkBusy() || !linkUrl.trim()" (click)="fetchLink()">
         <span [innerHTML]="(linkBusy() ? 'refresh' : 'link') | ico"></span> {{ linkBusy() ? 'Reading the page…' : 'Read the page' }}
       </button>

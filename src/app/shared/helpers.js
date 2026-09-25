@@ -1,11 +1,11 @@
 import { icon } from './icons.js'
 
 export function typeIcon(type) {
-  return { pdf: 'fileText', docx: 'fileText', pptx: 'fileText' }[type] || 'fileText'
+  return { pdf: 'fileText', docx: 'fileText', pptx: 'fileText', link: 'link', youtube: 'play' }[type] || 'fileText'
 }
 
 export function typeLabel(type) {
-  return { pdf: 'PDF', docx: 'Word', pptx: 'PowerPoint', txt: 'Text', md: 'Markdown' }[type] || String(type || '').toUpperCase()
+  return { pdf: 'PDF', docx: 'Word', pptx: 'PowerPoint', txt: 'Text', md: 'Markdown', link: 'Web page', youtube: 'YouTube' }[type] || String(type || '').toUpperCase()
 }
 
 export function scorePill(percent) {

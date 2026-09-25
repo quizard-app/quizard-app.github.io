@@ -20,6 +20,20 @@ function friendlyExtractError(code) {
   return 'Could not extract that page — try copying its text into the Paste tab'
 }
 
+export function youTubeVideoId(url) {
+  const m = /(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,20})/.exec(String(url || '').trim())
+  return m ? m[1] : ''
+}
+
+// YouTube's oEmbed endpoint is CORS-open and not bot-gated — good for the
+// video title even when the transcript itself can't be fetched.
+export async function youTubeTitle(url) {
+  const r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(String(url).trim()) + '&format=json')
+  if (!r.ok) throw new Error('Could not read that video')
+  const j = await r.json().catch(() => null)
+  return { title: String(j?.title || ''), author: String(j?.author_name || '') }
+}
+
 export async function extractUrl(url, { timeoutMs = 30_000 } = {}) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
@@ -45,5 +59,5 @@ export async function extractUrl(url, { timeoutMs = 30_000 } = {}) {
   if (text.replace(/\s+/g, '').length < 80) {
     throw new Error('Nothing readable on that page — try copying its text into the Paste tab instead')
   }
-  return { title: String(data?.title || '').trim(), text, words: Number(data?.words) || 0 }
+  return { title: String(data?.title || '').trim(), text, words: Number(data?.words) || 0, kind: String(data?.kind || 'link') }
 }
