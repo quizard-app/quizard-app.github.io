@@ -79,25 +79,21 @@
         </button>
       }
 
-      <button class="btn btn-secondary" (click)="toggleReview()" style="margin-top:22px;width:100%" data-tooltip="See each question with the correct answer">
+      <button class="btn btn-secondary" (click)="toggleReview()" style="margin-top:22px;width:100%" data-tooltip="See each question with the correct answer and explanation">
         <span [innerHTML]="'eye' | ico"></span> Review answers
       </button>
-      <div #reviewPanel class="card" [class.hidden]="!showReview()" style="margin-top:12px;max-height:340px;overflow-y:auto">
+      <div #reviewPanel class="card" [class.hidden]="!showReview()" style="margin-top:12px;max-height:420px;overflow-y:auto">
         @for (item of reviewing; track $index; let i = $index) {
           <div class="review-item">
             <div class="review-q"><strong [style.color]="item.ok ? 'var(--good)' : 'var(--bad)'">{{ i + 1 }}.</strong> {{ item.prompt }}</div>
             <div class="review-a" [style.color]="item.ok ? 'var(--good)' : 'var(--bad)'">
               <span [innerHTML]="(item.ok ? 'check' : 'x') | ico"></span> {{ item.answer }}
             </div>
+            @if (!item.ok && item.chosen) { <div class="review-yours">Your answer: {{ item.chosen }}</div> }
             @if (questions[i]?.explanation) { <div class="review-explain"><div class="explain-box">{{ questions[i].explanation }}</div></div> }
           </div>
         }
       </div>
-      @if (canExplain) {
-        <button class="btn btn-secondary" (click)="explainAll()" [disabled]="explainingAll()" style="margin-top:10px;width:100%" data-tooltip="Ask Gemini to explain every answer">
-          <span [innerHTML]="'sparkles' | ico"></span> {{ explainingAll() ? explainProgress() : 'Explain all answers' }}
-        </button>
-      }
       <button class="btn btn-secondary" (click)="doExport()" style="margin-top:10px;width:100%" data-tooltip="Save this quiz as Markdown or PDF"><span [innerHTML]="'download' | ico"></span> Export quiz</button>
 
       <button class="btn btn-primary" (click)="retake()" style="margin-top:18px;width:100%" [attr.data-tooltip]="r.mistakeMode ? 'Try the mistake review again' : 'Generate a new quiz from the same document'">

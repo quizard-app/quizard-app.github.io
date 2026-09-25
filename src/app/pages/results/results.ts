@@ -5,8 +5,6 @@ import { KeyValuePipe } from '@angular/common';
 import { TYPE_META } from '../../core/engine/quizgen.js';
 import { buildExamQuiz } from '../../core/engine/exam.js';
 import { authorExamQuiz } from '../../core/engine/quiz-ai.js';
-import { explainAnswer } from '../../core/engine/explain.js';
-import { hasApiKey } from '../../core/engine/gemini.js';
 import { loadSettings, getWeakTerms, listDueCards, listDocs, getDoc, getExam } from '../../core/engine/storage.js';
 import { keyTerms } from '../../core/engine/textproc.js';
 import { exportQuiz } from '../../core/engine/export.js';
@@ -42,15 +40,12 @@ export class ResultsPage implements OnInit {
   dueCount = signal(0);
   suggestion = signal<any>(null);
   showReview = signal(false);
-  explainingAll = signal(false);
-  explainProgress = signal('');
   reviewing: any[] = [];
   questions: any[] = [];
   metaName = (t: string | number | symbol) => (TYPE_META as Record<string, any>)[String(t)]?.name || t;
   pctDisplay = signal('0%');
   readonly ringC = (2 * Math.PI * 76).toFixed(1);
   ringOffset = signal(2 * Math.PI * 76);
-  get canExplain() { return hasApiKey() && loadSettings().aiExplain !== false; }
 
   async ngOnInit() {
     const r = this.qs.lastAttempt();
@@ -177,23 +172,6 @@ export class ResultsPage implements OnInit {
   }
 
   toggleReview() { this.showReview.set(!this.showReview()); }
-
-  async explainAll() {
-    this.showReview.set(true);
-    const pending = this.questions.map((q, i) => [q, i] as [any, number]).filter(([q]) => !q.explanation);
-    if (!pending.length) { this.toast.toast('All answers already explained'); return; }
-    this.explainingAll.set(true);
-    let done = 0;
-    for (const [q, i] of pending) {
-      this.explainProgress.set(`Explaining ${done + 1}/${pending.length}…`);
-      try {
-        const text = await explainAnswer(q, this.reviewing[i]?.chosen ?? null);
-        q.explanation = text;
-      } catch { /* skip individual failures */ }
-      done++;
-    }
-    this.explainingAll.set(false);
-  }
 
   doExport() {
     const r = this.r();
