@@ -54,7 +54,14 @@ export async function extractUrl(url, { timeoutMs = 30_000 } = {}) {
   }
   let data = null
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(friendlyExtractError(String(data?.error || `http_${res.status}`)))
+  if (!res.ok) {
+    // Raw relay code rides along (err.code) so callers can branch on it
+    // (e.g. the YouTube guide) without re-parsing the friendly message.
+    const code = String(data?.error || `http_${res.status}`)
+    const err = new Error(friendlyExtractError(code))
+    err.code = code
+    throw err
+  }
   const text = String(data?.text || '')
   if (text.replace(/\s+/g, '').length < 80) {
     throw new Error('Nothing readable on that page — try copying its text into the Paste tab instead')

@@ -141,7 +141,7 @@ export class ImportPage {
       this.showExtracted({ name: (title || host).slice(0, 80), type: kind === 'youtube' ? 'youtube' : 'link', text, images: [], file: null });
       this.linkUrl = '';
     } catch (err: any) {
-      const code = String(err?.message || '');
+      const code = String(err?.code || err?.message || '');
       // YouTube bot-blocks server-side transcript reads — fall back to the
       // copy-the-transcript guide instead of a dead-end error.
       if (youTubeVideoId(url) && /no_captions|yt_login_required|youtube_unreachable|site_http_429|fetch_failed/i.test(code)) {
