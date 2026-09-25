@@ -725,6 +725,23 @@ html[data-theme='dark'] .ai-myth-row.good span { color: var(--accent); }
   padding: 10px 14px; margin-bottom: 8px;
 }
 .ai-idq-clue { font-size: 13.5px; line-height: 1.5; }
+
+/* 🔑 key acronyms: badge + expansion rows */
+.ai-acr {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 12px; margin-bottom: 7px;
+}
+.ai-acr-badge {
+  flex: 0 0 auto; min-width: 44px; text-align: center;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.05em;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill); padding: 4px 8px;
+}
+.ai-acr-body { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+.ai-acr-body b { color: var(--text); font-weight: 700; }
 .ai-idq-ans { margin-top: 4px; font-weight: 800; color: var(--accent-strong); }
 html[data-theme='dark'] .ai-idq-ans { color: var(--accent); }
 

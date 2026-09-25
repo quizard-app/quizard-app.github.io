@@ -27,6 +27,10 @@ Return JSON with exactly this shape:
 {
   "title": "Main Subject — Exam Reviewer",
   "intro": "1-2 sentences: what the document covers overall.",
+  "acronyms": [
+    { "acr": "TCP", "expansion": "Transmission Control Protocol", "meaning": "Rules that guarantee data arrives complete and in order." },
+    { "acr": "PAPA", "expansion": "Privacy, Accuracy, Property, Accessibility", "meaning": "The four data-privacy concerns." }
+  ],
   "parts": [
     {
       "title": "SHORT THEME IN CAPS",
@@ -95,7 +99,8 @@ RULES:
 15. "finalReview" is the one-minute cram: 6-12 lines of the form "Term = keyword" or "Model = Step A → Step B → ...".
 16. "highYield" is the last-minute sheet: one entry per big topic, items as short as possible, arrow chains for sequences.
 17. You MAY open a part title or term with ONE emoji when it aids scanning (📚, 🇵🇭, 🟦…). Use ONLY facts from the document. Do not invent content. Keep language clear and student-friendly.
-18. maxOutputTokens is large — use it: be thorough, this is the student's main study material.`
+18. maxOutputTokens is large — use it: be thorough, this is the student's main study material.
+19. "acronyms" — every acronym or initialism the DOCUMENT uses (TCP, ATP, LAN, PAPA, HTML...): "acr" is the short form, "expansion" is what the letters stand for, "meaning" is one plain line about what it IS. Max 12, exam-relevant first. Also spell an acronym out inline the first time it appears in a definition or meaning, like "TCP (Transmission Control Protocol)". Empty array when the document has none.`
 
 function clean(s) {
   return String(s || '').replace(/\s+/g, ' ').trim()
@@ -182,10 +187,22 @@ export function sanitizeReviewer(raw) {
     : []
   const gaps = Array.isArray(raw.gaps) ? raw.gaps.map(clean).filter(Boolean).slice(0, 5) : []
   const finalReview = Array.isArray(raw.finalReview) ? raw.finalReview.map(clean).filter(Boolean) : []
+  const acronyms = Array.isArray(raw.acronyms)
+    ? raw.acronyms
+        .map(a => ({
+          acr: clean(a?.acr).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          expansion: clean(a?.expansion),
+          meaning: clean(a?.meaning)
+        }))
+        .filter(a => a.acr.length >= 2 && a.acr.length <= 10 && a.expansion)
+    : []
+  const seenAcr = new Set()
+  const acronymsUnique = acronyms.filter(a => (seenAcr.has(a.acr) ? false : (seenAcr.add(a.acr), true))).slice(0, 12)
   return {
-    v: 3, // schema version — older caches (no myths block) regenerate once
+    v: 4, // schema version — v4 adds the acronyms block; older caches regenerate once
     title: clean(raw.title) || 'Exam Reviewer',
     intro: clean(raw.intro) || '',
+    acronyms: acronymsUnique,
     parts,
     idQuestions,
     myths,
@@ -217,9 +234,9 @@ function chunkText(text) {
 export async function ensureAIReviewer(doc) {
   const cached = doc.reviewerAI
   const cachedOk = Array.isArray(cached) ? cached.length : cached?.parts?.length
-  // v3 = the hand-made format (sub-terms, ID drills, myths, final review).
-  // Older caches fall through and regenerate once with the new prompt.
-  if (cachedOk && cached.v === 3) {
+  // v4 = the hand-made format + the acronyms block. Older caches fall through
+  // and regenerate once with the new prompt.
+  if (cachedOk && cached.v === 4) {
     return { reviewer: cached, cached: true }
   }
 
@@ -292,6 +309,20 @@ export function reviewerToHtml(reviewer, esc) {
       <h1 class="rvw-title">${e(reviewer.title)}</h1>
       ${reviewer.intro ? `<p class="rvw-overview">${e(reviewer.intro)}</p>` : ''}
     </div>`)
+  // 🔑 acronyms: every abbreviation the document uses, spelled out up front
+  const acronyms = reviewer.acronyms || []
+  if (acronyms.length) {
+    out.push(`
+      <div class="rvw-part">
+        <div class="rvw-part-head"><span class="rvw-num">🔑</span><h3>Key Acronyms</h3></div>
+        <p class="ai-hy-intro">What each abbreviation stands for:</p>
+        ${acronyms.map(a => `
+          <div class="ai-acr" data-para>
+            <span class="ai-acr-badge">${e(a.acr)}</span>
+            <span class="ai-acr-body"><b>${e(a.expansion)}</b>${a.meaning ? ` — ${e(a.meaning)}` : ''}</span>
+          </div>`).join('')}
+      </div>`)
+  }
   let partI = 0
   for (const part of reviewer.parts) {
     partI++

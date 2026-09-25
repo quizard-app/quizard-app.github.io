@@ -6,6 +6,12 @@ import { sanitizeReviewer, reviewerToHtml } from '../src/app/core/engine/reviewe
 const RAW = {
   title: 'IT Ethics — Exam Reviewer',
   intro: 'Covers morality, ethics, law and the five theories.',
+  acronyms: [
+    { acr: 'papa', expansion: 'Privacy, Accuracy, Property, Accessibility', meaning: 'The four data-privacy concerns.' },
+    { acr: 'PAPA', expansion: 'Duplicate entry', meaning: '' },
+    { acr: 'x', expansion: 'too short to be an acronym', meaning: '' },
+    { acr: 'IT', expansion: 'Information Technology', meaning: '' }
+  ],
   parts: [
     {
       title: 'PART I — FOUNDATION OF ETHICS',
@@ -67,6 +73,11 @@ describe('sanitizeReviewer (extended format)', () => {
     expect(r.gaps).toEqual(['Section on encryption was unreadable in the source'])
     expect(r.finalReview).toHaveLength(2)
     expect(r.highYield[0].items).toHaveLength(2)
+    expect(r.v).toBe(4)
+    // acronyms: uppercased, deduped, junk filtered
+    expect(r.acronyms).toHaveLength(2)
+    expect(r.acronyms[0]).toEqual({ acr: 'PAPA', expansion: 'Privacy, Accuracy, Property, Accessibility', meaning: 'The four data-privacy concerns.' })
+    expect(r.acronyms[1].acr).toBe('IT')
   })
 
   it('tolerates the old cached schema (no new fields)', () => {
@@ -91,6 +102,9 @@ describe('reviewerToHtml (extended format)', () => {
     expect(html).toContain('⭐⭐⭐')
     expect(html).toContain('ai-mnemonic')
     expect(html).toContain('Recognize → Gather')
+    expect(html).toContain('Key Acronyms')
+    expect(html).toContain('ai-acr-badge')
+    expect(html).toContain('Privacy, Accuracy, Property, Accessibility')
     expect(html).toContain('Possible Identification Questions')
     expect(html).toContain('→ Morality')
     expect(html).toContain('Myths vs Facts')
