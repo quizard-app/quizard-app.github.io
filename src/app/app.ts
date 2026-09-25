@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { IdlePreloadService } from './core/services/idle-preload.service';
 import { ByokService } from './core/services/byok.service';
 import { ConfirmService } from './core/services/confirm.service';
+import { maybeAutoPush } from './core/engine/sync.js';
 import { IcoPipe } from './shared/ico.pipe';
 import { afterNextRender } from '@angular/core';
 
@@ -30,6 +31,14 @@ export class App {
 
   constructor() {
     afterNextRender(() => this.preload.start());
+    // Quiet cloud sync: when sync is on, push an encrypted snapshot when the
+    // student leaves the tab/app (throttled inside maybeAutoPush). Never throws.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') void maybeAutoPush();
+      });
+      window.addEventListener('pagehide', () => { void maybeAutoPush(); });
+    }
     // Apply app updates on the FIRST reload: when the service worker detects a
     // new version it downloads it, we activate immediately and reload once.
     // Without this, users need two manual refreshes (or never see updates).

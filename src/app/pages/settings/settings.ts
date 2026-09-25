@@ -16,6 +16,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ByokService } from '../../core/services/byok.service';
 import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js';
+import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync } from '../../core/engine/sync.js';
+import { normalizeSyncCode } from '../../core/engine/sync.js';
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -54,10 +56,101 @@ export class SettingsPage implements OnInit {
   get version() { return '1.1'; }
   get theme() { return this.ui.theme; }
 
+  // ── Cloud sync (sync-code locker) ──
+  syncInfo = signal<{ code: string; lastPush: number; on: boolean }>({ code: '', lastPush: 0, on: false });
+  syncPanel = signal<'' | 'new' | 'restore'>('');
+  newCode = signal(generateSyncCode());
+  syncPass = '';
+  restoreCode = '';
+  restorePass = '';
+  syncBusy = signal(false);
+  syncMsg = signal('');
+
+  private refreshSyncInfo() {
+    this.syncInfo.set(getSyncInfo());
+  }
+
+  syncLastPush() {
+    const t = this.syncInfo().lastPush;
+    return t ? new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'never';
+  }
+
+  ngOnInitSyncRestore() {
+    // deep link: /tabs/settings?sync=restore (Welcome → "I have a sync code")
+    try {
+      const q = new URLSearchParams(this.router.url.split('?')[1] || '');
+      if (q.get('sync') === 'restore') { this.syncPanel.set('restore'); this.router.navigate([], { queryParams: { sync: null }, replaceUrl: true }).catch(() => {}); }
+    } catch { /* ignore */ }
+  }
+
+  openSyncPanel(mode: 'new' | 'restore') {
+    this.syncMsg.set('');
+    if (mode === 'new') this.newCode.set(generateSyncCode());
+    this.syncPanel.set(mode);
+  }
+  closeSyncPanel() { this.syncPanel.set(''); this.syncMsg.set(''); this.syncPass = ''; this.restoreCode = ''; this.restorePass = ''; }
+  regenCode() { this.newCode.set(generateSyncCode()); }
+
+  async activateSyncNow() {
+    this.syncBusy.set(true);
+    this.syncMsg.set('');
+    try {
+      await activateSync(this.newCode(), this.syncPass);
+      this.refreshSyncInfo();
+      this.closeSyncPanel();
+      this.toast.toast('Sync is on — your library is on the cloud locker ✓');
+    } catch (err: any) {
+      this.syncMsg.set(String(err?.message || 'Sync failed'));
+    } finally {
+      this.syncBusy.set(false);
+    }
+  }
+
+  async syncNow() {
+    const info = this.syncInfo();
+    this.syncBusy.set(true);
+    this.syncMsg.set('');
+    try {
+      await pushSync({ code: info.code, passphrase: getSyncInfo().passphrase });
+      this.refreshSyncInfo();
+      this.toast.toast('Library pushed to the cloud locker ✓');
+    } catch (err: any) {
+      this.syncMsg.set(String(err?.message || 'Sync failed'));
+    } finally {
+      this.syncBusy.set(false);
+    }
+  }
+
+  async restoreFromSync() {
+    const code = normalizeSyncCode(this.restoreCode);
+    this.syncBusy.set(true);
+    this.syncMsg.set('');
+    try {
+      const out = await pullSync(code, this.restorePass);
+      this.refreshSyncInfo();
+      this.closeSyncPanel();
+      this.docCount = (await listDocs()).length;
+      this.toast.toast(`Restored — ${out.docs ?? '?'} documents merged ✓`);
+    } catch (err: any) {
+      this.syncMsg.set(String(err?.message || 'Restore failed'));
+    } finally {
+      this.syncBusy.set(false);
+    }
+  }
+
+  async turnOffSyncAsk() {
+    if (!await this.confirm.confirm('Turn off sync on this device?', 'The cloud locker keeps its last snapshot until it expires — this only stops this device from pushing.', 'Turn off')) return;
+    turnOffSync();
+    this.refreshSyncInfo();
+    this.toast.toast('Sync turned off on this device');
+  }
+
   async ngOnInit() {
     this.docCount = (await listDocs()).length;
     await this.renderAccountSection();
     this.renderKeyStatus();
+    this.refreshSyncInfo();
+    this.ngOnInitSyncRestore();
     try {
       const usage = await storageUsage();
       const line = `Last backup: ${this.lastBackup ? new Date(this.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'never'}${usage ? ' · ' + usage : ''}`;

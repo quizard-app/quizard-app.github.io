@@ -44,4 +44,12 @@ export class WelcomePage implements OnInit, OnDestroy {
     // play the "poof" exit before handing over (accounts/onboarding next)
     setTimeout(() => this.router.navigateByUrl('/onboarding'), 430);
   }
+
+  // Returning student: skip onboarding and restore their cloud-synced library.
+  restoreWithCode(ev: Event) {
+    ev.stopPropagation();
+    if (this.exiting) return;
+    if (this.timer) clearTimeout(this.timer);
+    this.router.navigateByUrl('/tabs/settings?sync=restore');
+  }
 }

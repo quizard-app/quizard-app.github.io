@@ -109,6 +109,63 @@
       <p class="faint" style="font-size:12px;margin-top:10px">{{ keyStatus() }}</p>
     </div>
 
+    <div class="section-title">Cloud sync — your library on every device</div>
+    <div class="card" style="padding:16px">
+      @if (syncInfo().on) {
+        <div class="label" style="margin-bottom:6px">Sync is on</div>
+        <div class="sync-code">{{ syncInfo().code }}</div>
+        <p class="faint" style="font-size:11.5px;margin:6px 0 12px;line-height:1.5">
+          This code + your password opens your library on any device. Write them down —
+          losing both means losing the cloud copy.
+          @if (syncInfo().lastPush) { Last pushed: {{ syncLastPush() }}. }
+        </p>
+        <button class="btn btn-primary" id="sync-now" style="width:100%" [disabled]="syncBusy()" (click)="syncNow()">
+          <span [innerHTML]="(syncBusy() ? 'refresh' : 'refresh') | ico"></span> {{ syncBusy() ? 'Syncing…' : 'Sync now (push this device)' }}
+        </button>
+        <button class="btn btn-secondary" style="margin-top:10px;width:100%" [disabled]="syncBusy()" (click)="restoreFromSync()">
+          <span [innerHTML]="icons.database"></span> Restore from cloud (merge)
+        </button>
+        <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="turnOffSyncAsk()">Turn off sync on this device</button>
+      } @else {
+        @if (!syncPanel()) {
+          <p class="muted" style="font-size:13px;line-height:1.55;margin-bottom:14px">
+            Keep an encrypted copy of your library on the Quizard relay, addressed by a secret
+            code. Sign in on a new device with that code + password — your data stays sealed
+            (even we can't read it).
+          </p>
+          <button class="btn btn-primary" id="sync-open-new" style="width:100%" (click)="openSyncPanel('new')">Turn on sync — get my code</button>
+          <button class="btn btn-secondary" id="sync-open-restore" style="margin-top:10px;width:100%" (click)="openSyncPanel('restore')">I have a sync code</button>
+        }
+        @if (syncPanel() === 'new') {
+          <div class="label" style="margin-bottom:6px">Your sync code</div>
+          <div class="sync-code">{{ newCode() }}</div>
+          <button class="btn btn-ghost" style="margin:4px 0 10px" (click)="regenCode()">Generate a different code</button>
+          <label class="label" for="sync-pass">Choose a password (min 6 characters)</label>
+          <input class="text-input" id="sync-pass" type="password" autocomplete="new-password" placeholder="Unlock password for the cloud copy" [(ngModel)]="syncPass" />
+          <p class="faint" style="font-size:11.5px;margin:8px 0 12px;line-height:1.5">
+            The password never leaves this device (the cloud copy is sealed with it).
+            <b>No email, no reset:</b> write down the code and password — losing both means losing the cloud copy.
+          </p>
+          <button class="btn btn-primary" style="width:100%" [disabled]="syncBusy() || syncPass.length < 6" (click)="activateSyncNow()">
+            {{ syncBusy() ? 'Uploading…' : 'Turn on sync' }}
+          </button>
+          <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="closeSyncPanel()">Cancel</button>
+        }
+        @if (syncPanel() === 'restore') {
+          <label class="label" for="sync-code-in">Sync code</label>
+          <input class="text-input" id="sync-code-in" placeholder="ABCD-2345" autocomplete="off" [(ngModel)]="restoreCode" />
+          <label class="label" for="sync-pass-in" style="margin-top:12px">Password</label>
+          <input class="text-input" id="sync-pass-in" type="password" autocomplete="off" placeholder="The password that locks that library" [(ngModel)]="restorePass" />
+          <p class="faint" style="font-size:11.5px;margin:8px 0 12px">Restoring merges the cloud library into this device — nothing here is erased.</p>
+          <button class="btn btn-primary" id="sync-restore" style="width:100%" [disabled]="syncBusy() || !restoreCode.trim() || !restorePass.trim()" (click)="restoreFromSync()">
+            {{ syncBusy() ? 'Restoring…' : 'Restore this library' }}
+          </button>
+          <button class="btn btn-secondary" style="margin-top:10px;width:100%" (click)="closeSyncPanel()">Cancel</button>
+        }
+        @if (syncMsg()) { <p class="faint" style="font-size:12px;margin:10px 2px 0;color:var(--warn,#f59e0b)">{{ syncMsg() }}</p> }
+      }
+    </div>
+
     <div class="section-title">Backup &amp; restore</div>
     <div class="card" style="padding:16px">
       @if (showNudge) {

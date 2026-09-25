@@ -69,3 +69,12 @@ export async function decryptBackup(text, passphrase) {
   }
   return JSON.parse(new TextDecoder().decode(plainBuf))
 }
+
+// Sync authorization token: proves the sender knows the passphrase without
+// sending it. The server only ever compares these — it cannot invert them
+// into a passphrase, and it cannot decrypt library blobs.
+export async function syncVerifier(passphrase, code) {
+  const data = new TextEncoder().encode(`quizard-sync:${code}:${passphrase}`)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('')
+}

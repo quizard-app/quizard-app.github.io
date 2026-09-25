@@ -667,6 +667,64 @@ async function handleYouTube(videoId, sec) {
   return json({ title, text, words: (text.match(/\S+/g) || []).length, kind: 'youtube' }, sec)
 }
 
+// ── Sync locker (encrypted library snapshots) ──
+// op 'status' — does this code have a locker? (no verifier needed)
+// op 'push'   — upsert the snapshot; existing lockers only accept a matching
+//               verifier, so a claimed code can't be hijacked
+// op 'pull'   — hand out the snapshot to whoever holds code + verifier
+// The verifier is a SHA-256 of code+passphrase computed on the client: the
+// passphrase itself never crosses the network, and the blob is AES-GCM
+// ciphertext the worker cannot read.
+const SYNC_TTL_SECONDS = 180 * 24 * 3600
+const SYNC_MAX_BLOB = 8_000_000
+const SYNC_CODE_RE = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/
+
+function normalizeSyncCode(v) {
+  const raw = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return raw.length === 8 ? raw.slice(0, 4) + '-' + raw.slice(4) : raw
+}
+
+async function handleSync(request, sec) {
+  const kv = env.SYNC
+  if (!kv?.get) return fail(503, 'sync_not_configured', sec)
+  let body
+  try { body = await request.json() } catch { return fail(400, 'invalid_json', sec) }
+  const op = String(body?.op || '')
+  const code = normalizeSyncCode(body?.code)
+  if (!SYNC_CODE_RE.test(code)) return fail(400, 'bad_code', sec)
+  const verifier = String(body?.verifier || '')
+  if (op !== 'status' && !/^[0-9a-f]{64}$/.test(verifier)) return fail(400, 'bad_verifier', sec)
+  const key = 'sync:' + code
+
+  if (op === 'status') {
+    const rec = await kv.get(key, 'json')
+    return json({ exists: !!rec, updatedAt: rec?.updatedAt || null, docs: rec?.docs ?? null }, sec)
+  }
+  if (op === 'push') {
+    const blob = String(body?.blob || '')
+    if (!blob) return fail(400, 'empty_blob', sec)
+    if (blob.length > SYNC_MAX_BLOB) return fail(413, 'blob_too_large', sec)
+    const existing = await kv.get(key, 'json')
+    if (existing?.verifier && existing.verifier !== verifier) return fail(403, 'code_pass_mismatch', sec)
+    const rec = {
+      verifier,
+      blob,
+      docs: Number(body?.docs) || null,
+      words: Number(body?.words) || null,
+      updatedAt: new Date().toISOString()
+    }
+    await kv.put(key, JSON.stringify(rec), { expirationTl: SYNC_TTL_SECONDS })
+    return json({ ok: true, updatedAt: rec.updatedAt }, sec)
+  }
+  if (op === 'pull') {
+    const rec = await kv.get(key, 'json')
+    if (!rec) return fail(404, 'code_not_found', sec)
+    if (rec.verifier !== verifier) return fail(403, 'bad_pass', sec)
+    return json({ blob: rec.blob, docs: rec.docs, words: rec.words, updatedAt: rec.updatedAt }, sec)
+  }
+  return fail(400, 'bad_op', sec)
+}
+
 // ── Fish Audio wizard voice ──
 async function handleTts(request, sec) {
   const key = (env.FISH_API_KEY || '').trim()
@@ -757,6 +815,13 @@ export default {
       // read cross-origin pages itself). Cheap: no AI involved.
       if (rateLimit(clientIp(request), 30) === false) return fail(429, 'rate_limited', sec)
       return handleExtract(request, sec)
+    }
+    if (route === 'sync') {
+      // Sync locker: end-to-end encrypted library snapshots keyed by a random
+      // code. The worker stores ciphertext + a passphrase verifier — it can
+      // neither read a library nor accept overwrites without the verifier.
+      if (rateLimit(clientIp(request), 30) === false) return fail(429, 'rate_limited', sec)
+      return handleSync(request, sec)
     }
     if (route === 'tts') {
       if (rateLimit(clientIp(request), 60) === false) return fail(429, 'rate_limited', sec)

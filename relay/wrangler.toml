@@ -10,3 +10,9 @@ compatibility_date = "2026-01-15"
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 # Override with `npx wrangler secret put` for anything sensitive.
 # FISH_MODEL = "s2.1-pro-free"
+
+# Sync locker: end-to-end encrypted library snapshots addressed by a random
+# sync code. The worker only ever stores ciphertext (see /sync in worker.js).
+[[kv_namespaces]]
+binding = "SYNC"
+id = "eb831b669bbb48489981fe57d4d97d5c"
