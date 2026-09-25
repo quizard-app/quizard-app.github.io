@@ -127,6 +127,8 @@ export class QuizPage implements OnInit, OnDestroy {
   }
   private clearResumeState() { localStorage.removeItem(this.resumeKey()); }
 
+  private finishing = false; // re-entry guard: one attempt per finished round
+
   async ngOnInit() { await this.boot(); }
   ngOnDestroy() { this.stopTimer(); this.revokeImages(); }
 
@@ -137,6 +139,7 @@ export class QuizPage implements OnInit, OnDestroy {
 
   private async boot() {
     const qs = this.qs;
+    this.finishing = false; // every fresh round may record exactly one attempt
     console.log('[QZ] quiz boot: mistakeReview =', !!qs.mistakeReview(), '| currentDocId =', qs.currentDocId());
     let doc: any = null, cfg: any = null, st: QuizState | null = null, session: any[] | null = null;
 
@@ -573,6 +576,8 @@ export class QuizPage implements OnInit, OnDestroy {
   }
 
   private async finish() {
+    if (this.finishing) return; // a double-tap on "See Results" must not double-count the attempt
+    this.finishing = true;
     this.stopTimer();
     const st = this.st;
     const durationSec = (Date.now() - st.startTime) / 1000;
