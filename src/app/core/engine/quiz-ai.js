@@ -792,7 +792,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const authGroup = async (group) => {
     const raw = await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
       maxOutputTokens: cfg.count <= AUTHOR_BATCH ? Math.max(2048, 512 + 320 * cfg.count) : 1024 + 320 * group.length,
-      temperature: 0.5, timeoutMs: 45000, schema: ROWS_SCHEMA, shape: 'array'
+      temperature: 0.65, timeoutMs: 45000, schema: ROWS_SCHEMA, shape: 'array'
     })
     return extractJSONArray(raw) || []
   }
@@ -922,7 +922,7 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
 
   const authBatch = async (unit, state, group) => {
     const raw = await chatJSON(examAuthorPrompt(group, unit.topic, [weakHint, diffHint].filter(Boolean).join('\n'), unit.termBank), {
-      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.5, timeoutMs: 60000, schema: ROWS_SCHEMA, shape: 'array'
+      maxOutputTokens: 1024 + 320 * group.length, temperature: 0.65, timeoutMs: 60000, schema: ROWS_SCHEMA, shape: 'array'
     })
     return takeRows(extractJSONArray(raw) || [], unit, state)
   }

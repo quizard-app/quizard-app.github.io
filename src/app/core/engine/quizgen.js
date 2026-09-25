@@ -359,15 +359,24 @@ export function generateQuiz(doc, config) {
   }
 
   function takeCandidate() {
-    for (let i = 0; i < sentPool.length; i++) {
+    // Scan the pool and pick randomly among the top few usable candidates —
+    // repeated takes of the same document must draw different sentences. The
+    // seed already varies per take, but selection used to be deterministic
+    // (always the top-ranked sentence), so count=1 quizzes repeated forever.
+    const usable = []
+    for (let i = 0; i < sentPool.length && usable.length < 4; i++) {
       const s = sentPool[i]
       if (usedSentences.has(s.text)) continue
       const term = findTermInSentence(s.text, terms.filter(t => !usedTerms.has(t.term)).concat(tierTerms))
       if (!term) continue
-      usedSentences.add(s.text)
-      return { ...s, term }
+      usable.push({ ...s, term })
     }
-    return null
+    if (!usable.length) return null
+    // Weak-focus deliberately floats weak-term sentences to the front — keep
+    // that deterministic. Otherwise randomize among the top few for variety.
+    const pick = config.focusWeak ? usable[0] : usable[Math.floor(rng() * usable.length)]
+    usedSentences.add(pick.text)
+    return pick
   }
 
   const queue = []
