@@ -224,14 +224,16 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
   .setup-actionbar {
     position: fixed; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: var(--frame-max);
-    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+    /* the setup page has NO tab bar (it lives outside the tabs) — pin the
+       action bar to the very bottom edge, only clearing the safe area */
+    bottom: env(safe-area-inset-bottom);
     padding: 14px 20px;
     background: var(--glass-solid);
     border-top: 1px solid var(--border);
     z-index: 25;
   }
   .setup-actionbar .btn { width: 100%; min-height: 50px; font-size: 15px; border-radius: var(--radius-md); font-weight: 700; }
-  .screen.has-actionbar { padding-bottom: calc(var(--nav-h) + 120px + env(safe-area-inset-bottom)); }
+  .screen.has-actionbar { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
 }
 
 /* ── Quiz ── */
