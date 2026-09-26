@@ -583,17 +583,9 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const tf = termFreq(text)
   const ranked = scoreSentences(sentences(text, { preStripped: true }), tf)
   if (ranked.length < 3) return { questions: [], error: null }
-  // Skip sentences served in earlier rounds so every take authors fresh.
-  const avoidSentences = new Set(Array.isArray(cfg.avoidSentences) ? cfg.avoidSentences.map(s => String(s)) : [])
-  let material = ranked.slice(0, Math.max(Math.min(cfg.count * 3, 60), 12))
-  if (avoidSentences.size) {
-    const fresh = material.filter(s => !avoidSentences.has(s.text))
-    if (fresh.length >= Math.min(material.length, cfg.count + 2)) material = fresh
-  }
-  const avoidHint = Array.isArray(cfg.avoidStems) && cfg.avoidStems.length
-    ? 'VARIETY: The learner has already answered these questions on this document. Write COMPLETELY NEW questions about DIFFERENT facts and details from the document. Do not repeat, restate, or closely paraphrase any of these:\n' +
-      cfg.avoidStems.slice(0, 20).map(s => '- ' + s).join('\n')
-    : ''
+  // Top sentences from across the document; one question authored per
+  // sentence so coverage spreads instead of clustering.
+  const material = ranked.slice(0, Math.max(Math.min(cfg.count * 3, 60), 12))
   // Real concepts from the document so the model's distractors stay in-family
   // (phishing variants pair with phishing variants, not with random nouns).
   const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
@@ -648,7 +640,7 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
 
   const authGroup = async (group) => {
     try {
-      return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint, avoidHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
+      return extractJSONArray(await chatJSON(authorQuizPrompt(group, [weakHint, diffHint].filter(Boolean).join('\n'), termBank, cfg.count <= AUTHOR_BATCH ? cfg.count : 0), {
         maxOutputTokens: 1024 + 384 * group.length, temperature: 0.7, schema: ROWS_SCHEMA, shape: 'array'
       })) || []
     } catch (err) {
@@ -745,20 +737,11 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   const tf = termFreq(text)
   const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s => !looksLikeCode(s.text))
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
-  // Sentences already served in earlier rounds are excluded from the material
-  // so every take authors from fresh text (falls back to the full pool when
-  // the document is exhausted).
-  const avoidSentences = new Set(Array.isArray(cfg.avoidSentences) ? cfg.avoidSentences.map(s => String(s)) : [])
-  let pool = ranked
-  if (avoidSentences.size) {
-    const fresh = ranked.filter(s => !avoidSentences.has(s.text))
-    if (fresh.length >= Math.min(ranked.length, cfg.count + 2)) pool = fresh
-  }
   const isBanned = makeBannedCheckerFromTitles(doc.name, extractTitleLines(doc.text))
   const termBank = keyTerms(text, tf).slice(0, 40).map(r => r.term)
 
   const materialCount = cfg.count <= AUTHOR_BATCH ? Math.max(cfg.count + 2, 6) : cfg.count * 2
-  const pick = pool.slice(0, Math.min(pool.length, materialCount))
+  const pick = ranked.slice(0, Math.min(ranked.length, materialCount))
   const groups = []
   for (let i = 0; i < pick.length; i += AUTHOR_BATCH) {
     groups.push(pick.slice(i, i + AUTHOR_BATCH).map((s, k) => ({ i: k, text: s.text })))
@@ -768,10 +751,6 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
       cfg.weakTerms.slice(0, 20).map(w => String(w.term || w)).join(', ')
     : ''
   const diffHint = difficultyHint(cfg.difficulty)
-  const avoidHint = Array.isArray(cfg.avoidStems) && cfg.avoidStems.length
-    ? 'VARIETY: The learner has already answered these questions on this document. Write COMPLETELY NEW questions about DIFFERENT facts and details from the document. Do not repeat, restate, or closely paraphrase any of these:\n' +
-      cfg.avoidStems.slice(0, 20).map(s => '- ' + s).join('\n')
-    : ''
 
   const out = []
   const seen = new Set()
