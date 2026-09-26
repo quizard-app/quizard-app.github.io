@@ -24,15 +24,6 @@
       } catch (e) {
         document.documentElement.dataset.theme = "dark";
       }
-      // iOS only: notch / Dynamic Island clearance is scoped to iPhones and
-      // iPads via the .ios class — Android browsers handle the status bar
-      // themselves, so they must not get the extra top padding.
-      if (
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-      ) {
-        document.documentElement.classList.add("ios");
-      }
     </script>
     <link rel="manifest" href="manifest.webmanifest" />
     <meta
