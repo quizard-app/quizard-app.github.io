@@ -632,3 +632,7 @@ svg { max-width: 100%; }
 .acc-sync-link b { color: var(--accent-strong); font-weight: 700; }
 .acc-sync-link:hover b { text-decoration: underline; }
 .icon-btn.on { color: var(--accent-strong); background: var(--accent-soft); }
+
+/* ── iPhone notch / Dynamic Island: clear the top safe-area inset ── */
+.app-header { padding-top: calc(10px + env(safe-area-inset-top)); }
+.acc-screen { padding-top: calc(32px + env(safe-area-inset-top)); }

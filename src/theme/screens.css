@@ -1166,13 +1166,16 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
 }
 .fc-btn-again:hover { background: var(--surface-2); }
 .back-header {
-  height: var(--header-h); display: flex; align-items: center; gap: 12px;
+  height: calc(var(--header-h) + env(safe-area-inset-top)); display: flex; align-items: center; gap: 12px;
   position: sticky; top: 0; z-index: 20;
+  /* iPhone notch / Dynamic Island: the page draws under the status bar
+     (viewport-fit=cover), so headers must clear the top inset */
+  padding: env(safe-area-inset-top) var(--pad-x) 0;
   /* solid glass (no backdrop-filter): blur on a sticky bar can blank the whole
      page while scrolling on some GPUs */
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  margin: 0 calc(var(--pad-x) * -1); padding: 0 var(--pad-x);
+  margin: 0 calc(var(--pad-x) * -1);
 }
 .back-header h2 { font-size: 16.5px; font-weight: 700; flex: 1; letter-spacing: -0.015em; color: var(--text); }
 .back-header .spacer { width: 32px; }
@@ -2129,3 +2132,6 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 /* The account screens render inside ion-content (restores scrolling on short
    phones) but bring their own padding — zero the global content padding. */
 .acc-content { --padding-start: 0; --padding-end: 0; }
+
+/* iPhone top inset: onboarding/tutorial/welcome draw under the notch */
+.onb-wrap, .tut-wrap { padding-top: env(safe-area-inset-top); }

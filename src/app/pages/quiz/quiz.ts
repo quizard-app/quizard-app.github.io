@@ -130,6 +130,39 @@ export class QuizPage implements OnInit, OnDestroy {
 
   private finishing = false; // re-entry guard: one attempt per finished round
 
+  // ── AI variety memory: what this document has already served ──
+  private seenKey(docId: string) { return 'quizard.seen.' + docId }
+
+  private seenForDoc(docId: string): { stems: string[]; sentences: string[] } {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.seenKey(docId)) || '{}')
+      return {
+        sentences: Array.isArray(raw.sentences) ? raw.sentences : [],
+        stems: Array.isArray(raw.stems) ? raw.stems : []
+      }
+    } catch { return { sentences: [], stems: [] } }
+  }
+
+  private rememberServed(docId: string, questions: any[]) {
+    if (!docId) return
+    try {
+      const prev = this.seenForDoc(docId)
+      const sentences = new Set([...prev.sentences])
+      const stems = new Set([...prev.stems])
+      for (const q of questions) {
+        const s = q?.meta?.sentence || ''
+        const st = q?.stem || q?.prompt || q?.statement || q?.clue || ''
+        if (s) sentences.add(s)
+        if (st) stems.add(st)
+      }
+      // cap the memory so very long documents eventually cycle back
+      localStorage.setItem(this.seenKey(docId), JSON.stringify({
+        sentences: [...sentences].slice(-120),
+        stems: [...stems].slice(-120)
+      }))
+    } catch { /* variety memory is best-effort */ }
+  }
+
   async ngOnInit() { await this.boot(); }
   ngOnDestroy() { this.stopTimer(); this.revokeImages(); }
 
@@ -193,6 +226,13 @@ export class QuizPage implements OnInit, OnDestroy {
     cfg = { ...cfg, mix: { ...MCQ_ONLY_MIX } };
 
     this.doc = doc; this.cfg = cfg;
+
+    // AI-driven variety: everything this document has already quizzed is
+    // excluded from the next generation's material and passed to the model as
+    // an avoid list, so every take writes genuinely new questions.
+    const seen = this.seenForDoc(doc.id);
+    cfg.avoidSentences = seen.sentences;
+    cfg.avoidStems = seen.stems;
 
     if (cfg.fresh || !this.cachedQuiz[doc.id]) {
       let gen: any = null;
@@ -629,7 +669,11 @@ export class QuizPage implements OnInit, OnDestroy {
       byType, review,
       questions: this.session.map(q => ({ ...q }))
     });
-    if (!st.mistakeMode && this.doc) delete this.cachedQuiz[this.doc.id];
+    if (!st.mistakeMode && this.doc) {
+      // remember what was served so the next generation writes new questions
+      this.rememberServed(this.doc.id, this.session);
+      delete this.cachedQuiz[this.doc.id];
+    }
     this.clearResumeState();
     // Root direction so Ionic rebuilds /results instead of re-showing a stale
     // one still sitting in the page stack from an earlier quiz — otherwise
