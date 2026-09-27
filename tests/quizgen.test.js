@@ -485,20 +485,30 @@ describe('mistake review never replays the missed question', () => {
     { term: 'gpu', freq: 3 }, { term: 'ram', freq: 3 }, { term: 'bus', freq: 2 }, { term: 'cache', freq: 2 }
   ]]])
 
-  it('rebuilds the question from a different sentence when one exists', async () => {
+  it('re-asks as multiple choice from a different sentence when one exists', async () => {
     const { sentences } = await import('../src/app/core/engine/textproc.js')
     const docSentences = new Map([['d', sentences('The CPU executes the main instructions of the program. A multicore CPU runs several programs at once. The GPU renders graphics quickly.')]])
     const qs = buildMistakeQuestions(mistakes, docTerms, docSentences)
     expect(qs.length).toBe(1)
-    expect(qs[0].type).toBe('id')
+    expect(qs[0].type).toBe('mcq')
     expect(qs[0].meta.sentence).not.toBe(mistakes[0].sentence) // different angle
-    expect(qs[0].clue).not.toContain('CPU') // term blanked out of the clue
+    expect(qs[0].stem).not.toContain('CPU') // term blanked out of the stem
+    expect(qs[0].options.length).toBe(4)
+    expect(new Set(qs[0].options.map(o => o.toLowerCase())).size).toBe(4)
+    expect(qs[0].options[qs[0].answerIndex].toLowerCase()).toBe('cpu')
   })
 
-  it('falls back to the ID format when no other sentence uses the term', async () => {
+  it('blanks the banked sentence when no other sentence uses the term, still as multiple choice', async () => {
     const { sentences } = await import('../src/app/core/engine/textproc.js')
     const docSentences = new Map([['d', sentences('The CPU executes the main instructions of the program.')]])
     const qs = buildMistakeQuestions(mistakes, docTerms, docSentences)
+    expect(qs[0].type).toBe('mcq')
+    expect(qs[0].stem).not.toContain('CPU')
+    expect(qs[0].options[qs[0].answerIndex].toLowerCase()).toBe('cpu')
+  })
+
+  it('falls back to the type-the-term drill when the doc lacks distractor terms', () => {
+    const qs = buildMistakeQuestions(mistakes, new Map([['d', []]]), new Map([['d', ['A multicore CPU runs several programs at once.']]]))
     expect(qs[0].type).toBe('id')
     expect(qs[0].answer).toBe('CPU')
     expect(qs[0].clue).not.toContain('CPU')

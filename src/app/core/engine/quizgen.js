@@ -65,18 +65,39 @@ export function buildMistakeQuestions(mistakes, docTerms, docSentences = null) {
   return mistakes.map(m => {
     // The review must re-test the missed CONCEPT, never replay the exact
     // question just missed. When the document's sentences are supplied, the
-    // review becomes an identification drill (pure recall — a different
-    // format than the MCQ just missed): a different sentence that uses the
-    // term when one exists, the banked sentence blanked otherwise. The term
-    // is never left in the clue.
+    // drill re-asks from a different document sentence that uses the term
+    // (the banked sentence blanked otherwise) — as a 4-option multiple
+    // choice: typing is poor on mobile and punishes synonyms ("domain name
+    // system" vs "DNS"). Without 3 distractor terms it falls back to the
+    // type-the-term identification drill. The term is never left in the clue.
     if (docSentences) {
       const sents = docSentences.get(m.docId) || []
       const termRe = new RegExp(m.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       const others = sents.filter(s => s !== m.sentence && termRe.test(s))
       const base = others.length ? others[Math.floor(rng() * others.length)] : m.sentence
+      const clue = base.replace(termRe, '\u2026\u2026\u2026')
+      const pool = (docTerms.get(m.docId) || []).filter(t => t.term !== m.term.toLowerCase())
+      if (pool.length >= 3) {
+        const distractors = pickImprovedDistractors({ term: m.term, proper: false, phrase: false }, pool, rng, 3, {
+          avoidSentence: base
+        })
+        if (distractors.length === 3) {
+          const options = shuffleArr([m.term, ...distractors], rng).map(t => surfaceOption(t, base))
+          const answerIndex = options.findIndex(o => o.toLowerCase() === m.term.toLowerCase())
+          if (answerIndex !== -1 && new Set(options.map(o => o.toLowerCase())).size === 4) {
+            return {
+              type: 'mcq',
+              stem: clue,
+              options,
+              answerIndex,
+              meta: { sentence: base, term: m.term, docId: m.docId }
+            }
+          }
+        }
+      }
       return {
         type: 'id',
-        clue: base.replace(termRe, '\u2026\u2026\u2026'),
+        clue,
         answer: m.term,
         meta: { sentence: base, term: m.term, docId: m.docId }
       }
