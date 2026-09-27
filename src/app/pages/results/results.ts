@@ -179,16 +179,11 @@ export class ResultsPage implements OnInit {
 
   toggleReview() { this.showReview.set(!this.showReview()); }
 
-  // Read-only mistake review: shows what you picked vs. the correct answer.
-  // Re-answering happens later through spaced repetition (due cards), not here.
+  // Mistakes-only filter for the read-only review panel. Re-answering happens
+  // later through spaced repetition (due cards), not here.
   mistakesOnly = signal(false);
   get visibleReview() {
     return this.mistakesOnly() ? this.reviewing.filter(i => !i.ok) : this.reviewing;
-  }
-  reviewMistakes() {
-    this.mistakesOnly.set(true);
-    this.showReview.set(true);
-    setTimeout(() => this.reviewPanel?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
   }
 
   doExport() {

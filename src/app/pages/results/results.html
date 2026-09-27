@@ -103,9 +103,6 @@
       <button class="btn btn-primary" (click)="retake()" style="margin-top:18px;width:100%" [attr.data-tooltip]="r.mistakeMode ? 'Try the mistake review again' : 'Generate a new quiz from the same document'">
         <span [innerHTML]="'refresh' | ico"></span> {{ r.mistakeMode ? 'Review Again' : 'Retake Quiz' }}
       </button>
-      @if (r.wrongCount > 0 && !r.mistakeMode && r.docId) {
-        <button class="btn btn-secondary" (click)="reviewMistakes()" style="margin-top:10px;width:100%" data-tooltip="See only the questions you got wrong, with the correct answers"><span [innerHTML]="'alert' | ico"></span> See my {{ r.wrongCount }} mistake{{ r.wrongCount === 1 ? '' : 's' }}</button>
-      }
       <button class="btn btn-secondary" (click)="goLibrary()" style="margin-top:10px;width:100%">Back to Library</button>
     </div>
   }
