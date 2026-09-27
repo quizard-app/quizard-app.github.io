@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc, listAttempts
+  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc, listAttempts, countMistakes, countDueCards, getWeakTerms
 } from '../../core/engine/storage.js';
 import { folderCounts, mergeFolders } from '../../core/engine/taxonomy.js';
 import { countdownLabel } from '../../core/engine/exam.js';
@@ -16,6 +16,7 @@ import { UiStateService } from '../../core/services/ui-state.service';
 import { ByokService } from '../../core/services/byok.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { MistakesService } from '../../core/services/mistakes.service';
 
 const SORTS = [
   { id: 'recent', label: 'Recent' },
@@ -34,6 +35,7 @@ export class LibraryPage {
   readonly byok = inject(ByokService);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
+  readonly mistakes = inject(MistakesService);
 
   readonly icoLog = icon('logo');
   readonly heroImg = assetUrl('wizard/wizard-studying.jpg');
@@ -48,6 +50,10 @@ export class LibraryPage {
   tags = signal<string[]>([]);
   // rounds finished in the last 7 days (docs + exam practice)
   weekTaken = signal(0);
+  // practice counters for the Library practice section
+  dueCount = signal(0);
+  mistakeCount = signal(0);
+  weakCount = signal(0);
 
   // Bulk organize: select documents in the grid, then move/unfile/delete them
   // in one action instead of editing each document's page.
@@ -108,8 +114,13 @@ export class LibraryPage {
     this.sort.set(loadSettings().sortDocs || 'recent');
     try {
       const weekAgo = Date.now() - 7 * 864e5;
-      const attempts = await listAttempts(null);
+      const [attempts, mistakeCount, dueCount, weakTerms] = await Promise.all([
+        listAttempts(null), countMistakes(), countDueCards(), getWeakTerms(null).catch(() => [])
+      ]);
       this.weekTaken.set(attempts.filter((a: any) => a.date >= weekAgo).length);
+      this.mistakeCount.set(mistakeCount);
+      this.dueCount.set(dueCount);
+      this.weakCount.set(weakTerms.length);
     } catch { this.weekTaken.set(0); }
     this.loading.set(false);
   }

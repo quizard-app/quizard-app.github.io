@@ -49,6 +49,35 @@
         <span>Exam prep</span>
         <span [innerHTML]="'chevronRight' | ico"></span>
       </button>
+      @if (dueCount() > 0 || mistakeCount() > 0 || weakCount() > 0) {
+        <div class="practice-head">Practice</div>
+        @if (dueCount() > 0) {
+          <button class="exam-entry" (click)="mistakes.startDueReview()" data-tooltip="Spaced repetition — practice the cards due today">
+            <span class="exam-ico" [innerHTML]="'timer' | ico"></span>
+            <span>{{ dueCount() }} due card{{ dueCount() === 1 ? '' : 's' }}</span>
+            <span [innerHTML]="'chevronRight' | ico"></span>
+          </button>
+        }
+        @if (mistakeCount() > 0) {
+          <button class="exam-entry" (click)="mistakes.startMistakeReview()" data-tooltip="Practice what you previously got wrong until it sticks">
+            <span class="exam-ico" [innerHTML]="'alert' | ico"></span>
+            <span>{{ mistakeCount() }} mistake{{ mistakeCount() === 1 ? '' : 's' }} to practice</span>
+            <span [innerHTML]="'chevronRight' | ico"></span>
+          </button>
+        }
+        @if (weakCount() > 0) {
+          <button class="exam-entry" (click)="mistakes.startWeakReview()" data-tooltip="Focus on the terms you miss most often">
+            <span class="exam-ico" [innerHTML]="'target' | ico"></span>
+            <span>{{ weakCount() }} weak term{{ weakCount() === 1 ? '' : 's' }} to drill</span>
+            <span [innerHTML]="'chevronRight' | ico"></span>
+          </button>
+        }
+      }
+      <button class="exam-entry" (click)="mistakes.startMasterReview()" data-tooltip="One mixed session across your whole library">
+        <span class="exam-ico" [innerHTML]="'sparkles' | ico"></span>
+        <span>Master practice — {{ docs().length }} documents</span>
+        <span [innerHTML]="'chevronRight' | ico"></span>
+      </button>
       <div class="lib-filters">
         <div class="filter-row">
           <span class="filter-label" [innerHTML]="'folder' | ico"></span>

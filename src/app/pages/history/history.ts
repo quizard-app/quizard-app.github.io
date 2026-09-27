@@ -1,11 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
-import { listAttempts, listDocs, countMistakes, countDueCards, getWeakTerms } from '../../core/engine/storage.js';
+import { listAttempts, listDocs } from '../../core/engine/storage.js';
 import { icon } from '../../shared/icons.js';
 import { dayLabel, fmtTime, scorePill } from '../../shared/helpers.js';
 import { emptyProgressArt } from '../../shared/art.js';
 import { UiStateService } from '../../core/services/ui-state.service';
-import { MistakesService } from '../../core/services/mistakes.service';
 
 function dayKey(ts: number) {
   const d = new Date(ts);
@@ -37,14 +36,9 @@ function calcStreak(attempts: any[]) {
 })
 export class HistoryPage implements OnInit {
   ui = inject(UiStateService);
-  mistakes = inject(MistakesService);
 
   readonly emptyArt = emptyProgressArt;
   attempts = signal<any[]>([]);
-  docCount = signal(0);
-  mistakeCount = signal(0);
-  dueCount = signal(0);
-  weakTerms = signal<any[]>([]);
   studied = signal<any[]>([]);
   groups = signal<{ day: string; items: any[] }[]>([]);
   trendHtml = signal('');
@@ -55,14 +49,8 @@ export class HistoryPage implements OnInit {
   readonly Math = Math;
 
   async ngOnInit() {
-    const [attempts, docs, mistakeCount, dueCount, weakTerms] = await Promise.all([
-      listAttempts(), listDocs(), countMistakes(), countDueCards(), getWeakTerms(null)
-    ]);
+    const [attempts, docs] = await Promise.all([listAttempts(), listDocs()]);
     this.attempts.set(attempts);
-    this.docCount.set(docs.length);
-    this.mistakeCount.set(mistakeCount);
-    this.dueCount.set(dueCount);
-    this.weakTerms.set(weakTerms);
     this.studied.set(docs.filter((d: any) => d.attempts > 0));
     this.streak.set(calcStreak(attempts));
     const totalQ = attempts.reduce((s: number, a: any) => s + a.total, 0);

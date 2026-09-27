@@ -907,6 +907,10 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
 }
 .exam-entry:hover { background: var(--surface-hover); border-color: var(--accent-border); }
 .exam-entry:active { transform: scale(0.99); }
+.practice-head {
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint); margin: 10px 2px -4px;
+}
 .exam-entry .exam-ico {
   width: 26px; height: 26px; border-radius: 8px;
   background: var(--grad-accent); color: #fff;

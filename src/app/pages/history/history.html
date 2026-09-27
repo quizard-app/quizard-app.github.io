@@ -10,66 +10,6 @@
       <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
     </div>
 
-    @if (dueCount()) {
-      <div class="card" style="padding:14px 16px;margin-bottom:14px;border-color:var(--accent-border);background:var(--accent-soft)">
-        <div class="row" style="border-bottom:none">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="color:var(--accent-strong);display:flex" [innerHTML]="iconFor('zap')"></span>
-            <div>
-              <div class="label">{{ dueCount() }} card{{ dueCount() === 1 ? '' : 's' }} due for review</div>
-              <div class="sub">Spaced repetition — review them before you forget</div>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startDueReview()"><span [innerHTML]="iconFor('refresh')"></span> Start spaced review</button>
-      </div>
-    }
-
-    <div class="card" style="padding:14px 16px;margin-bottom:14px">
-      <div class="row" style="border-bottom:none">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="color:{{ mistakeCount() ? 'var(--warn)' : 'var(--good)' }};display:flex" [innerHTML]="iconFor(mistakeCount() ? 'alert' : 'check')"></span>
-          <div>
-            <div class="label">{{ mistakeCount() }} mistake{{ mistakeCount() === 1 ? '' : 's' }} in the bank</div>
-            <div class="sub">{{ mistakeCount() ? 'Questions you got wrong — review them until they stick' : 'Nothing to review. Keep it up!' }}</div>
-          </div>
-        </div>
-      </div>
-      @if (mistakeCount()) {
-        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startMistakeReview()" data-tooltip="Practice the questions you previously got wrong"><span [innerHTML]="iconFor('refresh')"></span> Review all mistakes</button>
-      }
-    </div>
-
-    @if (weakTerms().length) {
-      <div class="card" style="padding:14px 16px;margin-bottom:14px">
-        <div class="row" style="border-bottom:none">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="color:var(--bad);display:flex" [innerHTML]="iconFor('target')"></span>
-            <div>
-              <div class="label">{{ weakTerms().length }} weak term{{ weakTerms().length === 1 ? '' : 's' }} tracked</div>
-              <div class="sub">Questions are weighted toward the terms you miss most often</div>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startWeakReview()" data-tooltip="Review your weakest terms first"><span [innerHTML]="iconFor('target')"></span> Review weak spots</button>
-      </div>
-    }
-
-    @if (docCount()) {
-      <div class="card" style="padding:14px 16px;margin-bottom:14px;border-color:var(--accent-border);background:var(--accent-soft)">
-        <div class="row" style="border-bottom:none">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="color:var(--accent-strong);display:flex" [innerHTML]="iconFor('sparkles')"></span>
-            <div>
-              <div class="label">Master review</div>
-              <div class="sub">One mixed session across all {{ docCount() }} document{{ docCount() === 1 ? '' : 's' }} — due cards, fresh questions, old mistakes</div>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-primary" style="padding:11px" (click)="mistakes.startMasterReview()" data-tooltip="Interleaved review across your whole library"><span [innerHTML]="iconFor('sparkles')"></span> Start master review</button>
-      </div>
-    }
-
     <div [innerHTML]="trendHtml()"></div>
 
     @if (studied().length) {
