@@ -44,7 +44,7 @@
  * @property {'partial' | 'not_enough_content' | 'no_types' | null} error
  */
 
-import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr } from './textproc.js'
+import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr, isQuizFragmentSource } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { looksLikeCode } from './validate.js'
 import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption, surfaceOption, findAcronyms, buildAcronymStem } from './questionForms.js'
@@ -73,7 +73,7 @@ export function buildMistakeQuestions(mistakes, docTerms, docSentences = null) {
     if (docSentences) {
       const sents = docSentences.get(m.docId) || []
       const termRe = new RegExp(m.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      const others = sents.filter(s => s !== m.sentence && termRe.test(s))
+      const others = sents.filter(s => s !== m.sentence && termRe.test(s) && !isQuizFragmentSource(s))
       const base = others.length ? others[Math.floor(rng() * others.length)] : m.sentence
       const clue = base.replace(termRe, '\u2026\u2026\u2026')
       const pool = (docTerms.get(m.docId) || []).filter(t => t.term !== m.term.toLowerCase())
@@ -242,8 +242,9 @@ export function generateQuiz(doc, config) {
   const text = stripHeadings(doc.text)
   const sents = sentences(text, { preStripped: true })
   const tf = termFreq(text)
-  // code/markup lines and slide chrome make garbage question sources — drop them
-  const ranked = scoreSentences(sents, tf).filter(s => !looksLikeCode(s.text))
+  // code/markup lines, slide chrome and the deck's own quiz slides make
+  // garbage question sources — drop them
+  const ranked = scoreSentences(sents, tf).filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text))
   const terms = keyTerms(text, tf)
 
   if (!terms.length || ranked.length < 3) {

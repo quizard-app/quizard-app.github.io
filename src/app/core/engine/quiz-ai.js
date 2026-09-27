@@ -1,5 +1,5 @@
 import { generateQuiz } from './quizgen.js'
-import { checkTyped } from './textproc.js'
+import { checkTyped, isQuizFragmentSource, hasStrayCapsWord } from './textproc.js'
 import { hasApiKey, chatJSON, chatMultimodal } from './gemini.js'
 import { listDocImages, saveDocImages, updateDoc } from './storage.js'
 import { renderPdfVisuals } from './extract/renderPage.js'
@@ -839,20 +839,7 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   }
 }
 
-// Lesson slide decks often ship with the teacher's own quiz slides ("Q U I Z ·
-// 1 O F 6", "True/False Q1 (MCQ)", answer keys). As question SOURCE material
-// they produce questions about the quiz itself ("What does MCQ stand for?")
-// instead of the lesson — filter them and other slide furniture out.
-const QUIZ_FRAGMENT_RE = /\bQ\s?\d+\b|\btrue\s*\/\s*false\b|\bMCQ\b|Q\s?U\s?I\s?Z|^\s*answers?\b/i
-export function isQuizFragmentSource(s) { return QUIZ_FRAGMENT_RE.test(String(s || '')) }
-
-// Slide fragments carry stray all-caps words ("What does WITH lazy loading…").
-// Real acronyms are allow-listed; any other caps-heavy word marks furniture.
-const OK_CAPS = new Set(['API', 'DI', 'CLI', 'DOM', 'HTTP', 'CSS', 'SCSS', 'JSON', 'JS', 'TS', 'UI', 'UX', 'NG', 'PWA', 'SPA', 'SSR', 'AOT', 'JIT', 'ESM', 'CRUD', 'MVC', 'MVVM', 'RXJS', 'PDF', 'HTML', 'SQL', 'IDE', 'URL', 'CDN', 'BSIT'])
-export function hasStrayCapsWord(s) {
-  const caps = String(s || '').match(/\b[A-Z]{3,}\b/g) || []
-  return caps.some(w => !OK_CAPS.has(w))
-}
+export { isQuizFragmentSource, hasStrayCapsWord } from './textproc.js'
 
 // Exam-practice authoring across EVERY file the exam covers, split per topic:
 // one unit per doc-topic (from detectTopics' sentence membership), the

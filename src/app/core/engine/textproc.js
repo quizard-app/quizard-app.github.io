@@ -85,6 +85,21 @@ const FURNITURE_RE = /\b(?:module|unit|chapter|lesson|week|topic|section|part|ou
 // lowercase word — the cut point for leftover heading text glued before it.
 const OPENER_RE = /(?:^|\s)((?:An?|The|It|In|On|At|As|By|For|To|With|When|If|This|These|Those|Because|Since|While|Although|However|According)\s+[a-z][a-z'’-]*)/
 
+// Quiz-slide fragments embedded in lesson decks ("Q U I Z · 1 O F 6",
+// "True/False Q1 (MCQ)", answer keys) make garbage question sources — a
+// question built on them is about the teacher's quiz, not the lesson.
+const QUIZ_FRAGMENT_RE = /\bQ\s?\d+\b|\btrue\s*\/\s*false\b|\bMCQ\b|Q\s?U\s?I\s?Z|^\s*answers?\b/i
+export function isQuizFragmentSource(s) { return QUIZ_FRAGMENT_RE.test(String(s || '')) }
+
+// Slide furniture carries stray all-caps words ("What does WITH lazy
+// loading…"). Real acronyms are allow-listed; any other caps-heavy word
+// marks the text as slide chrome rather than prose.
+const OK_CAPS = new Set(['API', 'DI', 'CLI', 'DOM', 'HTTP', 'CSS', 'SCSS', 'JSON', 'JS', 'TS', 'UI', 'UX', 'NG', 'PWA', 'SPA', 'SSR', 'AOT', 'JIT', 'ESM', 'CRUD', 'MVC', 'MVVM', 'RXJS', 'PDF', 'HTML', 'SQL', 'IDE', 'URL', 'CDN', 'BSIT'])
+export function hasStrayCapsWord(s) {
+  const caps = String(s || '').match(/\b[A-Z]{3,}\b/g) || []
+  return caps.some(w => !OK_CAPS.has(w))
+}
+
 /**
  * Clean one candidate sentence: remove inline document furniture (module/
  * topic/outcome labels, stray page numbers), ordered-list markers pasted
