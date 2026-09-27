@@ -9,11 +9,6 @@
       <div class="stat"><div class="num">{{ attempts().length }}</div><div class="lbl">Quizzes</div></div>
       <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
     </div>
-    <div class="stats-row" style="margin-top:10px">
-      <div class="stat"><div class="num">{{ questions() }}</div><div class="lbl">Questions</div></div>
-      <div class="stat"><div class="num">{{ studyTime() }}</div><div class="lbl">Study time</div></div>
-      <div class="stat"><div class="num">{{ weekCount() }}</div><div class="lbl">This week</div></div>
-    </div>
 
     <div [innerHTML]="heatmapHtml()"></div>
     <div [innerHTML]="trendHtml()"></div>

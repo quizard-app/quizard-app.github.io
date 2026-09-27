@@ -47,9 +47,6 @@ export class HistoryPage implements OnInit {
   weakTerms = signal<any[]>([]);
   maxWeight = signal(1);
   docStats = signal<any[]>([]);
-  questions = signal(0);
-  studyTime = signal('0m');
-  weekCount = signal(0);
   groups = signal<{ day: string; items: any[] }[]>([]);
   trendHtml = signal<SafeHtml | string>('');
   heatmapHtml = signal<SafeHtml | string>('');
@@ -69,11 +66,6 @@ export class HistoryPage implements OnInit {
     this.maxWeight.set(Math.max(1, ...weakTerms.map((w: any) => w.weight || 0)));
 
     // headline totals
-    this.questions.set(attempts.reduce((s: number, a: any) => s + a.total, 0));
-    const totalSec = attempts.reduce((s: number, a: any) => s + (a.durationSec || 0), 0);
-    this.studyTime.set(this.timeLabel(totalSec));
-    const weekAgo = Date.now() - 7 * 864e5;
-    this.weekCount.set(attempts.filter((a: any) => a.date >= weekAgo).length);
     this.streak.set(calcStreak(attempts));
     const totalQ = attempts.reduce((s: number, a: any) => s + a.total, 0);
     const totalC = attempts.reduce((s: number, a: any) => s + a.correct, 0);
@@ -161,11 +153,6 @@ export class HistoryPage implements OnInit {
         </svg>
         <div class="chart-x"><span>older</span><span>now</span></div>
       </div>`;
-  }
-
-  timeLabel(sec: number) {
-    const m = Math.round(sec / 60);
-    return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
   }
 
   pctColor(pct: number) { return pct >= 80 ? 'var(--good)' : pct >= 50 ? 'var(--warn)' : 'var(--bad)'; }
