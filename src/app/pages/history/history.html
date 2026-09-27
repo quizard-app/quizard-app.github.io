@@ -10,7 +10,18 @@
       <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
     </div>
 
-    <div [innerHTML]="heatmapHtml()"></div>
+    <div class="chart-wrap">
+      <div class="chart-head">
+        <span class="section-title" style="margin:0">Study activity</span>
+        @if (years().length > 1) {
+          <select class="text-input gh-year" aria-label="Year" [value]="selectedYear()" (change)="setYear($any($event.target).value)">
+            @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
+          </select>
+        }
+      </div>
+      <div class="gh-sub">{{ yearCount() }} quiz{{ yearCount() === 1 ? '' : 'zes' }} in {{ selectedYear() }}</div>
+      <div [innerHTML]="heatmapHtml()"></div>
+    </div>
     <div [innerHTML]="trendHtml()"></div>
 
     @if (weakTerms().length) {
