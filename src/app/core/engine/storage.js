@@ -97,8 +97,10 @@ let activeAccountId = null
 
 export function setActiveAccount(id) {
   activeAccountId = id
-  if (id) localStorage.setItem('quizard-active-account', id)
-  else localStorage.removeItem('quizard-active-account')
+  try {
+    if (id) localStorage.setItem('quizard-active-account', id)
+    else localStorage.removeItem('quizard-active-account')
+  } catch { /* private mode / storage full — the in-memory id still works */ }
 }
 
 export function getActiveAccountId() {
@@ -921,6 +923,10 @@ export function loadSettings() {
 /** @param {import('./db-types.js').AppSettings} patch @returns {import('./db-types.js').AppSettings} */
 export function saveSettings(patch) {
   const merged = { ...loadSettings(), ...patch }
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged))
+  try {
+    // iOS private mode throws on localStorage writes — settings are optional,
+    // never let them break a flow (e.g. onboarding's Skip button)
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged))
+  } catch { /* private mode / storage full */ }
   return merged
 }
