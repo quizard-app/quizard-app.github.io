@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { assetUrl } from '../../shared/assets.js';
-import { listAccounts } from '../../core/engine/storage.js';
+import { listAccounts, loadSettings, setActiveAccount } from '../../core/engine/storage.js';
 
 const SPARKS = Array.from({ length: 10 }, (_, i) =>
   ({ a: `${i * 36}deg`, d: `${(0.45 + i * 0.045).toFixed(2)}s` })
@@ -36,23 +36,32 @@ export class WelcomePage implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.decideLaunch().then(target => {
-      if (target === '/accounts') {
-        // "Skip intro on launch": no splash wait — straight to the picker.
+      if (target !== '/onboarding') {
+        // picker (returning) or straight-into-the-app (skip intro): no splash
         this.exiting = true;
-        this.router.navigateByUrl('/accounts');
+        this.router.navigateByUrl(target);
         return;
       }
       this.timer = setTimeout(() => this.advance(), 2050);
     });
   }
 
-  private async decideLaunch(): Promise<'/accounts' | '/onboarding'> {
+  private async decideLaunch(): Promise<'/accounts' | '/onboarding' | '/tabs/library'> {
     try {
       const accounts = await listAccounts();
       const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
-      // Fresh devices play the slides first; every launch for returning
-      // students opens the picker (choose profile · add · sync-code restore).
-      return fresh ? '/onboarding' : '/accounts';
+      if (fresh) return '/onboarding';
+      // "Skip intro on launch": straight into the app with the last profile —
+      // but a PIN-protected profile still goes through the picker gate.
+      if (loadSettings().skipIntro) {
+        const lastId = localStorage.getItem('quizard-active-account') || '';
+        const last = lastId ? accounts.find(a => a.id === lastId) : null;
+        if (last && !last.pinHash) {
+          setActiveAccount(last.id);
+          return '/tabs/library';
+        }
+      }
+      return '/accounts';
     } catch {
       return '/onboarding';
     }
