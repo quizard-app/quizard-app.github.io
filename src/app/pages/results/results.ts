@@ -46,6 +46,8 @@ export class ResultsPage implements OnInit {
   pctDisplay = signal('0%');
   readonly ringC = (2 * Math.PI * 76).toFixed(1);
   ringOffset = signal(2 * Math.PI * 76);
+  // 'ready' | 'almost' | 'not-ready' | null (null: practice rounds, no verdict)
+  ready = signal<'ready' | 'almost' | 'not-ready' | null>(null);
 
   async ngOnInit() {
     const r = this.qs.lastAttempt();
@@ -64,6 +66,10 @@ export class ResultsPage implements OnInit {
       : r.percent >= 50 ? ['Good effort', 'A quick review will push you higher.']
       : ['Keep practicing', 'Revisit the document and try again.'];
     this.verdict.set({ h: verdict[0], s: verdict[1] });
+
+    // Exam-readiness verdict: every finished round answers "am I ready?"
+    // Practice rounds (mistake drills) don't count — they're remedial.
+    this.ready.set(r.mistakeMode ? null : r.percent >= 90 ? 'ready' : r.percent >= 75 ? 'almost' : 'not-ready');
 
     try {
       const [weak, due] = await Promise.all([getWeakTerms(null), listDueCards(60)]);

@@ -27,6 +27,24 @@
         <p>{{ r.docName }} · {{ Math.round(r.durationSec) }}s</p>
       </div>
 
+      @if (ready(); as rd) {
+        <div class="ready-card" [class.r-ready]="rd === 'ready'" [class.r-almost]="rd === 'almost'" [class.r-not]="rd === 'not-ready'">
+          <span class="ready-ico" [innerHTML]="(rd === 'ready' ? 'check' : rd === 'almost' ? 'info' : 'alert') | ico"></span>
+          <div class="ready-main">
+            <div class="ready-title">
+              @if (rd === 'ready') { You're ready for the real exam }
+              @else if (rd === 'almost') { Almost ready }
+              @else { Not ready yet }
+            </div>
+            <div class="ready-sub">
+              @if (rd === 'ready') { Scored {{ r.percent }}% this round — walk in confident. }
+              @else if (rd === 'almost') { You need 90%+ to be marked ready — review your misses, then retake. }
+              @else { Review the misses below, then retake — 90%+ marks you ready. }
+            </div>
+          </div>
+        </div>
+      }
+
       @if (objectKeys(r.byType).length > 1) {
         <div class="section-title">By question type</div>
         <div class="card breakdown">
