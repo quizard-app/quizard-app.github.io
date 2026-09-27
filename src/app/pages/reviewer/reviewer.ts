@@ -72,7 +72,6 @@ export class ReviewerPage implements AfterViewInit {
   private nlpBuilding = false;
   private findMatches: HTMLElement[] = [];
   private findPos = -1;
-  private zoom: any = null;
 
   get themeIcon() { return this.ui.theme() === 'dark' ? 'sun' : 'moon'; }
 
@@ -303,6 +302,9 @@ export class ReviewerPage implements AfterViewInit {
   private applyView() {
     const content = this.content?.nativeElement;
     if (!content) return;
+    // the article renders one CD tick after the html signal — re-apply the
+    // saved text size then, so a chosen A+/A− size survives reloads
+    setTimeout(() => this.applyScale(), 0);
     const fc = content.closest('.rev-screen')?.querySelector('.font-controls') as HTMLElement | null;
     if (!this.nlp) {
       this.contentHtml.set(this.trust('<div class="reader-loading">Preparing your document…</div>'));
@@ -421,7 +423,10 @@ export class ReviewerPage implements AfterViewInit {
   }
 
   private applyScale() {
-    if (this.content) this.content.nativeElement.style.fontSize = (15 * this.scale).toFixed(1) + 'px';
+    // zoom scales EVERYTHING inside the reader — chips, headings and cards use
+    // fixed px sizes that a font-size change on the container can't touch
+    const el = this.content?.nativeElement as HTMLElement | undefined;
+    if (el) el.style.zoom = String(this.scale);
   }
   fontMinus() { this.scale = Math.max(0.85, +(this.scale - 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
   fontPlus() { this.scale = Math.min(1.5, +(this.scale + 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
