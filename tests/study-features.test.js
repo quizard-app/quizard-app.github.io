@@ -18,6 +18,8 @@ import {
   deleteDoc,
   restoreDoc,
   bankMistake,
+  resolveMistake,
+  listMistakes,
   upsertSrsFromMistake,
   listDueCards,
   getWeakTerms,
@@ -94,17 +96,32 @@ describe('document deletion undo', () => {
 
 // Mirrors the results screen "What's next?" card: after a quiz with misses,
 // getWeakTerms and listDueCards must carry the real counts the card shows.
+// A single miss is NOT a weak spot (Review answers + the SRS card cover it) —
+// a term earns the label only after repeated failure.
 describe('results: what-next data', () => {
   beforeAll(async () => {
     await bankMistake({ docId: 'doc-note-1', sentence: SAMPLE_TEXT.split('\n')[3], term: 'Photosynthesis', type: 'mcq' })
+    await bankMistake({ docId: 'doc-note-1', sentence: SAMPLE_TEXT.split('\n')[5], term: 'Photosynthesis', type: 'mcq' })
     await bankMistake({ docId: 'doc-note-1', sentence: SAMPLE_TEXT.split('\n')[6], term: 'Stomata', type: 'tf' })
   })
 
   it('reports weak terms and due cards for the next-steps card', async () => {
     const weak = await getWeakTerms(null)
-    expect(weak.length).toBeGreaterThanOrEqual(2)
+    expect(weak.some(w => String(w.term).toLowerCase() === 'photosynthesis')).toBe(true)
+    // one miss on Stomata: not a weak spot yet
+    expect(weak.some(w => String(w.term).toLowerCase() === 'stomata')).toBe(false)
     const due = await listDueCards(60)
     expect(due.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('resolves a term across all its sentences', async () => {
+    await bankMistake({ docId: 'doc-resolve', sentence: 'DNS maps names to addresses.', term: 'DNS', type: 'id' })
+    await bankMistake({ docId: 'doc-resolve', sentence: 'A DNS server answers queries.', term: 'dns', type: 'id' })
+    await bankMistake({ docId: 'doc-resolve', sentence: 'LAN covers a small area.', term: 'LAN', type: 'id' })
+    await resolveMistake('doc-resolve', 'DNS')
+    const left = await listMistakes('doc-resolve')
+    expect(left.length).toBe(1)
+    expect(left[0].term).toBe('LAN')
   })
 })
 

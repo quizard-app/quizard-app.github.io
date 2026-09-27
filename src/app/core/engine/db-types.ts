@@ -101,6 +101,7 @@ export interface WeakTerm {
   sentence: string
   type: string
   weight: number
+  misses: number
 }
 
 export interface QuizConfig {

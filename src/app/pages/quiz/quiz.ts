@@ -577,7 +577,7 @@ export class QuizPage implements OnInit, OnDestroy {
     const mTerm = q.meta?.term || q.answer;
     let srsId: string | null = null;
     if (mDocId && mSentence && mTerm) {
-      if (ok) resolveMistake(mDocId, mTerm, mSentence).catch(() => {});
+      if (ok) resolveMistake(mDocId, mTerm).catch(() => {});
       else bankMistake({ docId: mDocId, sentence: mSentence, term: mTerm, type: q.type }).catch(() => {});
       try {
         srsId = srsIdFor(mDocId, mTerm, mSentence);

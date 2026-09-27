@@ -60,9 +60,11 @@ export class MistakesService {
   async startWeakReview() {
     const weak = await getWeakTerms(null);
     if (!weak.length) { this.toast.toast('No weak spots yet — take a few quizzes first'); return; }
-    const rank = new Map(weak.map((w: any) => [String(w.term).toLowerCase(), w.count || 1]));
+    const rank = new Map(weak.map((w: any) => [String(w.term).toLowerCase(), w.weight || 1]));
     const [mistakes, due] = await Promise.all([listMistakes(null), listDueCards(60)]);
-    const items = [...mistakes, ...due];
+    // Only true weak terms (2+ misses) belong in this drill; single misses
+    // stay with due cards and Review answers.
+    const items = [...mistakes, ...due].filter((it: any) => rank.has(String(it.term).toLowerCase()));
     if (!items.length) { this.toast.toast('No weak-spot questions to review yet'); return; }
     items.sort((a: any, b: any) => (rank.get(String(b.term).toLowerCase()) || 0) - (rank.get(String(a.term).toLowerCase()) || 0));
     const seen = new Set();

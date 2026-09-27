@@ -484,9 +484,18 @@ export async function bankMistake({ docId, sentence, term, type }) {
   return mistake
 }
 
-export async function resolveMistake(docId, term, sentence) {
+/** Clears every banked miss for a term in a document. Knowing the term on ANY
+ *  question is proof enough — the old sentence-exact match let weak spots
+ *  survive correct answers, since drills re-ask from a different sentence. */
+export async function resolveMistake(docId, term) {
+  if (!docId || !term) return
   const db = await dbPromise
-  await db.delete('mistakes', mistakeId(docId, term, sentence))
+  const accountId = await requireAccount()
+  const t = String(term).toLowerCase()
+  const arr = await db.getAllFromIndex('mistakes', 'docId', docId)
+  await Promise.all(arr
+    .filter(m => m.accountId === accountId && String(m.term || '').toLowerCase() === t)
+    .map(m => db.delete('mistakes', m.id)))
 }
 
 /** @param {string | null} [docId] */
@@ -507,9 +516,11 @@ export async function countMistakes() {
 }
 
 // Aggregate the account's weakest terms across the mistake bank and the SRS
-// schedule. Returns [{ term, docId, sentence, type, weight }] sorted by weight
-// (highest first). Used by adaptive / weak-spot generation to bias questions
-// toward what the learner keeps missing.
+// schedule. A term only earns the weak-spot label after repeated failure
+// (2+ misses across its banked records) — a single miss is already covered
+// by Review answers and the term's SRS card. Returns
+// [{ term, docId, sentence, type, weight }] sorted by weight (highest first).
+// Used by the weak-spot drill, adaptive generation and the results card.
 /** @param {string | null} accountId @param {string | null} docId @returns {Promise<WeakTerm[]>} */
 export async function getWeakTerms(accountId = null, docId = null) {
   const acc = accountId || (await requireAccount())
@@ -519,14 +530,15 @@ export async function getWeakTerms(accountId = null, docId = null) {
   const srs = (await db.getAllFromIndex('srs', 'accountId', acc))
     .filter(r => (docId ? r.docId === docId : true))
   const byTerm = new Map()
-  const bump = (term, docId2, sentence, type, w) => {
+  const bump = (term, docId2, sentence, type, w, misses = 0) => {
     if (!term) return
     const key = `${docId2}__${term.toLowerCase()}`
-    const cur = byTerm.get(key) || { term, docId: docId2, sentence, type, weight: 0 }
+    const cur = byTerm.get(key) || { term, docId: docId2, sentence, type, weight: 0, misses: 0 }
     cur.weight += w
+    cur.misses += misses
     byTerm.set(key, cur)
   }
-  for (const m of mistakes) bump(m.term, m.docId, m.sentence, m.type, 2 * (m.wrongCount || 1))
+  for (const m of mistakes) bump(m.term, m.docId, m.sentence, m.type, 2 * (m.wrongCount || 1), m.wrongCount || 1)
   for (const r of srs) {
     // lapses hurt most; low ease and items already due add weight too
     const lapseW = (r.lapses || 0) * 2
@@ -534,7 +546,9 @@ export async function getWeakTerms(accountId = null, docId = null) {
     const dueW = (r.dueAt ?? 0) <= Date.now() ? 1 : 0
     bump(r.term, r.docId, r.sentence, r.type, lapseW + easeW + dueW)
   }
-  return [...byTerm.values()].sort((a, b) => b.weight - a.weight)
+  return [...byTerm.values()]
+    .filter(t => t.misses >= 2)
+    .sort((a, b) => b.weight - a.weight)
 }
 
 // ── Saved decks (shared/challenge quizzes kept in the library) ──
