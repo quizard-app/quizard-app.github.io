@@ -57,3 +57,42 @@ html[data-theme='light'] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Ambient aurora backdrop: two soft gradient glows drifting slowly
+   behind every page. Rendered on the body so all ion-content stays
+   transparent and the glows sit under cards on every screen. ── */
+body { background: var(--bg); }
+ion-content { --background: transparent; }
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  width: 58vmax;
+  height: 58vmax;
+  border-radius: 50%;
+  pointer-events: none;
+}
+body::before {
+  top: -24vmax;
+  right: -20vmax;
+  background: radial-gradient(circle at 35% 35%, rgba(139, 92, 246, 0.17), rgba(139, 92, 246, 0) 62%);
+  animation: aurora-a 26s ease-in-out infinite alternate;
+}
+body::after {
+  bottom: -26vmax;
+  left: -22vmax;
+  background: radial-gradient(circle at 60% 60%, rgba(6, 182, 212, 0.14), rgba(6, 182, 212, 0) 62%);
+  animation: aurora-b 32s ease-in-out infinite alternate;
+}
+@keyframes aurora-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-6vmax, 5vmax, 0) scale(1.12); }
+}
+@keyframes aurora-b {
+  from { transform: translate3d(0, 0, 0) scale(1.05); }
+  to { transform: translate3d(7vmax, -6vmax, 0) scale(0.95); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
