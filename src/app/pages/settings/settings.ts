@@ -36,7 +36,11 @@ export class SettingsPage implements OnInit {
   @ViewChild('importInput') importInput?: ElementRef<HTMLInputElement>;
   @ViewChild('encImportInput') encImportInput?: ElementRef<HTMLInputElement>;
 
-  s = loadSettings();
+  // reactive settings state: the switches bind through this signal so every
+  // toggle visibly flips (plain-object mutation doesn't re-render zoneless)
+  private sSig = signal<any>(loadSettings());
+  get s(): any { return this.sSig(); }
+  private refreshSettings() { this.sSig.set(loadSettings()); }
   lastBackup = this.s.lastBackupAt || null;
   docCount = 0;
   accounts: any[] = [];
@@ -45,8 +49,8 @@ export class SettingsPage implements OnInit {
   keyStatus = signal('');
   keyInput = '';
   testing = false;
-  explaining = this.s.aiExplain !== false;
-  remindersOn = this.s.reminders === true;
+  explaining = signal(this.s.aiExplain !== false);
+  remindersOn = signal(this.s.reminders === true);
 
   get showNudge() { return (!this.lastBackup || Date.now() - this.lastBackup > BACKUP_NUDGE_MS) && this.docCount > 0; }
   get version() { return '1.1'; }
@@ -280,21 +284,21 @@ export class SettingsPage implements OnInit {
         : `✗ ${res.message}`);
     if (res.ok) { this.byok.notifyAiOk(); this.toast.toast('Gemini OK ✓'); }
   }
-  setExplain(on: boolean) { this.explaining = on; saveSettings({ aiExplain: on }); }
+  setExplain(on: boolean) { this.explaining.set(on); saveSettings({ aiExplain: on }); this.refreshSettings(); }
 
   async toggleReminders(on: boolean) {
-    this.remindersOn = on;
-    saveSettings({ reminders: on });
+    this.remindersOn.set(on);
+    saveSettings({ reminders: on }); this.refreshSettings();
     if (on) {
       const r = await maybeScheduleReminders();
-      if (!r.enabled) { this.toast.toast(r.reason || 'Reminders unavailable', true); this.remindersOn = false; saveSettings({ reminders: false }); }
+      if (!r.enabled) { this.toast.toast(r.reason || 'Reminders unavailable', true); this.remindersOn.set(false); saveSettings({ reminders: false }); this.refreshSettings(); }
       else this.toast.toast('Reminders on ✓');
     } else this.toast.toast('Reminders off');
   }
-  setWizardVoice(on: boolean) { saveSettings({ wizardVoice: on }); }
-  setSkipIntro(on: boolean) { saveSettings({ skipIntro: on }); this.toast.toast(on ? 'Intro will be skipped' : 'Intro plays on launch'); }
+  setWizardVoice(on: boolean) { saveSettings({ wizardVoice: on }); this.refreshSettings(); }
+  setSkipIntro(on: boolean) { saveSettings({ skipIntro: on }); this.refreshSettings(); this.toast.toast(on ? 'Intro will be skipped' : 'Intro plays on launch'); }
 
-  replayIntro() { saveSettings({ onboarded: false }); this.router.navigateByUrl('/onboarding'); }
+  replayIntro() { saveSettings({ onboarded: false }); this.refreshSettings(); this.router.navigateByUrl('/onboarding'); }
   async replayTour() {
     let aid = this.ui.account()?.id || getActiveAccountId() || localStorage.getItem('quizard-active-account');
     if (!aid) {
@@ -304,7 +308,7 @@ export class SettingsPage implements OnInit {
       setActiveAccount(aid);
       if (!this.ui.account()) { try { this.ui.account.set(await getAccount(aid) || null); } catch {} }
     }
-    saveSettings({ tutorialDone: false, tourSeen: [] });
+    saveSettings({ tutorialDone: false, tourSeen: [] }); this.refreshSettings();
     this.router.navigateByUrl('/tutorial');
   }
 
@@ -345,7 +349,7 @@ export class SettingsPage implements OnInit {
       this.downloadJson(await exportAll(), '');
       this.toast.toast('Backup downloaded ✓');
       this.lastBackup = Date.now();
-      saveSettings({ lastBackupAt: this.lastBackup });
+      saveSettings({ lastBackupAt: this.lastBackup }); this.refreshSettings();
       try { this.usageLine.set(`Last backup: ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`); } catch {}
     } catch (err: any) { this.toast.toast('Export failed: ' + err.message, true); }
   }
