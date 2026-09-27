@@ -169,9 +169,11 @@ export class HistoryPage implements OnInit {
     return `
       <div class="gh-wrap">
         <div class="gh-days"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
-        <div class="gh-main">
-          <div class="gh-months" style="grid-template-columns:repeat(${weeks},1fr)">${labels.join('')}</div>
-          <div class="gh-grid">${cells.join('')}</div>
+        <div class="gh-scroll">
+          <div class="gh-main">
+            <div class="gh-months" style="grid-template-columns:repeat(${weeks},11px)">${labels.join('')}</div>
+            <div class="gh-grid">${cells.join('')}</div>
+          </div>
         </div>
       </div>`;
   }
