@@ -32,8 +32,7 @@
     }
   } @else {
     <header class="back-header">
-      <button class="icon-btn" (click)="backTo()" data-tooltip="Back" [innerHTML]="'chevronLeft' | ico"></button>
-      <h2>Exams</h2>
+      <div class="brand"><span class="mark" [innerHTML]="'fileText' | ico"></span>Exams</div>
       <button class="icon-btn" (click)="goChat()" data-tooltip="New exam with the wizard" [innerHTML]="'plus' | ico"></button>
     </header>
     <div class="screen ex-screen">
