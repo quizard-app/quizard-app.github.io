@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { listAttempts, listDocs, getWeakTerms, listMistakes } from '../../core/engine/storage.js';
@@ -37,6 +38,7 @@ function calcStreak(attempts: any[]) {
 })
 export class HistoryPage implements OnInit {
   ui = inject(UiStateService);
+  private router = inject(Router);
   // the charts and icons below are app-generated fixed markup — the sanitizer
   // strips their svg/style attributes, so they pass through trusted
   private sanitizer = inject(DomSanitizer);
@@ -158,6 +160,7 @@ export class HistoryPage implements OnInit {
   }
 
   pctColor(pct: number) { return pct >= 80 ? 'var(--good)' : pct >= 50 ? 'var(--warn)' : 'var(--bad)'; }
+  openDoc(docId: string) { if (docId) this.router.navigate(['/doc', docId]); }
   hiIcon(a: any): SafeHtml { return this.trust(icon(a.percent >= 50 ? 'trophy' : 'flame')); }
   iconFor(name: string) { return icon(name); }
 }
