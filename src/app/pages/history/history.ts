@@ -79,9 +79,9 @@ export class HistoryPage implements OnInit {
     this.accuracy.set(totalQ ? Math.round((totalC / totalQ) * 100) : null);
     this.trendHtml.set(this.trust(this.trendChart(attempts)));
     // GitHub-style year grid: default to the current year, offer every year
-    // with activity (plus the current one) in the dropdown
+    // with activity in the dropdown
     this.selectedYear.set(new Date().getFullYear());
-    const ys = [...new Set([new Date().getFullYear(), ...(attempts as any[]).map(a => new Date(a.date).getFullYear())])];
+    const ys = [...new Set((attempts as any[]).map(a => new Date(a.date).getFullYear()))];
     this.years.set(ys.sort((a, b) => b - a));
     this.heatmapHtml.set(this.trust(this.heatmap(this.allAttempts, this.selectedYear())));
 

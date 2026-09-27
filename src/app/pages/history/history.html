@@ -13,7 +13,7 @@
     <div class="chart-wrap">
       <div class="chart-head">
         <span class="section-title" style="margin:0">Study activity</span>
-        @if (years().length > 1) {
+        @if (years().length) {
           <select class="text-input gh-year" aria-label="Year" [value]="selectedYear()" (change)="setYear($any($event.target).value)">
             @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
           </select>
