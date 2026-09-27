@@ -9,7 +9,6 @@ import {
 } from '../../core/engine/storage.js';
 import { testApiKey, getApiKey, setApiKey, hasApiKey, hasRelay } from '../../core/engine/gemini.js';
 import { maybeScheduleReminders } from '../../core/services/reminders.js';
-import { icon } from '../../shared/icons.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -48,12 +47,6 @@ export class SettingsPage implements OnInit {
   testing = false;
   explaining = this.s.aiExplain !== false;
   remindersOn = this.s.reminders === true;
-  readonly icons = {
-    logo: icon('logo'), refresh: icon('refresh'), download: icon('download'),
-    database: icon('database'), lock: icon('lock'), trash: icon('trash'), check: icon('check'), plus: icon('plus'),
-    users: icon('users'), moon: icon('moon'), play: icon('play'), sparkles: icon('sparkles'),
-    info: icon('info')
-  };
 
   get showNudge() { return (!this.lastBackup || Date.now() - this.lastBackup > BACKUP_NUDGE_MS) && this.docCount > 0; }
   get version() { return '1.1'; }
