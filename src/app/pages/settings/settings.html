@@ -6,7 +6,7 @@
   </header>
   <div class="screen set-screen">
 
-    <div class="section-title">Account</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.users"></span>Account</div>
     <div class="settings-group">
       @if (account; as acc) {
         <div class="row" style="border-top:none">
@@ -58,7 +58,7 @@
       }
     </div>
 
-    <div class="section-title">Appearance</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.moon"></span>Appearance</div>
     <div class="settings-group">
       <div class="row" data-tooltip="App color theme — auto-saved locally">
         <div><div class="label">Theme</div><div class="sub">Follows your choice, saved locally</div></div>
@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <div class="section-title">Wizard voice</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.play"></span>Wizard voice</div>
     <div class="settings-group">
       <div class="row" style="border-bottom:none" data-tooltip="Hear the wizard speak during the guided tour">
         <div><div class="label">Wizard voice</div><div class="sub">Play the wizard's spoken tips in the tutorial</div></div>
@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <div class="section-title">AI question writing</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.sparkles"></span>AI question writing</div>
     <div class="card" style="padding:16px" [class.ai-down-card]="byok.aiDown()">
       @if (byok.aiDown()) {
         <div class="ai-down-banner">
@@ -129,7 +129,7 @@
       <p class="faint" style="font-size:12px;margin-top:10px">{{ keyStatus() }}</p>
     </div>
 
-    <div class="section-title">Cloud sync — your library on every device</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.refresh"></span>Cloud sync — your library on every device</div>
     <div class="card" style="padding:16px">
       @if (syncInfo().on) {
         <div class="label" style="margin-bottom:6px">Sync is on</div>
@@ -198,7 +198,7 @@
       }
     </div>
 
-    <div class="section-title">Backup &amp; restore</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.download"></span>Backup &amp; restore</div>
     <div class="card" style="padding:16px">
       @if (showNudge) {
         <div class="backup-nudge">

@@ -50,7 +50,8 @@ export class SettingsPage implements OnInit {
   remindersOn = this.s.reminders === true;
   readonly icons = {
     logo: icon('logo'), refresh: icon('refresh'), download: icon('download'),
-    database: icon('database'), lock: icon('lock'), trash: icon('trash'), check: icon('check'), plus: icon('plus')
+    database: icon('database'), lock: icon('lock'), trash: icon('trash'), check: icon('check'), plus: icon('plus'),
+    users: icon('users'), moon: icon('moon'), play: icon('play'), sparkles: icon('sparkles')
   };
 
   get showNudge() { return (!this.lastBackup || Date.now() - this.lastBackup > BACKUP_NUDGE_MS) && this.docCount > 0; }
