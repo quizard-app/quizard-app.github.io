@@ -113,7 +113,8 @@ export class HistoryPage implements OnInit {
       const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       const n = perDay.get(k) || 0;
       const col = (69 - i) % 10, row = Math.floor((69 - i) / 10);
-      const style = n === 0 ? 'background:var(--surface-3)' : `background:var(--good);opacity:${Math.min(1, 0.3 + n * 0.25).toFixed(2)}`;
+      // GitHub-style: a day shades fully once at least one quiz happens on it
+      const style = n === 0 ? 'background:var(--surface-3)' : 'background:var(--good)';
       cells.push(`<div class="heat-cell" style="${style};animation-delay:${(col + row) * 16}ms" title="${n} round${n === 1 ? '' : 's'}"></div>`);
     }
     return `
