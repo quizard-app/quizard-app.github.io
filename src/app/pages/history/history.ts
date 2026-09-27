@@ -53,6 +53,8 @@ export class HistoryPage implements OnInit {
   groups = signal<{ day: string; items: any[] }[]>([]);
   trendHtml = signal<SafeHtml | string>('');
   heatmapHtml = signal<SafeHtml | string>('');
+  nextAction = signal<{ docId: string; icon: string; title: string; sub: string } | null>(null);
+  weekCompare = signal<{ cur: number; prev: number; up: boolean } | null>(null);
   selectedYear = signal(new Date().getFullYear());
   years = signal<number[]>([]);
   yearCount = signal(0);
@@ -99,6 +101,43 @@ export class HistoryPage implements OnInit {
     this.docStats.set([...byDoc.values()]
       .map((d: any) => ({ ...d, avg: Math.round(d.sum / d.rounds), misses: missesByDoc.get(d.key) || 0 }))
       .sort((a: any, b: any) => b.last - a.last).slice(0, 8));
+
+    // week-over-week accuracy direction
+    const weekAgo = Date.now() - 7 * 864e5;
+    const twoWeeks = Date.now() - 14 * 864e5;
+    const cur = (attempts as any[]).filter(a => a.date >= weekAgo);
+    const prev = (attempts as any[]).filter(a => a.date >= twoWeeks && a.date < weekAgo);
+    if (cur.length && prev.length) {
+      const cq = cur.reduce((s, a) => s + a.total, 0), cc = cur.reduce((s, a) => s + a.correct, 0);
+      const pq = prev.reduce((s, a) => s + a.total, 0), pc = prev.reduce((s, a) => s + a.correct, 0);
+      if (cq && pq) {
+        const ca = Math.round(cc / cq * 100), pa = Math.round(pc / pq * 100);
+        this.weekCompare.set({ cur: ca, prev: pa, up: ca >= pa });
+      }
+    }
+
+    // "What to do next": the weakest document first, then untried ones
+    const docsList = docs as any[];
+    const quizzed = docsList
+      .filter(d => byDoc.has(d.id))
+      .map(d => ({ doc: d, stat: byDoc.get(d.id) }))
+      .sort((a, b) => a.stat.avg - b.stat.avg);
+    let next: { docId: string; icon: string; title: string; sub: string } | null = null;
+    if (quizzed.length && quizzed[0].stat.avg < 90) {
+      const w = quizzed[0];
+      next = {
+        docId: w.doc.id, icon: 'refresh', title: `Re-quiz "${w.doc.name}"`,
+        sub: `You're at ${w.stat.avg}%${w.stat.misses ? ` — ${w.stat.misses} wrong answer${w.stat.misses === 1 ? '' : 's'} saved` : ''}.`
+      };
+    } else {
+      const untried = docsList.find(d => !byDoc.has(d.id));
+      if (untried) {
+        next = { docId: untried.id, icon: 'play', title: `Try "${untried.name}"`, sub: 'You haven\u2019t quizzed this document yet.' };
+      } else if (quizzed.length) {
+        next = { docId: quizzed[0].doc.id, icon: 'check', title: 'All caught up', sub: 'Every document is at 90% or higher. Keep the streak alive.' };
+      }
+    }
+    this.nextAction.set(next);
 
     const map = new Map<string, any[]>();
     for (const a of attempts.slice(0, 40) as any[]) {

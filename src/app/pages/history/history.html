@@ -9,6 +9,21 @@
       <div class="stat"><div class="num">{{ attempts().length }}</div><div class="lbl">Quizzes</div></div>
       <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
     </div>
+    @if (weekCompare(); as wc) {
+      <div class="doc-sub" style="text-align:center;margin:8px 0 0">This week {{ wc.cur }}% · last week {{ wc.prev }}% {{ wc.up ? '▲' : '▼' }}</div>
+    }
+
+    @if (nextAction(); as na) {
+      <button class="card next-do" (click)="openDoc(na.docId)">
+        <span class="nd-ico" [class.nd-done]="na.icon === 'check'" [innerHTML]="iconFor(na.icon)"></span>
+        <span class="nd-main">
+          <span class="nd-label">What to do next</span>
+          <span class="nd-title">{{ na.title }}</span>
+          <span class="nd-sub">{{ na.sub }}</span>
+        </span>
+        <span class="nd-go" [innerHTML]="iconFor('chevronRight')"></span>
+      </button>
+    }
 
     <div class="chart-wrap">
       <div class="chart-head">
