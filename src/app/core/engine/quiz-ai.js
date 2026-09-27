@@ -586,6 +586,8 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const diffHint = difficultyHint(cfg.difficulty)
   const tf = termFreq(text)
   const ranked = scoreSentences(sentences(text, { preStripped: true }), tf)
+    .filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
+      && s.text.trim().split(/\s+/).length >= 5)
   if (ranked.length < 3) return { questions: [], error: null }
   // Skip sentences served in earlier rounds so every take authors fresh.
   const avoidSentences = new Set(Array.isArray(cfg.avoidSentences) ? cfg.avoidSentences.map(s => String(s)) : [])
@@ -745,9 +747,12 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   // synchronous NLP prep freezes the main thread.
   await new Promise(r => setTimeout(r, 0))
   const text = stripHeadings(doc.text)
-  // code/markup lines from slides make garbage question sources — drop them
+  // code/markup lines and quiz-slide fragments from slides make garbage
+  // question sources — drop them
   const tf = termFreq(text)
-  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s => !looksLikeCode(s.text))
+  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s =>
+    !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
+    && s.text.trim().split(/\s+/).length >= 5)
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }
   // Sentences already served in earlier rounds are excluded from the material
   // so every take authors from fresh text (falls back to the full pool when
@@ -834,6 +839,21 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   }
 }
 
+// Lesson slide decks often ship with the teacher's own quiz slides ("Q U I Z ·
+// 1 O F 6", "True/False Q1 (MCQ)", answer keys). As question SOURCE material
+// they produce questions about the quiz itself ("What does MCQ stand for?")
+// instead of the lesson — filter them and other slide furniture out.
+const QUIZ_FRAGMENT_RE = /\bQ\s?\d+\b|\btrue\s*\/\s*false\b|\bMCQ\b|Q\s?U\s?I\s?Z|^\s*answers?\b/i
+export function isQuizFragmentSource(s) { return QUIZ_FRAGMENT_RE.test(String(s || '')) }
+
+// Slide fragments carry stray all-caps words ("What does WITH lazy loading…").
+// Real acronyms are allow-listed; any other caps-heavy word marks furniture.
+const OK_CAPS = new Set(['API', 'DI', 'CLI', 'DOM', 'HTTP', 'CSS', 'SCSS', 'JSON', 'JS', 'TS', 'UI', 'UX', 'NG', 'PWA', 'SPA', 'SSR', 'AOT', 'JIT', 'ESM', 'CRUD', 'MVC', 'MVVM', 'RXJS', 'PDF', 'HTML', 'SQL', 'IDE', 'URL', 'CDN', 'BSIT'])
+export function hasStrayCapsWord(s) {
+  const caps = String(s || '').match(/\b[A-Z]{3,}\b/g) || []
+  return caps.some(w => !OK_CAPS.has(w))
+}
+
 // Exam-practice authoring across EVERY file the exam covers, split per topic:
 // one unit per doc-topic (from detectTopics' sentence membership), the
 // requested count allocated equally across units (min 1 each) so the quiz
@@ -863,7 +883,9 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
     const text = stripHeadings(raw)
     // drop code/markup lines from slides — they make garbage question sources
     const tf = termFreq(text)
-    const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s => !looksLikeCode(s.text))
+    const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s =>
+      !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
+      && s.text.trim().split(/\s+/).length >= 5)
     if (ranked.length < 4) continue
     const { membership } = detectTopics(raw)
     const rawEntries = [...membership.entries()]
@@ -928,6 +950,8 @@ export async function authorExamQuiz(exam, docs, opts = {}, onProgress = (done, 
       const wrong = Array.isArray(it.wrong) ? it.wrong.map(clean).filter(Boolean) : []
       if (!stem || !correct || wrong.length !== 3) continue
       if (stem.length > 300 || isBlankStem(stem) || unit.isBanned(stem) || wrong.some(w => unit.isBanned(w))) continue
+      // a stem or option quoting the deck's own quiz slides is furniture, not a question
+      if (isQuizFragmentSource(stem) || hasStrayCapsWord(stem) || isQuizFragmentSource(correct) || wrong.some(w => isQuizFragmentSource(w))) continue
       const all = [correct, ...wrong].map(w => trueCase(w, sentence))
       if (new Set(all.map(w => w.toLowerCase())).size !== 4) continue
       if (new RegExp('\\b' + escapeRegExp(correct) + '\\b', 'i').test(stem)) continue

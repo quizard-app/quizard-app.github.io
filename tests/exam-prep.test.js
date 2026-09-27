@@ -162,3 +162,25 @@ describe('exam CRUD + countdown + topic ranking', () => {
     expect(boosted).toBeTruthy()
   })
 })
+
+// Lesson slide decks carry the teacher's own quiz slides ("Q U I Z · 1 O F 6",
+// "True/False Q1 (MCQ)", answer keys). As question sources they produce
+// questions about the quiz itself — they must be filtered out.
+describe('exam source filtering: slide-deck quiz fragments', () => {
+  it('rejects quiz-slide fragments as source material', async () => {
+    const { isQuizFragmentSource } = await import('../src/app/core/engine/quiz-ai.js')
+    expect(isQuizFragmentSource('Multiple choice & True/False Q1 Where should app-wide singleton services (Auth, API) live?')).toBe(true)
+    expect(isQuizFragmentSource('Q1 (MCQ) Where should business logic like calculateTotal() live?')).toBe(true)
+    expect(isQuizFragmentSource('False Q1')).toBe(true)
+    expect(isQuizFragmentSource('Q U I Z · 1 O F 6')).toBe(true)
+    expect(isQuizFragmentSource('A service handles data access for the whole application.')).toBe(false)
+  })
+
+  it('rejects stems with stray all-caps slide furniture but allows real acronyms', async () => {
+    const { hasStrayCapsWord } = await import('../src/app/core/engine/quiz-ai.js')
+    expect(hasStrayCapsWord('What does WITH lazy loading when visited Fast first paint?')).toBe(true)
+    expect(hasStrayCapsWord('What does MCQ stand for?')).toBe(true)
+    expect(hasStrayCapsWord('The API returns JSON data to the component.')).toBe(false)
+    expect(hasStrayCapsWord('Angular renders templates in the DOM.')).toBe(false)
+  })
+})
