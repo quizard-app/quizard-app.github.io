@@ -3,10 +3,9 @@ import { Router } from '@angular/router';
 import { IonContent, IonMenuButton } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
-  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, listExams, updateDoc, listAttempts
+  getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, updateDoc, listAttempts
 } from '../../core/engine/storage.js';
 import { folderCounts, mergeFolders } from '../../core/engine/taxonomy.js';
-import { countdownLabel } from '../../core/engine/exam.js';
 import { assetUrl } from '../../shared/assets.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel, scorePill, fmtDate } from '../../shared/helpers.js';
@@ -43,7 +42,6 @@ export class LibraryPage {
 
   loading = signal(true);
   docs = signal<any[]>([]);
-  nextExam = signal<any>(null);
   folders = signal<string[]>([]);
   tags = signal<string[]>([]);
   // rounds finished in the last 7 days (docs + exam practice)
@@ -101,8 +99,6 @@ export class LibraryPage {
     this.loading.set(true);
     const docs = await listDocs();
     this.docs.set(docs);
-    const exams = await listExams().catch(() => []);
-    this.nextExam.set(exams.find((e: any) => (e.status || 'upcoming') === 'upcoming') || null);
     this.folders.set(mergeFolders(deriveFolders(docs), loadSettings().customFolders || []));
     this.tags.set(deriveTags(docs));
     this.sort.set(loadSettings().sortDocs || 'recent');
@@ -121,7 +117,6 @@ export class LibraryPage {
     (ev as CustomEvent).detail?.complete?.();
   }
 
-  countdown(exam: any) { return countdownLabel(exam.examDate); }
   typeOf(doc: any) { return typeLabel(doc.type); }
   pillOf(doc: any) { return doc.bestScore != null ? scorePill(doc.bestScore) : ''; }
   dateOf(ts: number) { return fmtDate(ts); }
@@ -147,7 +142,6 @@ export class LibraryPage {
   openAccounts() { this.router.navigate(['/accounts', { mode: 'picker' }]); }
   openImport() { this.router.navigateByUrl('/tabs/import'); }
   goExams() { this.router.navigateByUrl('/tabs/exams'); }
-  openExamDetail(exam: any) { this.router.navigate(['/exams', exam.id]); }
 
   async removeDoc(doc: any) {
     if (!await this.confirm.confirm('Delete document?', 'This also removes its quiz history, mistakes, and saved progress.', 'Delete', doc.name)) return;

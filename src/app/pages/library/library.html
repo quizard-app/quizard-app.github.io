@@ -9,16 +9,6 @@
     </div>
   </header>
   <div class="screen lib-screen" [class.screen-center]="!docs().length" [class.organizing]="selectMode()">
-    @if (nextExam(); as exam) {
-      <button class="exam-card exam-card-lib" (click)="openExamDetail(exam)">
-        <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
-        <span class="exam-card-main">
-          <span class="exam-card-title">{{ exam.title }}</span>
-          <span class="exam-card-sub">{{ exam.docIds?.length || 0 }} files · {{ exam.topics?.length || 0 }} topics{{ countdown(exam) ? ' · ' + countdown(exam) : '' }}</span>
-        </span>
-      </button>
-    }
-
     @if (docs().length) {
       <div class="hero lib-hero">
         <img class="lib-wiz" [src]="heroImg" alt="" />
