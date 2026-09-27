@@ -9,27 +9,42 @@
       <div class="stat"><div class="num">{{ attempts().length }}</div><div class="lbl">Quizzes</div></div>
       <div class="stat"><div class="num">{{ accuracy() != null ? accuracy() + '%' : '—' }}</div><div class="lbl">Accuracy</div></div>
     </div>
+    <div class="stats-row" style="margin-top:10px">
+      <div class="stat"><div class="num">{{ questions() }}</div><div class="lbl">Questions</div></div>
+      <div class="stat"><div class="num">{{ studyTime() }}</div><div class="lbl">Study time</div></div>
+      <div class="stat"><div class="num">{{ weekCount() }}</div><div class="lbl">This week</div></div>
+    </div>
 
+    <div [innerHTML]="heatmapHtml()"></div>
     <div [innerHTML]="trendHtml()"></div>
 
-    @if (studied().length) {
-      <div class="section-title">Document mastery</div>
+    @if (weakTerms().length) {
+      <div class="section-title">Needs attention</div>
       <div class="card breakdown">
-        @for (d of studied().slice(0, 6); track d.id) {
+        <div class="doc-sub" style="margin:0 0 8px">Terms you keep missing — the Library practice and quizzes weight toward these.</div>
+        @for (t of weakTerms().slice(0, 6); track t.term + t.docId) {
           <div class="bd-row">
-            <span class="bd-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">{{ d.name }}</span>
-            <div class="bd-bar"><div class="bd-fill" [style.width.%]="d.bestScore ?? 0" [style.background]="pctColor(d.bestScore ?? 0)"></div></div>
-            <span class="bd-score">{{ bestOf(d) }}</span>
+            <span class="bd-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">{{ t.term }}</span>
+            <div class="bd-bar"><div class="bd-fill" [style.width.%]="(t.weight / maxWeight()) * 100" style="background:var(--warn)"></div></div>
+            <span class="bd-score">{{ t.misses }}× missed</span>
           </div>
         }
       </div>
     }
 
-    @if (!attempts().length) {
-      <div class="empty-state">
-        <div class="empty-illust" [innerHTML]="emptyArt"></div>
-        <h3>No progress yet</h3>
-        <p>Take your first quiz and your streak, scores and mastery will appear here.</p>
+    @if (docStats().length) {
+      <div class="section-title">By document</div>
+      <div class="card breakdown">
+        @for (d of docStats(); track d.key) {
+          <div class="doc-stat">
+            <div class="bd-row">
+              <span class="bd-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px">{{ d.name }}</span>
+              <div class="bd-bar"><div class="bd-fill" [style.width.%]="d.avg" [style.background]="pctColor(d.avg)"></div></div>
+              <span class="bd-score">{{ d.avg }}%</span>
+            </div>
+            <div class="doc-sub">{{ d.rounds }} round{{ d.rounds === 1 ? '' : 's' }} · best {{ d.best }}% · {{ d.questions }} questions · last {{ dayLabel(d.last) }}@if (d.misses) { · <span style="color:var(--warn)">{{ d.misses }} miss{{ d.misses === 1 ? '' : 'es' }} banked</span> }</div>
+          </div>
+        }
       </div>
     }
 
@@ -51,4 +66,12 @@
       }
     }
   </div>
+
+  @if (!attempts().length) {
+    <div class="empty-state" style="margin-top:30vh">
+      <div class="empty-illust" [innerHTML]="emptyArt"></div>
+      <h3>No progress yet</h3>
+      <p>Take your first quiz and your streak, scores and mastery will appear here.</p>
+    </div>
+  }
 </ion-content>

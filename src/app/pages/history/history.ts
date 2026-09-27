@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
-import { listAttempts, listDocs } from '../../core/engine/storage.js';
+import { listAttempts, listDocs, getWeakTerms, listMistakes } from '../../core/engine/storage.js';
 import { icon } from '../../shared/icons.js';
 import { dayLabel, fmtTime, scorePill } from '../../shared/helpers.js';
 import { emptyProgressArt } from '../../shared/art.js';
@@ -39,32 +39,94 @@ export class HistoryPage implements OnInit {
 
   readonly emptyArt = emptyProgressArt;
   attempts = signal<any[]>([]);
-  studied = signal<any[]>([]);
+  weakTerms = signal<any[]>([]);
+  maxWeight = signal(1);
+  docStats = signal<any[]>([]);
+  questions = signal(0);
+  studyTime = signal('0m');
+  weekCount = signal(0);
   groups = signal<{ day: string; items: any[] }[]>([]);
   trendHtml = signal('');
+  heatmapHtml = signal('');
   streak = signal(0);
   accuracy = signal<number | null>(null);
   pillOf = scorePill;
   readonly fmtTime = fmtTime;
+  readonly dayLabel = dayLabel;
   readonly Math = Math;
 
   async ngOnInit() {
-    const [attempts, docs] = await Promise.all([listAttempts(), listDocs()]);
+    const [attempts, docs, weakTerms, mistakes] = await Promise.all([
+      listAttempts(), listDocs(), getWeakTerms(null).catch(() => []), listMistakes().catch(() => [])
+    ]);
     this.attempts.set(attempts);
-    this.studied.set(docs.filter((d: any) => d.attempts > 0));
+    this.weakTerms.set(weakTerms);
+    this.maxWeight.set(Math.max(1, ...weakTerms.map((w: any) => w.weight || 0)));
+
+    // headline totals
+    this.questions.set(attempts.reduce((s: number, a: any) => s + a.total, 0));
+    const totalSec = attempts.reduce((s: number, a: any) => s + (a.durationSec || 0), 0);
+    this.studyTime.set(this.timeLabel(totalSec));
+    const weekAgo = Date.now() - 7 * 864e5;
+    this.weekCount.set(attempts.filter((a: any) => a.date >= weekAgo).length);
     this.streak.set(calcStreak(attempts));
     const totalQ = attempts.reduce((s: number, a: any) => s + a.total, 0);
     const totalC = attempts.reduce((s: number, a: any) => s + a.correct, 0);
     this.accuracy.set(totalQ ? Math.round((totalC / totalQ) * 100) : null);
     this.trendHtml.set(this.trendChart(attempts));
+    this.heatmapHtml.set(this.heatmap(attempts));
+
+    // per-document rollup: rounds, average, best, last played, banked misses
+    const missesByDoc = new Map<string, number>();
+    for (const m of mistakes as any[]) missesByDoc.set(m.docId, (missesByDoc.get(m.docId) || 0) + 1);
+    const byDoc = new Map<string, any>();
+    for (const a of attempts as any[]) {
+      const k = a.docId || a.docName || 'other';
+      const cur = byDoc.get(k) || { key: k, name: a.docName || 'Practice round', rounds: 0, sum: 0, best: 0, last: 0, questions: 0 };
+      cur.rounds++; cur.sum += a.percent; cur.best = Math.max(cur.best, a.percent);
+      cur.last = Math.max(cur.last, a.date); cur.questions += a.total;
+      byDoc.set(k, cur);
+    }
+    this.docStats.set([...byDoc.values()]
+      .map((d: any) => ({ ...d, avg: Math.round(d.sum / d.rounds), misses: missesByDoc.get(d.key) || 0 }))
+      .sort((a: any, b: any) => b.last - a.last).slice(0, 8));
 
     const map = new Map<string, any[]>();
-    for (const a of attempts.slice(0, 40)) {
+    for (const a of attempts.slice(0, 40) as any[]) {
       const key = dayLabel(a.date);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(a);
     }
     this.groups.set([...map.entries()].map(([day, items]) => ({ day, items })));
+  }
+
+  // 10-week study calendar: one column per week, one cell per day — the
+  // intensity shows how many rounds happened that day.
+  private heatmap(attempts: any[]) {
+    const perDay = new Map<string, number>();
+    for (const a of attempts as any[]) {
+      const d = new Date(a.date);
+      const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      perDay.set(k, (perDay.get(k) || 0) + 1);
+    }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const cells: string[] = [];
+    for (let i = 69; i >= 0; i--) {
+      const d = new Date(today.getTime() - i * 864e5);
+      const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const n = perDay.get(k) || 0;
+      const style = n === 0 ? 'background:var(--surface-3)' : `background:var(--good);opacity:${Math.min(1, 0.3 + n * 0.25).toFixed(2)}`;
+      cells.push(`<div class="heat-cell" style="${style}" title="${n} round${n === 1 ? '' : 's'}"></div>`);
+    }
+    return `
+      <div class="chart-wrap">
+        <div class="chart-head">
+          <span class="section-title" style="margin:0">Study activity</span>
+          <span class="faint" style="font-size:11px">last 10 weeks</span>
+        </div>
+        <div class="heat-grid">${cells.join('')}</div>
+        <div class="chart-x"><span>10 weeks ago</span><span>today</span></div>
+      </div>`;
   }
 
   private trendChart(attempts: any[]) {
@@ -96,8 +158,12 @@ export class HistoryPage implements OnInit {
       </div>`;
   }
 
+  timeLabel(sec: number) {
+    const m = Math.round(sec / 60);
+    return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+  }
+
   pctColor(pct: number) { return pct >= 80 ? 'var(--good)' : pct >= 50 ? 'var(--warn)' : 'var(--bad)'; }
   hiIcon(a: any) { return icon(a.percent >= 50 ? 'trophy' : 'flame'); }
   iconFor(name: string) { return icon(name); }
-  bestOf(d: any) { return d.bestScore != null ? d.bestScore + '%' : '—'; }
 }
