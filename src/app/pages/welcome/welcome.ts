@@ -26,31 +26,33 @@ export class WelcomePage implements OnInit, OnDestroy {
   readonly dust = DUST;
   readonly heroUrl = assetUrl('wizard/wizard-welcome.jpg');
   exiting = false;
-  // Where the splash hands over: returning students land on the profile
-  // picker (PIN enforcement + sync-code restore live there); fresh devices
-  // play the slides and create their first profile.
-  private launchTo: '/accounts' | '/onboarding' = '/onboarding';
+  // Where the splash hands over (only used when the splash actually plays):
+  // fresh devices go to onboarding, returning students to the profile
+  // picker — PIN enforcement + sync-code restore live there.
+  private launchTo: '/accounts' | '/onboarding' | '/tabs/library' = '/onboarding';
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private router: Router) {}
 
   ngOnInit() {
-    this.decideLaunch().then(target => {
-      if (target !== '/onboarding') {
-        // picker (returning) or straight-into-the-app (skip intro): no splash
+    this.decideLaunch().then(({ splash, to }) => {
+      this.launchTo = to;
+      if (!splash) {
+        // straight-into-the-app (skip intro) or straight-to-the-gate (PIN):
+        // no splash
         this.exiting = true;
-        this.router.navigateByUrl(target);
+        this.router.navigateByUrl(to);
         return;
       }
       this.timer = setTimeout(() => this.advance(), 2050);
     });
   }
 
-  private async decideLaunch(): Promise<'/accounts' | '/onboarding' | '/tabs/library'> {
+  private async decideLaunch(): Promise<{ splash: boolean; to: '/accounts' | '/onboarding' | '/tabs/library' }> {
     try {
       const accounts = await listAccounts();
       const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
-      if (fresh) return '/onboarding';
+      if (fresh) return { splash: true, to: '/onboarding' };
       // "Skip intro on launch": straight into the app with the last profile —
       // but a PIN-protected profile still goes through the picker gate.
       if (loadSettings().skipIntro) {
@@ -58,12 +60,15 @@ export class WelcomePage implements OnInit, OnDestroy {
         const last = lastId ? accounts.find(a => a.id === lastId) : null;
         if (last && !last.pinHash) {
           setActiveAccount(last.id);
-          return '/tabs/library';
+          return { splash: false, to: '/tabs/library' };
         }
+        return { splash: false, to: '/accounts' };
       }
-      return '/accounts';
+      // Returning students without skip-intro play the splash, then land on
+      // the profile picker (choose profile · add · sync-code restore).
+      return { splash: true, to: '/accounts' };
     } catch {
-      return '/onboarding';
+      return { splash: true, to: '/onboarding' };
     }
   }
 
