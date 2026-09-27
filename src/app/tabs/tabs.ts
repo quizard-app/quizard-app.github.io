@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { bookOutline, statsChartOutline, addOutline, settingsOutline } from 'ionicons/icons';
+import { bookOutline, statsChartOutline, addOutline, settingsOutline, documentTextOutline } from 'ionicons/icons';
 
 // Eager shell: under zoneless CD (Angular 22 makes OnPush the default) an
 // OnPush shell strands ion-router-outlet pages — they stay `ion-page-invisible`,
@@ -15,6 +15,6 @@ import { bookOutline, statsChartOutline, addOutline, settingsOutline } from 'ion
 })
 export class TabsPage {
   constructor() {
-    addIcons({ bookOutline, statsChartOutline, addOutline, settingsOutline });
+    addIcons({ bookOutline, statsChartOutline, addOutline, settingsOutline, documentTextOutline });
   }
 }
