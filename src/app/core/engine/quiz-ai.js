@@ -367,7 +367,11 @@ export async function polishQuestionSet(questions, opts = {}) {
           const srcText = opts.sourceText || q.meta?.sentence || ''
           const correct = trueCase(clean(genItem.correct) || q.meta.term, srcText)
           const options = shuffleArr([correct, ...genItem.wrong.map(w => trueCase(w, srcText))], optionRng)
-          results.set(i, { ...q, stem: genItem.stem, options, answerIndex: options.indexOf(correct), meta: { ...q.meta, term: correct } })
+          // meta.term stays the ORIGINAL banked term: quiz.ts keys mistake
+          // resolution and SRS scheduling on it. Overwriting it with the AI's
+          // answer text ("IP addresses") orphaned the banked "addresses"
+          // misses, so correct drill answers never cured the weak spot.
+          results.set(i, { ...q, stem: genItem.stem, options, answerIndex: options.indexOf(correct), meta: { ...q.meta } })
         } else if (genItem.clue != null) {
           if (isBanned(genItem.clue)) return
           results.set(i, { ...q, clue: genItem.clue })

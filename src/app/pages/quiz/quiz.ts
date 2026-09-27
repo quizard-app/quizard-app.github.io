@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent, NavController } from '@ionic/angular';
 import {
-  getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake,
+  getDoc, bankMistake, resolveMistake, srsIdFor, getSrsItem, upsertSrsFromMistake, findSrsForTerm,
   gradeSrsItem, getImageById, loadSettings, saveAttempt
 } from '../../core/engine/storage.js';
 import { generateQuiz, TYPE_META, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
@@ -580,7 +580,14 @@ export class QuizPage implements OnInit, OnDestroy {
       if (ok) resolveMistake(mDocId, mTerm).catch(() => {});
       else bankMistake({ docId: mDocId, sentence: mSentence, term: mTerm, type: q.type }).catch(() => {});
       try {
-        srsId = srsIdFor(mDocId, mTerm, mSentence);
+        // Drills re-ask from a different sentence, so the sentence-hashed id
+        // can miss the term's real card — prefer the term's existing card in
+        // review modes so grading advances it instead of duplicating it.
+        if (this.st.mistakeMode) {
+          const existing = await findSrsForTerm(mDocId, mTerm);
+          if (existing) srsId = existing.id;
+        }
+        if (!srsId) srsId = srsIdFor(mDocId, mTerm, mSentence);
         if (!(await getSrsItem(srsId))) await upsertSrsFromMistake({ docId: mDocId, sentence: mSentence, term: mTerm, type: q.type });
         if (!this.st.mistakeMode) await gradeSrsItem(srsId, ok ? 'good' : 'again');
       } catch { /* best-effort */ }

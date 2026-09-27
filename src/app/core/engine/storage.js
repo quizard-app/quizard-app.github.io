@@ -695,6 +695,21 @@ export async function countDueCards() {
 
 // grade: 'again' | 'hard' | 'good' | 'easy'
 /** @param {string} id @param {'again'|'hard'|'good'|'easy'} grade @returns {Promise<SrsRecord | null>} */
+/** Finds the account's existing SRS card for a term in a document, preferring
+ *  one that is currently due. Review drills re-ask from a different sentence,
+ *  so the sentence-hashed id alone can miss the term's real card. */
+export async function findSrsForTerm(docId, term) {
+  if (!docId || !term) return null
+  await migrateMistakesToSrs()
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const t = String(term).toLowerCase()
+  const all = await db.getAllFromIndex('srs', 'docId', docId)
+  const cards = all.filter(r => r.accountId === accountId && String(r.term || '').toLowerCase() === t)
+  const now = Date.now()
+  return cards.find(r => (r.dueAt ?? 0) <= now) || cards[0] || null
+}
+
 export async function gradeSrsItem(id, grade) {
   if (!id) return null
   await migrateMistakesToSrs()
