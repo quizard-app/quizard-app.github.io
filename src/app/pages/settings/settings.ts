@@ -123,17 +123,24 @@ export class SettingsPage implements OnInit {
   }
 
   async restoreFromSync() {
-    const code = normalizeSyncCode(this.restoreCode);
+    // The restore panel supplies code + password; the "Restore from cloud"
+    // button in the sync-on state falls back to this device's saved pair.
+    const stored = getSyncInfo();
+    const code = normalizeSyncCode(this.restoreCode) || stored.code;
+    const pass = this.restorePass || stored.passphrase;
     this.syncBusy.set(true);
     this.syncMsg.set('');
     try {
-      const out = await pullSync(code, this.restorePass);
+      const out = await pullSync(code, pass);
       this.refreshSyncInfo();
       this.closeSyncPanel();
       this.docCount = (await listDocs()).length;
       this.toast.toast(`Restored — ${out.docs ?? '?'} documents merged ✓`);
     } catch (err: any) {
-      this.syncMsg.set(String(err?.message || 'Restore failed'));
+      const msg = String(err?.message || 'Restore failed');
+      this.syncMsg.set(msg);
+      // syncMsg isn't rendered while sync is on — make the failure visible
+      this.toast.toast(msg, true);
     } finally {
       this.syncBusy.set(false);
     }
@@ -377,6 +384,8 @@ export class SettingsPage implements OnInit {
       const encrypted = await encryptBackup(data, passphrase);
       this.downloadJson(encrypted, '.encrypted');
       this.toast.toast('Encrypted backup downloaded ✓');
+      this.lastBackup = Date.now();
+      saveSettings({ lastBackupAt: this.lastBackup }); this.refreshSettings();
     } catch (err: any) { this.toast.toast('Encryption failed: ' + (err?.message || ''), true); }
   }
 
@@ -403,6 +412,10 @@ export class SettingsPage implements OnInit {
     await clearAllData();
     this.toast.toast('All data erased');
     this.docCount = 0;
+    // the accounts store is gone too — drop the stale profile from the UI
+    this.ui.account.set(null);
+    this.account = null;
+    this.accounts = [];
   }
 
   clearCache() {
