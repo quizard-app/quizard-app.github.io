@@ -51,7 +51,13 @@ export class ResultsPage implements OnInit {
     const r = this.qs.lastAttempt();
     if (!r) { this.router.navigateByUrl('/tabs/library'); return; }
     this.r.set(r);
-    this.reviewing = r.review || [];
+    // Attach each item's explanation and original number so the review panel
+    // can filter to misses-only without losing its question mapping.
+    this.reviewing = (r.review || []).map((item: any, i: number) => ({
+      ...item,
+      num: i + 1,
+      explanation: r.questions?.[i]?.explanation
+    }));
     this.questions = r.questions || [];
     const verdict = r.percent >= 90 ? ['Outstanding!', 'You have mastered this material.']
       : r.percent >= 75 ? ['Great job!', 'Solid understanding — review the misses to perfect it.']
@@ -173,6 +179,18 @@ export class ResultsPage implements OnInit {
 
   toggleReview() { this.showReview.set(!this.showReview()); }
 
+  // Read-only mistake review: shows what you picked vs. the correct answer.
+  // Re-answering happens later through spaced repetition (due cards), not here.
+  mistakesOnly = signal(false);
+  get visibleReview() {
+    return this.mistakesOnly() ? this.reviewing.filter(i => !i.ok) : this.reviewing;
+  }
+  reviewMistakes() {
+    this.mistakesOnly.set(true);
+    this.showReview.set(true);
+    setTimeout(() => this.reviewPanel?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
+  }
+
   doExport() {
     const r = this.r();
     const ok = exportQuiz(r.docName || 'Quiz', r);
@@ -293,7 +311,6 @@ export class ResultsPage implements OnInit {
     this.router.navigateByUrl('/quiz-review');
   }
 
-  reviewMistakes() { this.mistakes.startMistakeReview(this.r().docId ?? undefined); }
   weakReview() { this.mistakes.startWeakReview(); }
   dueReview() { this.mistakes.startDueReview(); }
   alsoLike() { this.router.navigate(['/reviewer', this.suggestion().doc.id]); }
