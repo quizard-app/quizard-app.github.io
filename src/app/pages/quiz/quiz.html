@@ -9,7 +9,7 @@
     <div style="width:min(280px,80%);height:8px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:18px">
       <div style="height:100%;background:var(--accent);transition:width .25s" [style.width.%]="genPct()"></div>
     </div>
-    <p class="faint" style="font-size:11.5px;margin-top:10px">The AI can be busy — this usually takes under a minute.</p>
+    <p class="faint" style="font-size:11.5px;margin-top:10px">{{ genElapsed() }}s elapsed — the AI can be busy. You can cancel anytime.</p>
     <button class="btn btn-ghost" style="margin:14px auto 0;min-width:150px" (click)="quit()" data-tooltip="Cancel and leave">
       <span [innerHTML]="'x' | ico"></span> Cancel
     </button>

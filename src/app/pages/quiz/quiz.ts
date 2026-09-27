@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, effect, inject, signal, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent, NavController } from '@ionic/angular';
@@ -53,6 +53,17 @@ export class QuizPage implements OnInit, OnDestroy {
   errorMsg = signal('');
   // why the ai-choice screen is showing ('quota' | 'no_key' | …)
   aiChoiceNote = signal('');
+
+  // ticks while AI generation runs so a long wait reads as "working", not frozen
+  genElapsed = signal(0);
+  constructor() {
+    effect((onCleanup) => {
+      if (this.phase() !== 'generating') return;
+      this.genElapsed.set(0);
+      const iv = setInterval(() => this.genElapsed.update(n => n + 1), 1000);
+      onCleanup(() => clearInterval(iv));
+    });
+  }
 
   // quiz state
   private doc: any = null;
