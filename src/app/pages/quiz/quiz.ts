@@ -64,6 +64,10 @@ export class QuizPage implements OnInit, OnDestroy {
   private adaptiveOn = false;
   // set by "use offline questions" so boot skips AI entirely; cleared on beginAttempt
   private forceOffline = false;
+  // Boot runs long AI authoring in the background; a quit or a fresh boot
+  // bumps the token so the stale run dies at its next checkpoint instead of
+  // hijacking the screen (or navigating away) when it finally finishes.
+  private bootToken = 0;
   private timerInterval: any = null;
   imgUrlMap = signal<Record<string, string>>({});
   private keyCleanup: (() => void) | null = null;
@@ -175,6 +179,7 @@ export class QuizPage implements OnInit, OnDestroy {
     const qs = this.qs;
     this.finishing = false; // every fresh round may record exactly one attempt
     console.log('[QZ] quiz boot: mistakeReview =', !!qs.mistakeReview(), '| currentDocId =', qs.currentDocId());
+    const token = ++this.bootToken;
     let doc: any = null, cfg: any = null, st: QuizState | null = null, session: any[] | null = null;
 
     // mistake / weak / due / master review session
@@ -189,6 +194,7 @@ export class QuizPage implements OnInit, OnDestroy {
         this.genLabel.set('Rewriting your weak spots…');
         try {
           const r = await polishQuestionSet(session, { onProgress: ((d: any, t: any) => this.updateGen(d, t)) as any });
+          if (token !== this.bootToken) return;
           if (r.polished > 0) {
             session = r.questions;
             this.byok.notifyAiOk();
@@ -218,6 +224,7 @@ export class QuizPage implements OnInit, OnDestroy {
     }
 
     doc = await getDoc(qs.currentDocId() || '');
+    if (token !== this.bootToken) return;
     if (!doc) { this.router.navigateByUrl('/tabs/library'); return; }
     cfg = this.configs()[doc.id];
     if (!cfg) { this.router.navigate(['/doc', doc.id, 'setup']); return; }
@@ -248,6 +255,7 @@ export class QuizPage implements OnInit, OnDestroy {
         for (let attempt = 0; attempt < 2 && !gen && !choiceNote; attempt++) {
           let authorErr: any = null;
           try { gen = await authorExamQuestions(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { console.error('[QZ] authorExamQuestions threw:', e); gen = null; authorErr = e; }
+          if (token !== this.bootToken) return;
           if ((gen?.questions?.length || 0) >= Math.ceil(cfg.count / 2)) { this.byok.notifyAiOk(); break; }
           const note = authorErr ? classifyAIError(authorErr)
             : (gen?.error && gen.error !== 'not_enough_content' ? gen.error : 'author_empty');
@@ -264,6 +272,7 @@ export class QuizPage implements OnInit, OnDestroy {
         for (let attempt = 0; attempt < 2 && !gen && !choiceNote; attempt++) {
           let genErr: any = null;
           try { gen = await generateQuizAI(doc, cfg, ((d: any, t: any) => this.updateGen(d, t)) as any); } catch (e) { gen = null; genErr = e; }
+          if (token !== this.bootToken) return;
           // A throw carries no aiNote — classify it so thrown transient
           // failures get the same quiet retry instead of skipping it.
           const note = (gen?.aiNote as string) || (genErr ? classifyAIError(genErr) : null);
@@ -325,6 +334,7 @@ export class QuizPage implements OnInit, OnDestroy {
       if (cached.configKey !== configKey(cfg)) { this.router.navigateByUrl('/quiz'); return; }
       session = cached.questions;
     }
+    if (token !== this.bootToken) return;
     this.st = this.cachedQuiz[doc.id];
     this.session = this.st.questions;
     this.beginAttempt();
@@ -712,6 +722,7 @@ export class QuizPage implements OnInit, OnDestroy {
 
   async quit() {
     if (!await this.confirm.confirm('Quit this quiz?', "Your progress in this attempt won't be saved.", 'Yes, quit')) return;
+    this.bootToken++; // a hung AI generation must not land after we leave
     this.stopTimer();
     this.revokeImages();
     if (this.doc) delete this.cachedQuiz[this.doc.id];
