@@ -44,11 +44,6 @@
         </div>
         <button class="select-toggle" [class.on]="selectMode()" (click)="toggleSelectMode()" data-tooltip="Select documents to organize into folders">{{ selectMode() ? 'Cancel' : 'Select' }}</button>
       </div>
-      <button class="exam-entry" (click)="openExams()" data-tooltip="Prepare for an upcoming exam">
-        <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
-        <span>Exam prep</span>
-        <span [innerHTML]="'chevronRight' | ico"></span>
-      </button>
       <div class="lib-filters">
         <div class="filter-row">
           <span class="filter-label" [innerHTML]="'folder' | ico"></span>
@@ -153,7 +148,7 @@
         <h3>No documents yet</h3>
         <p>Add a PDF, Word, PowerPoint or plain text file and turn it into instant practice quizzes — right on your device.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="openImport()"><span [innerHTML]="'plus' | ico"></span> Add Document</button>
-        <button class="btn exam-entry" style="max-width:230px;margin:10px auto 0" (click)="openExams()">
+        <button class="btn exam-entry" style="max-width:230px;margin:10px auto 0" (click)="goExams()">
           <span class="exam-ico" [innerHTML]="'fileText' | ico"></span>
           <span>Exam prep</span>
         </button>

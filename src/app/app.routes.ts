@@ -24,6 +24,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'library' },
       { path: 'library', loadComponent: () => import('./pages/library/library').then(m => m.LibraryPage) },
+      { path: 'exams', loadComponent: () => import('./pages/exams/exams').then(m => m.ExamsPage) },
       { path: 'history', loadComponent: () => import('./pages/history/history').then(m => m.HistoryPage) },
       { path: 'import', loadComponent: () => import('./pages/import/import').then(m => m.ImportPage) },
       { path: 'settings', loadComponent: () => import('./pages/settings/settings').then(m => m.SettingsPage) }
@@ -50,8 +51,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/results/results').then(m => m.ResultsPage)
   },
   {
+    // legacy list links: the list now lives as the Exams tab
     path: 'exams',
-    loadChildren: () => import('./pages/exams/exams.routes').then(m => m.EXAMS_ROUTES)
+    pathMatch: 'full',
+    redirectTo: 'tabs/exams'
+  },
+  {
+    path: 'exams/:id',
+    loadComponent: () => import('./pages/exams/exams').then(m => m.ExamsPage)
   },
   {
     path: 'exam-chat',

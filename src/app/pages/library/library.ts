@@ -146,7 +146,7 @@ export class LibraryPage {
   openSettings() { this.router.navigateByUrl('/tabs/settings'); }
   openAccounts() { this.router.navigate(['/accounts', { mode: 'picker' }]); }
   openImport() { this.router.navigateByUrl('/tabs/import'); }
-  openExams() { this.router.navigateByUrl('/exams'); }
+  goExams() { this.router.navigateByUrl('/tabs/exams'); }
   openExamDetail(exam: any) { this.router.navigate(['/exams', exam.id]); }
 
   async removeDoc(doc: any) {
