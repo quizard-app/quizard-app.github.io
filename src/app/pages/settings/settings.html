@@ -227,13 +227,13 @@
       <p class="faint" style="font-size:12px;margin-top:12px">{{ usageLine() }}</p>
     </div>
 
-    <div class="section-title">Danger zone</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.trash"></span>Danger zone</div>
     <div class="card" style="border-color:var(--bad-border)">
       <button class="btn btn-danger-ghost" style="width:100%" (click)="eraseAll()" data-tooltip="Permanently delete all documents, quizzes, history and mistakes — cannot be undone"><span [innerHTML]="icons.trash"></span> Erase all data</button>
       <p class="faint" style="font-size:11.5px;margin-top:10px;text-align:center">Documents, quizzes, history and mistakes — permanently.</p>
     </div>
 
-    <div class="section-title">About</div>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="icons.info"></span>About</div>
     <div class="card">
       <div style="display:flex;gap:12px;align-items:center">
         <span class="mark" style="width:38px;height:38px;border-radius:11px;background:var(--text);display:grid;place-items:center;color:var(--bg)" [innerHTML]="icons.logo"></span>
