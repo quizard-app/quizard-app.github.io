@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { listAttempts, listDocs, getWeakTerms, listMistakes } from '../../core/engine/storage.js';
 import { icon } from '../../shared/icons.js';
 import { dayLabel, fmtTime, scorePill } from '../../shared/helpers.js';
@@ -36,6 +37,10 @@ function calcStreak(attempts: any[]) {
 })
 export class HistoryPage implements OnInit {
   ui = inject(UiStateService);
+  // the charts and icons below are app-generated fixed markup — the sanitizer
+  // strips their svg/style attributes, so they pass through trusted
+  private sanitizer = inject(DomSanitizer);
+  private trust(html: string): SafeHtml { return this.sanitizer.bypassSecurityTrustHtml(html); }
 
   readonly emptyArt = emptyProgressArt;
   attempts = signal<any[]>([]);
@@ -46,8 +51,8 @@ export class HistoryPage implements OnInit {
   studyTime = signal('0m');
   weekCount = signal(0);
   groups = signal<{ day: string; items: any[] }[]>([]);
-  trendHtml = signal('');
-  heatmapHtml = signal('');
+  trendHtml = signal<SafeHtml | string>('');
+  heatmapHtml = signal<SafeHtml | string>('');
   streak = signal(0);
   accuracy = signal<number | null>(null);
   pillOf = scorePill;
@@ -73,8 +78,8 @@ export class HistoryPage implements OnInit {
     const totalQ = attempts.reduce((s: number, a: any) => s + a.total, 0);
     const totalC = attempts.reduce((s: number, a: any) => s + a.correct, 0);
     this.accuracy.set(totalQ ? Math.round((totalC / totalQ) * 100) : null);
-    this.trendHtml.set(this.trendChart(attempts));
-    this.heatmapHtml.set(this.heatmap(attempts));
+    this.trendHtml.set(this.trust(this.trendChart(attempts)));
+    this.heatmapHtml.set(this.trust(this.heatmap(attempts)));
 
     // per-document rollup: rounds, average, best, last played, banked misses
     const missesByDoc = new Map<string, number>();
@@ -164,6 +169,6 @@ export class HistoryPage implements OnInit {
   }
 
   pctColor(pct: number) { return pct >= 80 ? 'var(--good)' : pct >= 50 ? 'var(--warn)' : 'var(--bad)'; }
-  hiIcon(a: any) { return icon(a.percent >= 50 ? 'trophy' : 'flame'); }
+  hiIcon(a: any): SafeHtml { return this.trust(icon(a.percent >= 50 ? 'trophy' : 'flame')); }
   iconFor(name: string) { return icon(name); }
 }
