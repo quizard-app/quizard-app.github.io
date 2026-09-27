@@ -948,6 +948,24 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
 }
 .exam-entry:hover { background: var(--surface-hover); border-color: var(--accent-border); }
 .exam-entry:active { transform: scale(0.99); }
+
+/* Tab bar: gradient art tiles. Inactive tabs show the plain outline glyph;
+   the active tab raises a colorful tile with a solid glyph — the same
+   gradient language as the app's chips and headers. */
+ion-tab-button .tab-tile {
+  display: none; width: 32px; height: 32px; border-radius: 11px;
+  align-items: center; justify-content: center; color: #fff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+ion-tab-button .tab-tile ion-icon { font-size: 18px; }
+.t-library { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.t-exams { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
+.t-add { background: linear-gradient(135deg, #6366f1, #06b6d4); }
+.t-progress { background: linear-gradient(135deg, #06b6d4, #10b981); }
+.t-settings { background: linear-gradient(135deg, #64748b, #334155); }
+ion-tab-button.tab-selected .tab-tile { display: flex; }
+ion-tab-button.tab-selected .tab-plain { display: none; }
+ion-tab-button .tab-plain { font-size: 23px; }
 .exam-entry .exam-ico {
   width: 26px; height: 26px; border-radius: 8px;
   background: var(--grad-accent); color: #fff;
