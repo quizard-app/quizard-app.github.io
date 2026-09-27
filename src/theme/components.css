@@ -632,3 +632,48 @@ svg { max-width: 100%; }
 .acc-sync-link b { color: var(--accent-strong); font-weight: 700; }
 .acc-sync-link:hover b { text-decoration: underline; }
 .icon-btn.on { color: var(--accent-strong); background: var(--accent-soft); }
+
+/* ── Page motion: staggered entrance, chart draw-in, press feedback ── */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.screen > * { animation: rise-in 0.45s cubic-bezier(0.22, 0.9, 0.3, 1) backwards; }
+.screen > *:nth-child(1) { animation-delay: 0.02s; }
+.screen > *:nth-child(2) { animation-delay: 0.08s; }
+.screen > *:nth-child(3) { animation-delay: 0.14s; }
+.screen > *:nth-child(4) { animation-delay: 0.2s; }
+.screen > *:nth-child(5) { animation-delay: 0.26s; }
+.screen > *:nth-child(6) { animation-delay: 0.32s; }
+.screen > *:nth-child(7) { animation-delay: 0.38s; }
+.screen > *:nth-child(8) { animation-delay: 0.44s; }
+.screen > *:nth-child(9) { animation-delay: 0.5s; }
+.screen > *:nth-child(n + 10) { animation-delay: 0.55s; }
+
+/* charts draw in from the left */
+@keyframes chart-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.trend-svg { animation: chart-wipe 0.6s ease-out 0.15s backwards; }
+
+/* press feedback */
+.btn:active { transform: scale(0.97); }
+.doc-card:active, .exam-card:active, .exam-entry:active { transform: scale(0.985); }
+
+/* tab tile pop when it becomes the active tab */
+@keyframes tile-pop {
+  from { transform: scale(0.55); }
+  to { transform: scale(1); }
+}
+ion-tab-button.tab-selected .tab-tile { animation: tile-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* heat cells rise in with a wave (delay set inline per cell) */
+.heat-cell { animation: rise-in 0.4s ease-out backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen > *, .trend-svg, .heat-cell, .tab-tile, .btn, .doc-card, .exam-card, .exam-entry {
+    animation: none !important;
+    transition: none !important;
+  }
+}
