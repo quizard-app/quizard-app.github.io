@@ -14,6 +14,18 @@ const DUST = [
   { l: '40%', t: '14%', d: '1.1s' }, { l: '58%', t: '82%', d: '.3s' }
 ];
 
+// The "Get Started" slides replay on the first visit of a browser session.
+// sessionStorage survives a reload but dies with the tab, so reopening the
+// site replays the intro while a reload in the same session skips it.
+const INTRO_SEEN_KEY = 'quizard-intro-seen';
+
+function introSeenThisSession() {
+  try { return sessionStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch { return false; }
+}
+function markIntroSeen() {
+  try { sessionStorage.setItem(INTRO_SEEN_KEY, '1'); } catch { /* private mode */ }
+}
+
 @Component({
   selector: 'app-welcome',
   imports: [],
@@ -52,6 +64,8 @@ export class WelcomePage implements OnInit, OnDestroy {
     try {
       const accounts = await listAccounts();
       const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
+      const introSeen = introSeenThisSession();
+      markIntroSeen();
       if (fresh) return { splash: true, to: '/onboarding' };
       // "Skip intro on launch": straight into the app with the last profile —
       // but a PIN-protected profile still goes through the picker gate.
@@ -64,9 +78,9 @@ export class WelcomePage implements OnInit, OnDestroy {
         }
         return { splash: false, to: '/accounts' };
       }
-      // Returning students without skip-intro play the splash, then land on
-      // the profile picker (choose profile · add · sync-code restore).
-      return { splash: true, to: '/accounts' };
+      // Returning students always get the splash; the slides replay on the
+      // session's first visit, reloads in the same session go to the picker.
+      return { splash: true, to: introSeen ? '/accounts' : '/onboarding' };
     } catch {
       return { splash: true, to: '/onboarding' };
     }
