@@ -6,8 +6,8 @@
   <div class="byok-overlay" (click)="byok.close()">
     <div class="byok-modal" (click)="$event.stopPropagation()">
       <div class="byok-badge"><span [innerHTML]="'sparkles' | ico"></span> Quizard AI</div>
-      <h3 class="byok-title">{{ byok.reason() ? 'AI is out of requests' : 'Unlock unlimited AI — free' }}</h3>
-      <p class="byok-text">{{ byok.reason() ? 'You can keep going right now with your own free Gemini key. Three quick steps, about one minute:' : 'Want faster, unlimited AI quizzes? Grab a free Gemini key once — three quick steps, about one minute:' }}</p>
+      <h3 class="byok-title">{{ byok.aiDown() ? 'AI is out of requests' : 'Get your free AI key' }}</h3>
+      <p class="byok-text">You can keep going right now with your own free Gemini key. Three quick steps, about one minute:</p>
       <ol class="byok-steps">
         <li>
           <span class="byok-step-n">1</span>
