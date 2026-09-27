@@ -34,7 +34,7 @@
       </ol>
       @if (byok.status()) { <p class="byok-status">{{ byok.status() }}</p> }
       <div class="byok-actions">
-        <button class="btn btn-secondary" (click)="byok.dismiss()">Not now — use basic quizzes</button>
+        <button class="btn btn-secondary" (click)="byok.dismiss()">Cancel</button>
         <button class="btn btn-primary" (click)="byok.save()">Save my key</button>
       </div>
       <p class="byok-hint">Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings.</p>
