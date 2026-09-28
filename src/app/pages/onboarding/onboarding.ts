@@ -25,8 +25,8 @@ const SLIDES = [
   {
     art: 'zap',
     eyebrow: 'Your way',
-    title: 'Four question types, fully tunable',
-    body: 'Multiple choice, true/false, fill-in-the-blank and identification. Set the count, difficulty and timer — then go.',
+    title: 'Multiple choice, fully tunable',
+    body: 'Exam-style 4-option questions generated from your material. Set the count, difficulty, topics and timer — then go.',
     accent: 'amber'
   },
   {
