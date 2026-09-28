@@ -21,6 +21,15 @@ import { hashPin, verifyPin, updateAccount } from '../../core/engine/storage.js'
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
 
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let v = n;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${i === 0 || v >= 10 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
 @Component({
   selector: 'app-settings',
   imports: [IonContent, FormsModule, IcoPipe],
@@ -53,7 +62,7 @@ export class SettingsPage implements OnInit {
   remindersOn = signal(this.s.reminders === true);
 
   get showNudge() { return (!this.lastBackup || Date.now() - this.lastBackup > BACKUP_NUDGE_MS) && this.docCount > 0; }
-  get version() { return '1.1'; }
+  get version() { return '2.0.0'; }
   get theme() { return this.ui.theme; }
 
   // ── Cloud sync (sync-code locker) ──
@@ -241,8 +250,12 @@ export class SettingsPage implements OnInit {
     this.ngOnInitSyncRestore();
     try {
       const usage = await storageUsage();
-      const line = `Last backup: ${this.lastBackup ? new Date(this.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'never'}${usage ? ' · ' + usage : ''}`;
-      this.usageLine.set(line);
+      const when = this.lastBackup
+        ? new Date(this.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+        : 'never';
+      const bytes = usage?.usage;
+      const used = typeof bytes === 'number' ? ' · ' + formatBytes(bytes) + ' used on this device' : '';
+      this.usageLine.set(`Last backup: ${when}${used}`);
     } catch { /* usage optional */ }
   }
 
