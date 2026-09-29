@@ -1,4 +1,5 @@
 import { summarizeDoc } from './summarize.js'
+import { stripSlideMarkers } from './textproc.js'
 import { rankExamTopics } from './exam.js'
 
 function download(filename, content, mime = 'text/markdown') {
@@ -269,7 +270,7 @@ const QUIZ_SECTIONS = [
 ]
 
 export function buildSummaryMarkdown(doc) {
-  const summary = summarizeDoc(doc.text)
+  const summary = summarizeDoc(stripSlideMarkers(doc.text))
   const out = [`# ${doc.name}`, '', `_Study sheet · generated ${stamp()}_`, '']
   if (summary.tldr.length) {
     out.push('## In a nutshell', '')
@@ -396,7 +397,7 @@ export async function exportPdfHandout(doc, extras = {}) {
   rule()
 
   // I. overview
-  const summary = summarizeDoc(doc.text)
+  const summary = summarizeDoc(stripSlideMarkers(doc.text))
   if (summary.tldr.length) {
     text('I. Overview', { size: 13, bold: true, color: '#5b3df5' })
     summary.tldr.forEach(p => text(p, { size: 11 }))
@@ -519,7 +520,7 @@ export async function exportExamPdf(exam, docs) {
   for (const doc of docs) {
     rule()
     text(doc.name, { size: 13, bold: true, color: '#5b3df5' })
-    const summary = summarizeDoc(doc.text || '')
+    const summary = summarizeDoc(stripSlideMarkers(doc.text || ''))
     if (summary.tldr.length) summary.tldr.forEach(p => text('•  ' + p, { size: 10.5, color: '#475069', gap: 2 }))
     summary.sections.forEach((sec, i) => {
       need(30)
@@ -577,7 +578,7 @@ export function exportQuiz(docName, lastResult) {
 }
 
 export function printStudySheet(doc) {
-  const summary = summarizeDoc(doc.text)
+  const summary = summarizeDoc(stripSlideMarkers(doc.text))
   const sections = summary.sections.map(sec =>
     `<h2>${escHtml(sec.title)}</h2><ul>${sec.points.map(p => `<li>${escHtml(p)}</li>`).join('')}</ul>`
   ).join('')

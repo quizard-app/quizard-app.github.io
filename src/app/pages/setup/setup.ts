@@ -9,6 +9,7 @@ import { typeLabel } from '../../shared/helpers.js';
 import type { SafeHtml } from '@angular/platform-browser';
 import { TYPE_META, MCQ_ONLY_MIX, estimateAvailable } from '../../core/engine/quizgen.js';
 import { detectTopics } from '../../core/engine/topics.js';
+import { stripSlideMarkers } from '../../core/engine/textproc.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { QuizStateService } from '../../core/services/quiz-state.service';
@@ -105,7 +106,7 @@ export class SetupPage implements OnInit {
     this.aiAuthor = saved.aiAuthor;
     this.focusWeak = saved.focusWeak;
     this.deepVisual = saved.deepVisual;
-    this.detectedTopics = Array.isArray(doc.topics) && doc.topics.length ? doc.topics : detectTopics(doc.text).topics;
+    this.detectedTopics = Array.isArray(doc.topics) && doc.topics.length ? doc.topics : detectTopics(stripSlideMarkers(doc.text)).topics;
     this.selectedTopics = new Set(saved.topics || []);
     this.maxAvailable = estimateAvailable(doc as any, { ...saved, topics: [...this.selectedTopics] 
     } as any);

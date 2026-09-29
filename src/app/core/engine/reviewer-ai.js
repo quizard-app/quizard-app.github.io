@@ -11,11 +11,24 @@
 
 import { updateDoc } from './storage.js'
 import { chatJSON } from './gemini.js'
+import { deckOutline, slideCoverage, splitSlideSections } from './textproc.js'
 
-// Keep each request small enough to finish inside the relay's per-key time
-// budget (~25s): a 42k-char / 16k-token reviewer routinely blew past it and
-// surfaced as 504 upstream_timeout. Smaller scope + output fits comfortably.
+// Keep each FALLBACK request small enough to finish inside the relay's per-key
+// time budget (~25s): a 42k-char / 16k-token reviewer routinely blew past it
+// and surfaced as 504 upstream_timeout. The preferred path is ONE whole-file
+// call with a long client timeout — when the relay can't carry it we degrade
+// to per-chunk calls and merge, so coverage never silently shrinks.
 const MAX_CHARS_PER_CHUNK = 14000
+// Schema version — v5 adds full-deck single-call generation + coverage info.
+// Older caches regenerate once with the new pipeline.
+const REVIEWER_VERSION = 5
+// One call over the whole file (fast, and the model sees every slide). Bound
+// the input so absurd payloads can't be built; real decks sit far below this.
+const SINGLE_CALL_MAX_CHARS = 200000
+const SINGLE_CALL_TOKENS = 24000
+const SINGLE_CALL_TIMEOUT_MS = 150000
+// Fallback: review every chunk and merge — never "first chunk wins" again.
+const FALLBACK_MAX_CHUNKS = 8
 
 // Structured output contract — mirrors the quality bar of a hand-made reviewer:
 // emoji-headed sections, 🔹 sub-terms with "Meaning:" lines, ⭐⭐⭐ importance
@@ -82,7 +95,7 @@ Return JSON with exactly this shape:
 Every field except num and heading is optional (use null or omit it), but a strong reviewer uses most of them.
 
 RULES:
-1. Cover EVERY major topic in the document, roughly in source order — do not skip or merge away content.
+1. Cover EVERY major topic in the document, roughly in source order — do not skip or merge away content. When a DECK OUTLINE is provided, every outline entry must land inside some section: group consecutive slides/pages that teach one thing into a single section, but never drop an entry. Keep the document's own terminology and framework names — never add unrelated topics.
 2. Group sections into 4-10 PARTS. A part's "title" is the short theme in CAPS only — never write the word 'PART' or a numeral, the app adds "PART <roman>" itself.
 3. Number sections continuously across all parts (1, 2, 3, ...). Put "stars": 3 on the sections the exam will hammer (core lists, theories, models), 2 for supporting ones, omit for filler.
 4. When a section introduces several related concepts (morality/ethics/law, the five theories, PAPA letters, attack types), use "terms": one entry per concept with "meaning" ("Meaning: ..."), optional "bullets" for its attributes (Focus/Key Question/IT Example, what shapes it), and "memory" ("Utilitarianism = Results", "PAPA = Privacy, Accuracy, Property, Accessibility").
@@ -199,7 +212,7 @@ export function sanitizeReviewer(raw) {
   const seenAcr = new Set()
   const acronymsUnique = acronyms.filter(a => (seenAcr.has(a.acr) ? false : (seenAcr.add(a.acr), true))).slice(0, 12)
   return {
-    v: 4, // schema version — v4 adds the acronyms block; older caches regenerate once
+    v: REVIEWER_VERSION, // schema version — v5 = full-deck generation + coverage
     title: clean(raw.title) || 'Exam Reviewer',
     intro: clean(raw.intro) || '',
     acronyms: acronymsUnique,
@@ -212,7 +225,7 @@ export function sanitizeReviewer(raw) {
   }
 }
 
-function chunkText(text) {
+function chunkText(text, cap) {
   if (text.length <= MAX_CHARS_PER_CHUNK) return [text]
   const chunks = []
   const paras = text.split(/\n{2,}/)
@@ -226,74 +239,148 @@ function chunkText(text) {
     }
   }
   if (cur) chunks.push(cur)
-  return chunks.slice(0, 3) // cap at 3 chunks — beyond that, quality drops
+  return chunks.slice(0, cap)
+}
+
+function parseLoose(raw) {
+  try { return JSON.parse(raw) } catch {
+    const m = String(raw || '').match(/\{[\s\S]*\}/)
+    if (m) { try { return JSON.parse(m[0]) } catch { /* truncated output */ } }
+  }
+  return null
+}
+
+// One reviewer attempt. Returns the sanitized reviewer, or null on failure
+// (recording timeouts so the caller can show the plain Retry path). Throws
+// a RelayUnavailableError for the fatal "no key / wrong origin" cases.
+class RelayUnavailableError extends Error {}
+
+async function attemptReviewer(prompt, maxTokens, timeoutMs, state) {
+  let raw
+  try {
+    raw = await chatJSON(prompt, {
+      json: true,
+      maxOutputTokens: maxTokens,
+      temperature: 0.3,
+      timeoutMs
+    })
+  } catch (e) {
+    const msg = String(e?.message || e)
+    if (msg.includes('no_keys_configured') || msg.includes('origin_not_allowed')) {
+      throw new RelayUnavailableError(msg)
+    }
+    if (/timeout|upstream_timeout|504|abort/i.test(msg)) state.timeoutSeen = true
+    return null
+  }
+  const reviewer = sanitizeReviewer(parseLoose(raw))
+  if (reviewer) return reviewer
+  // Got a response but it didn't parse — usually truncation. One retry asking
+  // for pure JSON at lower temperature before giving up on this scope.
+  try {
+    const retry = await chatJSON(`${prompt}\n\nReturn ONLY valid JSON — no prose before or after, and do not cut the JSON short.`, {
+      json: true, maxOutputTokens: maxTokens, temperature: 0.2, timeoutMs
+    })
+    return sanitizeReviewer(parseLoose(retry))
+  } catch (e) {
+    const msg = String(e?.message || e)
+    if (msg.includes('no_keys_configured') || msg.includes('origin_not_allowed')) {
+      throw new RelayUnavailableError(msg)
+    }
+    if (/timeout|upstream_timeout|504|abort/i.test(msg)) state.timeoutSeen = true
+    return null
+  }
+}
+
+// Combine per-chunk reviewers into one: parts in order, sections renumbered
+// continuously (strip each section's num so sanitizeReviewer re-assigns),
+// global blocks concatenated and capped.
+export function mergeReviewers(list) {
+  if (!list.length) return null
+  const merged = {
+    ...list[0],
+    parts: list.flatMap(r => r.parts || []).map(part => ({
+      title: part.title,
+      sections: (part.sections || []).map(({ num, ...rest }) => rest)
+    })),
+    highYield: list.flatMap(r => r.highYield || []).slice(0, 10),
+    idQuestions: list.flatMap(r => r.idQuestions || []).slice(0, 14),
+    myths: list.flatMap(r => r.myths || []).slice(0, 8),
+    finalReview: list.flatMap(r => r.finalReview || []).slice(0, 12),
+    acronyms: list.flatMap(r => r.acronyms || []),
+    gaps: list.flatMap(r => r.gaps || [])
+  }
+  return sanitizeReviewer(merged)
 }
 
 // Generate (or return the cached) AI reviewer for a document.
 // Returns { reviewer, cached } or { error }.
-export async function ensureAIReviewer(doc) {
+// Options.force skips the cache and regenerates (the reviewer page's Retry).
+export async function ensureAIReviewer(doc, { force = false } = {}) {
   const cached = doc.reviewerAI
   const cachedOk = Array.isArray(cached) ? cached.length : cached?.parts?.length
-  // v4 = the hand-made format + the acronyms block. Older caches fall through
-  // and regenerate once with the new prompt.
-  if (cachedOk && cached.v === 4) {
+  if (!force && cachedOk && cached.v === REVIEWER_VERSION) {
     return { reviewer: cached, cached: true }
   }
 
   const source = String(doc.text || '').trim()
   if (source.length < 300) return { error: 'not_enough_content' }
 
-  const chunks = chunkText(source)
+  const state = { timeoutSeen: false }
   let reviewer = null
-  let usedChunk = -1
-  let timeoutSeen = false
-  for (let i = 0; i < chunks.length && !reviewer; i++) {
-    const scope = chunks.length > 1
-      ? `DOCUMENT (part ${i + 1} of ${chunks.length}):\n\n${chunks[i]}\n\nCover only the topics in this part.`
-      : `DOCUMENT:\n\n${chunks[i]}`
-    try {
-      const raw = await chatJSON(`${RULES}\n\n${scope}`, {
-        json: true,
-        maxOutputTokens: 8000,
-        temperature: 0.3,
-        timeoutMs: 95000
-      })
-      let parsed
-      try { parsed = JSON.parse(raw) } catch {
-        const m = raw.match(/\{[\s\S]*\}/)
-        if (m) { try { parsed = JSON.parse(m[0]) } catch { parsed = null } }
-      }
-      reviewer = sanitizeReviewer(parsed)
-      if (reviewer) usedChunk = i
-      if (!reviewer && chunks.length > 1) {
-        // retry once for this chunk before giving up on the whole document
-        try {
-          const retry = JSON.parse(await chatJSON(`${RULES}\n\n${scope}\n\nReturn ONLY valid JSON.`, {
-            json: true, maxOutputTokens: 8000, temperature: 0.2, timeoutMs: 95000
-          }))
-          reviewer = sanitizeReviewer(retry)
-        } catch { /* fall through */ }
-      }
-    } catch (e) {
-      const msg = String(e?.message || e)
-      if (msg.includes('no_keys_configured') || msg.includes('origin_not_allowed')) {
-        return { error: 'relay_unavailable' }
-      }
-      // Timeouts/504s: try the next chunk, but remember so the UI can show a
-      // plain Retry (no BYOK popup — a personal key can't fix slowness).
-      if (/timeout|upstream_timeout|504|abort/i.test(msg)) timeoutSeen = true
-      // other 503s: try the next chunk or fall through to error
+  try {
+    // Preferred path: ONE call over the whole file — fast, and the model sees
+    // every slide/page. The deck outline gives it the full table of contents
+    // for free (computed from the extraction markers, no extra AI call).
+    if (source.length <= SINGLE_CALL_MAX_CHARS) {
+      const outline = deckOutline(source)
+      const outlineBlock = outline
+        ? `\n\nDECK OUTLINE (slide/page → its title):\n${outline}\nEvery outline entry must be covered by some section.\n`
+        : ''
+      reviewer = await attemptReviewer(
+        `${RULES}${outlineBlock}\n\nDOCUMENT (complete):\n\n${source}`,
+        SINGLE_CALL_TOKENS, SINGLE_CALL_TIMEOUT_MS, state
+      )
     }
+
+    // Fallback: the whole-file call failed (relay time budget, truncation).
+    // Review every chunk — up to FALLBACK_MAX_CHUNKS — and merge, so long
+    // documents still cover their later modules instead of "first chunk wins".
+    if (!reviewer) {
+      const chunks = chunkText(source, FALLBACK_MAX_CHUNKS)
+      if (chunks.length === 1) {
+        reviewer = await attemptReviewer(`${RULES}\n\nDOCUMENT:\n\n${chunks[0]}`, 8000, 95000, state)
+      } else {
+        const results = new Array(chunks.length).fill(null)
+        let next = 0
+        const workers = Array.from({ length: Math.min(3, chunks.length) }, async () => {
+          while (next < chunks.length) {
+            const i = next++
+            const scope = `DOCUMENT (part ${i + 1} of ${chunks.length}):\n\n${chunks[i]}\n\nCover only the topics in this part.`
+            results[i] = await attemptReviewer(scope, 8000, 95000, state)
+          }
+        })
+        await Promise.all(workers)
+        const good = results.filter(Boolean)
+        if (good.length) {
+          reviewer = mergeReviewers(good)
+          const missed = results.filter(r => r === null).length
+          if (missed) {
+            const gaps = Array.isArray(reviewer.gaps) ? reviewer.gaps : []
+            gaps.unshift(`${missed} of ${chunks.length} document parts could not be reviewed — regenerate for another try.`)
+            reviewer = { ...reviewer, gaps: gaps.slice(0, 6) }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    if (e instanceof RelayUnavailableError) return { error: 'relay_unavailable' }
+    throw e
   }
 
-  if (!reviewer) return { error: timeoutSeen ? 'timeout' : 'generation_failed' }
-  // Honest coverage notes: long files are reviewed from the first successful
-  // chunk only — say so instead of silently skipping the rest.
-  if (chunks.length > 1) {
-    const gaps = Array.isArray(reviewer.gaps) ? reviewer.gaps : []
-    gaps.unshift(`This file is long — the reviewer was built from part ${usedChunk + 1} of ${chunks.length}; later sections may be missing.`)
-    reviewer = { ...reviewer, gaps: gaps.slice(0, 6) }
-  }
+  if (!reviewer) return { error: state.timeoutSeen ? 'timeout' : 'generation_failed' }
+  // Record what the reviewer actually covers so the UI can show it.
+  const slides = slideCoverage(source)
+  if (slides) reviewer = { ...reviewer, coverage: { slides, parts: reviewer.parts.length } }
   try { await updateDoc(doc.id, { reviewerAI: reviewer }) } catch { /* cache is best-effort */ }
   return { reviewer, cached: false }
 }

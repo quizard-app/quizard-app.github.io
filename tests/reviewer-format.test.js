@@ -73,7 +73,7 @@ describe('sanitizeReviewer (extended format)', () => {
     expect(r.gaps).toEqual(['Section on encryption was unreadable in the source'])
     expect(r.finalReview).toHaveLength(2)
     expect(r.highYield[0].items).toHaveLength(2)
-    expect(r.v).toBe(4)
+    expect(r.v).toBe(5) // v5 = full-deck generation + coverage
     // acronyms: uppercased, deduped, junk filtered
     expect(r.acronyms).toHaveLength(2)
     expect(r.acronyms[0]).toEqual({ acr: 'PAPA', expansion: 'Privacy, Accuracy, Property, Accessibility', meaning: 'The four data-privacy concerns.' })

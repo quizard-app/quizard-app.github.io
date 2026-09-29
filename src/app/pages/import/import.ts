@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
 import { extractText, detectType } from '../../core/engine/extract/index.js';
 import { extractImages } from '../../core/engine/extract/images.js';
+import { stripSlideMarkers } from '../../core/engine/textproc.js';
 import { saveDoc, saveDocImages, listDocs, deriveFolders } from '../../core/engine/storage.js';
 import { detectTopics } from '../../core/engine/topics.js';
 import { oneLineSummary } from '../../core/engine/summarize.js';
@@ -262,14 +263,17 @@ export class ImportPage {
 
   private showExtracted(ex: Extracted) {
     this.extracted = ex;
-    this.wordCount = (ex.text.match(/\S+/g) || []).length;
+    // slide/page markers are for the AI pipeline — keep them out of topic
+    // detection, the teaser line and the word count
+    const plain = stripSlideMarkers(ex.text);
+    this.wordCount = (plain.match(/\S+/g) || []).length;
     this.imageCount = ex.images.length;
-    const { topics } = detectTopics(ex.text);
+    const { topics } = detectTopics(plain);
     this.topics = topics;
     ex.topics = topics;
-    this.tldr = oneLineSummary(ex.text);
+    this.tldr = oneLineSummary(plain);
     this.docName = ex.name;
-    this.preview = ex.text.slice(0, 600) + (ex.text.length > 600 ? '…' : '');
+    this.preview = plain.slice(0, 600) + (plain.length > 600 ? '…' : '');
     setTimeout(() => this.stage.set('result'), 300);
   }
 

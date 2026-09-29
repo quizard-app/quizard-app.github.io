@@ -31,12 +31,15 @@ export async function extractPdf(file) {
       pageText += item.str
       if (item.hasEOL) pageText += '\n'
     }
-    pages.push(pageText.trim())
+    // keep the real page index so the text can be labeled downstream
+    if (pageText.trim()) pages.push({ num: i, text: pageText.trim() })
     page.cleanup()
   }
   await loadingTask.destroy()
 
-  const text = pages.filter(Boolean).join('\n\n')
+  // Label every page so downstream AI/chunking can see the document structure
+  // (textproc.splitSlideSections parses these markers).
+  const text = pages.map(p => `=== Page ${p.num} ===\n${p.text}`).join('\n\n')
   if (!text.trim()) {
     throw new Error('No selectable text found. This PDF may be a scanned image.')
   }

@@ -27,6 +27,7 @@ export async function extractPptx(file) {
 
   const slides = []
   for (const name of slideFiles) {
+    const num = parseInt(name.match(/slide(\d+)\.xml/)[1], 10)
     const xml = await zip.files[name].async('string')
     const paragraphs = xml.split('</a:p>')
     const lines = paragraphs
@@ -35,10 +36,12 @@ export async function extractPptx(file) {
         return runs.join('').trim()
       })
       .filter(Boolean)
-    if (lines.length) slides.push(lines.join('\n'))
+    if (lines.length) slides.push({ num, text: lines.join('\n') })
   }
 
-  const text = slides.join('\n\n')
+  // Label every slide so downstream AI/chunking can see the deck's structure
+  // (textproc.splitSlideSections parses these markers).
+  const text = slides.map(s => `=== Slide ${s.num} ===\n${s.text}`).join('\n\n')
   if (!text.trim()) throw new Error('Could not find any text in these slides.')
   return `Presentation with ${slides.length} slide${slides.length > 1 ? 's' : ''}.\n\n` + text
 }

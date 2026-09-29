@@ -5,7 +5,7 @@ import { listDocImages, saveDocImages, updateDoc } from './storage.js'
 import { renderPdfVisuals } from './extract/renderPage.js'
 import { extractTitleLines, keyTerms, mulberry32, shuffleArr, cleanSentence, hashString } from './textproc.js'
 import { restoreCasing } from './questionForms.js'
-import { sentences, termFreq, scoreSentences, stripHeadings } from './textproc.js'
+import { sentences, termFreq, scoreSentences, stripHeadings, rankedAcrossSections } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { MCQ_RULES, mcqPrompt, ID_RULES, shortGradePrompt, SHORT_GRADE_RULES, DOC_VISUAL_RULES, VISUAL_Q_RULES, visualQuestionPrompt, explainBatchPrompt, authorQuizPrompt, examAuthorPrompt } from './prompts.js'
 import {
@@ -585,9 +585,12 @@ async function authorFullQuiz(doc, cfg, isBanned, weakHint, onProgress) {
   const text = stripHeadings(doc.text)
   const diffHint = difficultyHint(cfg.difficulty)
   const tf = termFreq(text)
-  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf)
-    .filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
-      && s.text.trim().split(/\s+/).length >= 5)
+  // Slide-marked docs: interleave per-section rankings so questions can come
+  // from every module of the deck, not just the highest-frequency opening.
+  const rankedBase = rankedAcrossSections(doc.text, tf)
+    || scoreSentences(sentences(text, { preStripped: true }), tf)
+  const ranked = rankedBase.filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
+    && s.text.trim().split(/\s+/).length >= 5)
   if (ranked.length < 3) return { questions: [], error: null }
   // Skip sentences served in earlier rounds so every take authors fresh.
   const avoidSentences = new Set(Array.isArray(cfg.avoidSentences) ? cfg.avoidSentences.map(s => String(s)) : [])
@@ -750,7 +753,11 @@ export async function authorExamQuestions(doc, cfg, onProgress = () => {}) {
   // code/markup lines and quiz-slide fragments from slides make garbage
   // question sources — drop them
   const tf = termFreq(text)
-  const ranked = scoreSentences(sentences(text, { preStripped: true }), tf).filter(s =>
+  // Slide-marked docs: interleave per-section rankings so every module of the
+  // deck can contribute questions; plain docs use the global ranking.
+  const rankedBase = rankedAcrossSections(doc.text, tf)
+    || scoreSentences(sentences(text, { preStripped: true }), tf)
+  const ranked = rankedBase.filter(s =>
     !looksLikeCode(s.text) && !isQuizFragmentSource(s.text)
     && s.text.trim().split(/\s+/).length >= 5)
   if (ranked.length < 4) return { questions: [], error: 'not_enough_content' }

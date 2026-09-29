@@ -285,6 +285,100 @@ export function scoreSentences(sents, tfMap) {
   }).sort((a, b) => b.score - a.score)
 }
 
+// ── Slide/page structure ────────────────────────────────────────────────────
+// The extractors label slides ("=== Slide 3 ===") and PDF pages ("=== Page 4 ===")
+// so downstream consumers can see the source's structure. Old documents saved
+// before labeling have no markers — every helper here returns null/falls back.
+
+const SLIDE_MARK_RE = /^=== (?:Slide|Page) (\d+) ===[ \t]*$/gm
+
+/**
+ * Split document text on slide/page markers.
+ * @param {string} text - Full document text
+ * @returns {Array<{num: number, text: string}> | null} Sections in order, or
+ *   null when the text has no (or only one) marker — caller falls back to
+ *   whole-text processing.
+ */
+export function splitSlideSections(text) {
+  const s = String(text || '')
+  const marks = []
+  SLIDE_MARK_RE.lastIndex = 0
+  let m
+  while ((m = SLIDE_MARK_RE.exec(s)) !== null) marks.push(m)
+  if (marks.length < 2) return null
+  const sections = []
+  for (let i = 0; i < marks.length; i++) {
+    const start = marks[i].index + marks[i][0].length
+    const end = i + 1 < marks.length ? marks[i + 1].index : s.length
+    sections.push({ num: Number(marks[i][1]), text: s.slice(start, end) })
+  }
+  return sections
+}
+
+/**
+ * Remove slide/page marker lines (markers are bookkeeping, not content).
+ * @param {string} text
+ * @returns {string}
+ */
+export function stripSlideMarkers(text) {
+  return String(text || '').replace(SLIDE_MARK_RE, '')
+}
+
+/**
+ * Numbered first-line outline of a slide-marked document — the deck's table of
+ * contents, computed for free from the extraction ("1 Title · 2 Route map · …").
+ * @param {string} text - Full document text
+ * @param {number} [maxItems]
+ * @returns {string | null} One-line outline, or null without markers.
+ */
+export function deckOutline(text, maxItems = 150) {
+  const sections = splitSlideSections(text)
+  if (!sections) return null
+  const items = []
+  for (const sec of sections) {
+    const first = stripSlideMarkers(sec.text).split('\n').map(l => l.trim()).find(Boolean) || ''
+    items.push(`${sec.num} ${first.replace(/\s+/g, ' ').slice(0, 90)}`)
+    if (items.length >= maxItems) break
+  }
+  return items.join(' · ')
+}
+
+/**
+ * Slide/page span of a marked document, e.g. "1–89". Null without markers.
+ * @param {string} text
+ * @returns {string | null}
+ */
+export function slideCoverage(text) {
+  const sections = splitSlideSections(text)
+  if (!sections) return null
+  return `${sections[0].num}–${sections[sections.length - 1].num}`
+}
+
+/**
+ * Sentence ranking that interleaves per-section rankings round-robin, so
+ * material for quizzes/reviewers draws from EVERY slide/page section instead
+ * of only the globally top-scored sentences (which skew to early/frequent
+ * modules and starve the rest of a long deck).
+ * @param {string} text - Full document text
+ * @param {Map<string, number>} tfMap - termFreq over the whole document
+ * @returns {Array<{text: string, score: number}> | null} Merged ranking, or
+ *   null when the text has no slide markers (caller uses the global ranking).
+ */
+export function rankedAcrossSections(text, tfMap) {
+  const sections = splitSlideSections(text)
+  if (!sections || sections.length < 2) return null
+  const lists = sections.map(sec => scoreSentences(sentences(stripSlideMarkers(sec.text)), tfMap))
+  const out = []
+  for (let rank = 0; ; rank++) {
+    let took = false
+    for (const list of lists) {
+      if (rank < list.length) { out.push(list[rank]); took = true }
+    }
+    if (!took) break
+  }
+  return out
+}
+
 /**
  * FNV-1a hash of a string, returned as unsigned 32-bit int.
  * @param {string} str

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavController } from '@ionic/angular';
 import { listMistakes, getDoc, listDueCards, getWeakTerms } from '../engine/storage.js';
-import { keyTerms, sentences } from '../engine/textproc.js';
+import { keyTerms, sentences, stripSlideMarkers } from '../engine/textproc.js';
 import { buildMistakeQuestions } from '../engine/quizgen.js';
 import { ToastService } from './toast.service';
 import { QuizStateService } from './quiz-state.service';
@@ -32,7 +32,7 @@ export class MistakesService {
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
-      docSentences.set(id, doc ? sentences(doc.text) : []);
+      docSentences.set(id, doc ? sentences(stripSlideMarkers(doc.text)) : []);
     }
     const questions = buildMistakeQuestions(mistakes, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }
@@ -49,7 +49,7 @@ export class MistakesService {
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
-      docSentences.set(id, doc ? sentences(doc.text) : []);
+      docSentences.set(id, doc ? sentences(stripSlideMarkers(doc.text)) : []);
     }
     const questions = buildMistakeQuestions(due, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }
@@ -82,7 +82,7 @@ export class MistakesService {
     for (const id of docIds) {
       const doc = await getDoc(id);
       docTerms.set(id, doc ? keyTerms(doc.text) : []);
-      docSentences.set(id, doc ? sentences(doc.text) : []);
+      docSentences.set(id, doc ? sentences(stripSlideMarkers(doc.text)) : []);
     }
     const questions = buildMistakeQuestions(chosen, docTerms, docSentences);
     if (!questions.length) { this.toast.toast('Could not build review questions'); return; }

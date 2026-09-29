@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
 import { getDoc, loadSettings, saveSettings, upsertSrsFromMistake } from '../../core/engine/storage.js';
 import { detectTopics } from '../../core/engine/topics.js';
-import { sentences } from '../../core/engine/textproc.js';
+import { sentences, slideCoverage, stripSlideMarkers } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
 import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.js';
 import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
@@ -52,6 +52,8 @@ export class ReviewerPage implements AfterViewInit {
   aiState = signal<'idle' | 'generating' | 'ready' | 'error'>('idle');
   aiMode = signal(true);
   private aiTried = false;
+  private genBusy = false;
+  coverage = signal('');
   findVisible = signal(false);
 
   toggleFind() {
@@ -89,6 +91,7 @@ export class ReviewerPage implements AfterViewInit {
     if ((doc.reviewerAI as any)?.parts?.length) {
       this.aiReviewer.set(doc.reviewerAI);
       this.aiState.set('ready');
+      this.coverage.set(this.computeCoverage(doc, doc.reviewerAI));
     }
     const settings = loadSettings();
     this.scale = settings.readerScale || 1;
@@ -104,11 +107,14 @@ export class ReviewerPage implements AfterViewInit {
 
   private buildNlp() {
     const doc = this.doc();
-    const sents = sentences(doc.text);
-    const t = detectTopics(doc.text);
+    // slide/page markers are pipeline bookkeeping — quick-notes NLP should
+    // never see them as sentences or topics
+    const plain = stripSlideMarkers(String(doc.text || ''));
+    const sents = sentences(plain);
+    const t = detectTopics(plain);
     const topics = t.topics;
     const membership = t.membership;
-    const summary = summarizeDoc(doc.text);
+    const summary = summarizeDoc(plain);
     const sections: any[] = [];
     if (topics.length && sents.length) {
       const buckets = new Map(topics.map((tp: any) => [tp.title, [] as any[]]));
@@ -124,7 +130,7 @@ export class ReviewerPage implements AfterViewInit {
         if (ss?.length) sections.push({ title: tp.title, paras: chunkParas(ss) });
       }
     } else {
-      sections.push({ title: null, paras: chunkParas(sents.length ? sents : doc.text.split(/(?<=[.!?])\s+/)) });
+      sections.push({ title: null, paras: chunkParas(sents.length ? sents : plain.split(/(?<=[.!?])\s+/)) });
     }
     const keyTermDefs: any[] = [];
     const seenTerms = new Set();
@@ -265,16 +271,20 @@ export class ReviewerPage implements AfterViewInit {
     return reviewerToHtml(this.aiReviewer(), (s: string) => this.esc(s));
   }
 
-  private async tryGenerateAi() {
-    if (this.aiTried || this.aiState() === 'ready') return;
+  private async tryGenerateAi(force = false) {
+    if (this.aiTried || (this.aiState() === 'ready' && !force)) return;
+    if (this.genBusy) return;
     this.aiTried = true;
     const doc = this.doc();
     if (!doc?.text || String(doc.text).trim().length < 300) return;
+    this.genBusy = true;
     this.aiState.set('generating');
-    const res = await ensureAIReviewer(doc);
+    const res = await ensureAIReviewer(doc, { force });
+    this.genBusy = false;
     if (res.reviewer) {
       this.aiReviewer.set(res.reviewer);
       this.aiState.set('ready');
+      this.coverage.set(this.computeCoverage(doc, res.reviewer));
       this.byok.notifyAiOk();
     } else if (res.error !== 'not_enough_content') {
       this.aiState.set('error');
@@ -287,10 +297,21 @@ export class ReviewerPage implements AfterViewInit {
   }
 
   retryAi() {
-    if (this.aiState() === 'generating') return;
+    if (this.genBusy) return;
     this.aiTried = false;
     this.aiState.set('idle');
-    void this.tryGenerateAi();
+    void this.tryGenerateAi(true);
+  }
+
+  // "Covers slides 1–89 · 13 parts" — computed from the extraction markers.
+  private computeCoverage(doc: any, reviewer: any): string {
+    try {
+      const span = slideCoverage(doc?.text);
+      const parts = reviewer?.parts?.length || 0;
+      if (span) return `Covers slides ${span} · ${parts} part${parts === 1 ? '' : 's'}`;
+      if (parts) return `${parts} part${parts === 1 ? '' : 's'} covering the full document`;
+    } catch { /* coverage line is decorative */ }
+    return '';
   }
 
   setAiMode(v: boolean) {

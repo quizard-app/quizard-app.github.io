@@ -44,7 +44,7 @@
  * @property {'partial' | 'not_enough_content' | 'no_types' | null} error
  */
 
-import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr, isQuizFragmentSource } from './textproc.js'
+import { sentences, termFreq, keyTerms, scoreSentences, stripHeadings, cleanSentence, mulberry32, shuffleArr, isQuizFragmentSource, stripSlideMarkers, rankedAcrossSections } from './textproc.js'
 import { detectTopics } from './topics.js'
 import { looksLikeCode } from './validate.js'
 import { pickDistractors as pickImprovedDistractors, buildCooccurrence, buildMcqStem, buildShortPrompt, formatOption, surfaceOption, findAcronyms, buildAcronymStem } from './questionForms.js'
@@ -239,12 +239,16 @@ export function generateQuiz(doc, config) {
   const seed = config.fixedSeed != null ? config.fixedSeed : (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
   const rng = mulberry32(seed ^ require_hash(doc.id))
 
-  const text = stripHeadings(doc.text)
+  // slide/page markers are pipeline bookkeeping, not quiz material
+  const text = stripHeadings(stripSlideMarkers(doc.text))
   const sents = sentences(text, { preStripped: true })
   const tf = termFreq(text)
+  // Slide-marked docs: interleave per-section rankings so the pool reaches
+  // every module of the deck, not just whichever opens the document.
+  const rankedBase = rankedAcrossSections(doc.text, tf) || scoreSentences(sents, tf)
   // code/markup lines, slide chrome and the deck's own quiz slides make
   // garbage question sources — drop them
-  const ranked = scoreSentences(sents, tf).filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text))
+  const ranked = rankedBase.filter(s => !looksLikeCode(s.text) && !isQuizFragmentSource(s.text))
   const terms = keyTerms(text, tf)
 
   if (!terms.length || ranked.length < 3) {
