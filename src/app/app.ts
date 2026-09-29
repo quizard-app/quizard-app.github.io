@@ -27,7 +27,10 @@ export class App {
   readonly byok = inject(ByokService);
   readonly confirm = inject(ConfirmService);
 
-  openKeyPage() { window.open('https://aistudio.google.com/apikey', '_blank', 'noopener'); }
+  openKeyPage() {
+    const url = this.byok.providerConfig?.keyUrl;
+    if (url) window.open(url, '_blank', 'noopener');
+  }
 
   constructor() {
     afterNextRender(() => this.preload.start());

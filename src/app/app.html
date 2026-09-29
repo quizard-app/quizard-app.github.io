@@ -7,25 +7,40 @@
     <div class="byok-modal" (click)="$event.stopPropagation()">
       <div class="byok-badge"><span [innerHTML]="'sparkles' | ico"></span> Quizard AI</div>
       <h3 class="byok-title">{{ byok.aiDown() ? 'AI is out of requests' : 'Get your free AI key' }}</h3>
-      <p class="byok-text">You can keep going right now with your own free Gemini key. Three quick steps, about one minute:</p>
+      <p class="byok-text">You can keep going right now with your own AI key — a free one works. Pick a provider, paste a key, about one minute:</p>
+      <div class="byok-providers" role="group" aria-label="Key provider">
+        @for (p of byok.providerList; track p.id) {
+          <button type="button" class="pchip" [class.on]="byok.provider() === p.id" (click)="byok.chooseProvider(p.id)">{{ p.label }}</button>
+        }
+      </div>
       <ol class="byok-steps">
         <li>
           <span class="byok-step-n">1</span>
-          <span>Tap this button and sign in with your Google account:</span>
-          <button class="btn btn-primary byok-step-btn" (click)="openKeyPage()">Get my free key</button>
+          <span>Get a key from <b>{{ byok.providerConfig.keyPage }}</b>:</span>
+          @if (byok.providerConfig.keyUrl) {
+            <button class="btn btn-primary byok-step-btn" (click)="openKeyPage()">{{ byok.providerConfig.free ? 'Get my free key' : 'Open ' + byok.providerConfig.keyPage }}</button>
+          } @else {
+            <span class="byok-alt">Works with any OpenAI-compatible server — LM Studio, Ollama, DeepSeek, Mistral…</span>
+          }
         </li>
         <li>
           <span class="byok-step-n">2</span>
-          <span>Tap <b>Create API key</b>, then <b>copy</b> the code it shows (it starts with <i>AIza…</i>).</span>
+          <span>Create a key, then <b>copy</b> the code it shows ({{ byok.providerConfig.keyHint }}).</span>
         </li>
         <li>
           <span class="byok-step-n">3</span>
           <span>Paste it here:</span>
+          @if (byok.provider() === 'custom') {
+            <input class="text-input byok-input byok-small" type="text" inputmode="url" autocomplete="off" placeholder="Base URL (e.g. https://api.deepseek.com/v1)" aria-label="Base URL" [value]="byok.baseUrl()" (input)="byok.setBaseUrl($any($event.target).value)" />
+          }
+          @if (byok.provider() !== 'gemini') {
+            <input class="text-input byok-input byok-small" type="text" autocomplete="off" placeholder="Model (default: {{ byok.providerConfig.model }})" aria-label="Model name" [value]="byok.model()" (input)="byok.setModel($any($event.target).value)" />
+          }
           <input
             class="text-input byok-input"
             type="password"
             autocomplete="off"
-            placeholder="Paste the code here"
+            placeholder="Paste the key here"
             [value]="byok.keyInput()"
             (input)="byok.typeKey($any($event.target).value)"
             (keyup.enter)="byok.save()"
@@ -37,7 +52,7 @@
         <button class="btn btn-secondary" (click)="byok.dismiss()">Cancel</button>
         <button class="btn btn-primary" (click)="byok.save()">Save my key</button>
       </div>
-      <p class="byok-hint"><span class="byok-hint-ico" [innerHTML]="'lock' | ico"></span><span>Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings. When you're done using Quizard, <b>delete the key from Google AI Studio too</b>, so nothing stays active on your Google account.</span></p>
+      <p class="byok-hint"><span class="byok-hint-ico" [innerHTML]="'lock' | ico"></span><span>Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings. When you're done using Quizard, <b>delete the key from {{ byok.providerConfig.keyPage }} too</b>, so nothing stays active on your account.</span></p>
     </div>
   </div>
 }

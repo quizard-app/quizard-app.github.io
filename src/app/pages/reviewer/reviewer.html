@@ -26,7 +26,7 @@
         <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Quick notes shown meanwhile.</div>
       }
       @if (aiState() === 'error') {
-        <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free Gemini key to generate the reviewer.')">Add a key</button></div>
+        <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free AI key to generate the reviewer.')">Add a key</button></div>
       }
       <div class="find-bar" [class.hidden]="!findVisible()">
         <input type="search" class="text-input" placeholder="Find in document…" aria-label="Find in document" autocomplete="off" [(ngModel)]="findQuery" (input)="runFind()" (keydown)="onFindKey($event)" />

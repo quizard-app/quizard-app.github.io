@@ -8,6 +8,7 @@ import {
   getActiveAccountId, accountHasData
 } from '../../core/engine/storage.js';
 import { testApiKey, getApiKey, setApiKey, hasApiKey, hasRelay } from '../../core/engine/gemini.js';
+import { setAiConfig, activeModel } from '../../core/engine/ai-providers.js';
 import { maybeScheduleReminders } from '../../core/services/reminders.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -280,7 +281,7 @@ export class SettingsPage implements OnInit {
 
   saveKey() {
     const val = this.keyInput.trim();
-    if (!val) { this.renderKeyStatus('Paste a key first — get a free one at aistudio.google.com/apikey'); return; }
+    if (!val) { this.renderKeyStatus('Paste a key first — tap a provider link above to get one free.'); return; }
     setApiKey(val);
     this.keyInput = '';
     this.byok.notifyAiOk();
@@ -298,12 +299,22 @@ export class SettingsPage implements OnInit {
     const res = await testApiKey();
     this.testing = false;
     this.renderKeyStatus(res.ok
-      ? `✓ Gemini reachable — model ${res.model}`
+      ? `✓ ${res.provider || 'AI'} reachable — model ${res.model}`
       : res.message === 'no_key' || res.message === 'No key'
-        ? 'Save your key first — aistudio.google.com/apikey'
+        ? 'Save your key first — pick a provider above and paste its key'
         : `✗ ${res.message}`);
-    if (res.ok) { this.byok.notifyAiOk(); this.toast.toast('Gemini OK ✓'); }
+    if (res.ok) { this.byok.notifyAiOk(); this.toast.toast(`${res.provider || 'AI'} OK ✓`); }
   }
+  // the select shares state with the BYOK modal (byok.provider); switching
+  // drops any model/base-URL override so the new provider's default applies
+  setProvider(id: string) {
+    if (id === this.byok.provider()) return;
+    this.byok.chooseProvider(id);
+    setAiConfig({ provider: id, model: '', baseUrl: '' });
+    this.toast.toast(`Key provider: ${this.byok.providerConfig.label}`);
+  }
+  keyPlaceholder() { return `Paste your ${this.byok.providerConfig.label} API key`; }
+  modelLabel() { return activeModel() || 'provider default'; }
   setExplain(on: boolean) { this.explaining.set(on); saveSettings({ aiExplain: on }); this.refreshSettings(); }
 
   async toggleReminders(on: boolean) {

@@ -5,6 +5,8 @@
 // is throttled; it is also used for direct Google calls when no relay is
 // configured (e.g. local dev without the relay).
 
+import { getAiConfig, callOpenAICompatible, callAnthropic, activeModel, providerLabel, PROVIDERS } from './ai-providers.js'
+
 export const MODEL_LABEL = 'gemini-3.5-flash-lite'
 
 // The relay only accepts the production origin, so on localhost the dev server
@@ -30,7 +32,7 @@ export function setApiKey(key) {
 // AI is available through the built-in relay; a personal key works too.
 export function hasApiKey() { return HAS_RELAY || !!getApiKey() }
 export function hasRelay() { return HAS_RELAY }
-export function getModelPool() { return [MODEL_LABEL] }
+export function getModelPool() { return [activeModel() || MODEL_LABEL] }
 
 async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, responseSchema, shape }, timeoutMs) {
   const ctrl = new AbortController()
@@ -42,7 +44,10 @@ async function relayOnce({ prompt, images, json, maxOutputTokens, temperature, r
       signal: ctrl.signal,
       headers: {
         'Content-Type': 'application/json',
-        ...(getApiKey() ? { 'x-quizard-key': getApiKey() } : {})
+        // Only forward a personal key to the relay when it is actually a
+        // Gemini key (the worker appends it to its Gemini rotation pool) — a
+        // Groq/OpenRouter key means nothing there.
+        ...(getApiKey() && getAiConfig().provider === 'gemini' ? { 'x-quizard-key': getApiKey() } : {})
       },
       body: JSON.stringify({ prompt, images, json, maxOutputTokens, temperature, shape, ...(responseSchema ? { responseSchema } : {}) })
     })
@@ -123,14 +128,24 @@ async function directRequest({ prompt, images = [], json = true, maxOutputTokens
   return text
 }
 
-// Relay first (rotating server keys); direct-with-personal-key as backup.
+// The personal-key call for the configured provider: Gemini goes straight to
+// Google, every other provider through its adapter in ai-providers.js.
+async function personalRequest(opts, timeoutMs) {
+  const cfg = getAiConfig()
+  if (cfg.provider === 'gemini') return directRequest(opts, timeoutMs)
+  const key = getApiKey()
+  if (PROVIDERS[cfg.provider]?.adapter === 'anthropic') return callAnthropic(cfg, key, { ...opts, timeoutMs })
+  return callOpenAICompatible(cfg, key, { ...opts, timeoutMs })
+}
+
+// Relay first (rotating server keys); personal-key calls as backup.
 async function aiRequest(opts, timeoutMs) {
   // A saved personal key goes FIRST: its quota belongs to this user alone and
-  // it calls Google directly, skipping the shared relay's bottlenecks. The
-  // relay covers users without a key and serves as the key-holder's backup.
+  // it calls the provider directly, skipping the shared relay's bottlenecks.
+  // The relay covers users without a key and serves as the key-holder's backup.
   if (getApiKey()) {
     try {
-      return await directRequest(opts, timeoutMs)
+      return await personalRequest(opts, timeoutMs)
     } catch (err) {
       if (!HAS_RELAY) throw err
       // personal key failed (quota/invalid) — the relay is the backup
@@ -155,7 +170,7 @@ export async function testApiKey() {
   try {
     const text = await chatJSON('Reply with JSON {"ok":true} only', { maxOutputTokens: 256, temperature: 0.4, timeoutMs: 20000 })
     const ok = /ok"?\s*:\s*true/i.test(text)
-    return { ok, working: ok ? 1 : 0, total: 1, model: MODEL_LABEL, message: ok ? '' : 'unexpected_response' }
+    return { ok, working: ok ? 1 : 0, total: 1, model: activeModel() || MODEL_LABEL, provider: providerLabel(), message: ok ? '' : 'unexpected_response' }
   } catch (e) {
     const msg = String(e?.message || e)
     return {
@@ -163,7 +178,8 @@ export async function testApiKey() {
       message: msg === 'no_key' ? 'No key' : msg,
       working: 0,
       total: 1,
-      model: MODEL_LABEL
+      model: activeModel() || MODEL_LABEL,
+      provider: providerLabel()
     }
   }
 }

@@ -48,7 +48,7 @@ export class QuizPage implements OnInit, OnDestroy {
 
   // boot phases
   phase = signal<'generating' | 'error' | 'active' | 'feedback' | 'ai-choice'>('generating');
-  genLabel = signal('Connecting to Gemini…');
+  genLabel = signal('Connecting to AI…');
   genPct = signal(0);
   errorMsg = signal('');
   // why the ai-choice screen is showing ('quota' | 'no_key' | …)
@@ -183,7 +183,7 @@ export class QuizPage implements OnInit, OnDestroy {
 
   private updateGen(done: number, total: number) {
     this.genPct.set(total ? Math.round((done / total) * 100) : 0);
-    this.genLabel.set(total ? `Writing question ${Math.min(done + 1, total)} of ${total}…` : 'Connecting to Gemini…');
+    this.genLabel.set(total ? `Writing question ${Math.min(done + 1, total)} of ${total}…` : 'Connecting to AI…');
   }
 
   private async boot() {
@@ -290,7 +290,7 @@ export class QuizPage implements OnInit, OnDestroy {
           if (!note) { if (gen?.questions?.length) this.byok.notifyAiOk(); break; }
           if (blockingNote(note)) { gen = null; choiceNote = note; break; }
           if (transientNote(note) && attempt === 0) { gen = null; continue; }
-          this.toast.toast(`Gemini unavailable (${note}) — used built-in questions`, true);
+          this.toast.toast(`AI unavailable (${note}) — used built-in questions`, true);
           this.byok.notifyAiFailure(note);
           break; // keep whatever usable questions came back
         }
@@ -717,7 +717,7 @@ export class QuizPage implements OnInit, OnDestroy {
     void this.boot();
   }
   openByokChoice() {
-    this.byok.open('The built-in AI relay is out of requests right now. Add your own free Gemini key to keep AI-written questions running — it stays on this device.');
+    this.byok.open('The built-in AI relay is out of requests right now. Add your own free AI key to keep AI-written questions running — it stays on this device.');
   }
   retryAiChoice() {
     this.forceOffline = false;

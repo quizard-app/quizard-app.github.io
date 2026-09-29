@@ -397,6 +397,20 @@ ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --butt
 .byok-badge svg { width: 13px; height: 13px; }
 .byok-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
 .byok-text { font-size: 13.5px; line-height: 1.55; color: var(--text-dim, #94a3b8); margin: 0 0 12px; }
+/* Provider picker chips (Gemini / OpenRouter / Groq / OpenAI / Claude / Custom) */
+.byok-providers { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.byok-providers .pchip {
+  font: inherit; font-size: 12px; font-weight: 700; color: var(--text-dim, #94a3b8);
+  background: transparent; border: 1px solid var(--border, rgba(148, 163, 184, .3));
+  border-radius: var(--radius-pill, 999px); padding: 5px 11px; cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.byok-providers .pchip.on {
+  color: #fff; border-color: transparent;
+  background: var(--grad-accent, linear-gradient(135deg, #6366f1, #06b6d4));
+}
+.byok-alt { font-size: 12.5px; color: var(--text-dim, #94a3b8); flex-basis: 100%; line-height: 1.45; }
+.byok-small { margin-bottom: 8px; }
 .byok-steps { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; }
 .byok-steps li {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
