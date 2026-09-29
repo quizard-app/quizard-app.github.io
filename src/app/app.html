@@ -37,7 +37,7 @@
         <button class="btn btn-secondary" (click)="byok.dismiss()">Cancel</button>
         <button class="btn btn-primary" (click)="byok.save()">Save my key</button>
       </div>
-      <p class="byok-hint">Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings. When you're done using Quizard, delete the key from Google AI Studio too, so nothing stays active on your Google account.</p>
+      <p class="byok-hint"><span class="byok-hint-ico" [innerHTML]="'lock' | ico"></span><span>Your key is saved only on this device and used before the shared relay. Remove it anytime in Settings. When you're done using Quizard, <b>delete the key from Google AI Studio too</b>, so nothing stays active on your Google account.</span></p>
     </div>
   </div>
 }

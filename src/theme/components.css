@@ -417,7 +417,21 @@ ion-toast.qz-toast-action { --max-width: min(92vw, 420px); --width: auto; --butt
 /* Both buttons share the row; the long "Not now" label may wrap to two lines
    on narrow phones instead of crushing "Save my key" into a sliver. */
 .byok-actions .btn { flex: 1 1 150px; min-width: 0; white-space: normal; line-height: 1.25; padding-block: 10px; }
-.byok-hint { font-size: 11.5px; color: var(--text-faint, #64748b); margin: 12px 0 2px; line-height: 1.5; }
+/* Bottom-of-modal key-safety callout — tinted box so it actually gets read. */
+.byok-hint {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-size: 12px; font-weight: 600; color: var(--warn, #f59e0b);
+  background: color-mix(in srgb, var(--warn, #f59e0b) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn, #f59e0b) 35%, transparent);
+  border-radius: 12px;
+  padding: 9px 11px;
+  margin: 12px 0 2px;
+  line-height: 1.5;
+}
+/* the icon span must size itself — svg{max-width:100%} collapses it inside a
+   plain flex-child span */
+.byok-hint .byok-hint-ico { flex: 0 0 auto; display: inline-flex; margin-top: 2px; }
+.byok-hint svg { width: 15px; height: 15px; }
 .byok-link { color: var(--accent-strong, #818cf8); font-weight: 700; cursor: pointer; text-decoration: underline; }
 
 /* ── AI-down highlights: badge + Settings card when the relay fails ── */
