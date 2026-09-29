@@ -424,9 +424,14 @@ export class ReviewerPage implements AfterViewInit {
 
   private applyScale() {
     // zoom scales EVERYTHING inside the reader — chips, headings and cards use
-    // fixed px sizes that a font-size change on the container can't touch
+    // fixed px sizes that a font-size change on the container can't touch.
+    // zoom paints the box at scale AFTER layout, so divide the width by the
+    // same factor — the article then fills exactly the content column at any
+    // A+/A− size instead of bleeding past the screen edge.
     const el = this.content?.nativeElement as HTMLElement | undefined;
-    if (el) el.style.zoom = String(this.scale);
+    if (!el) return;
+    el.style.zoom = String(this.scale);
+    el.style.width = (100 / this.scale).toFixed(4) + '%';
   }
   fontMinus() { this.scale = Math.max(0.85, +(this.scale - 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }
   fontPlus() { this.scale = Math.min(1.5, +(this.scale + 0.1).toFixed(2)); saveSettings({ readerScale: this.scale }); this.applyScale(); }

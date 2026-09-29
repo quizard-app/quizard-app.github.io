@@ -3,7 +3,7 @@
     <header class="back-header">
       <button class="icon-btn" (click)="back()" data-tooltip="Back" [innerHTML]="'chevronLeft' | ico"></button>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div>
+        <div style="font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">{{ d.name }}</div>
         <div style="font-size:11.5px;color:var(--text-faint)">{{ typeLabel(d.type) }} · {{ d.wordCount.toLocaleString() }} words</div>
       </div>
       <div class="font-controls" style="display:flex;gap:4px">

@@ -487,6 +487,8 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
   margin: 0 auto;
   padding: 20px 0 12px;
   transition: font-size 0.15s ease;
+  /* a long token (URL, code,ALLCAPSheading) must wrap, never widen the page */
+  overflow-wrap: break-word;
 }
 .reader-title {
   font-family: var(--font-display);
@@ -662,7 +664,7 @@ html[data-theme='dark'] .ai-gen-bar.err { color: var(--warn); }
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
 }
-.ai-sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.ai-sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; flex-wrap: wrap; }
 .ai-num {
   width: 24px; height: 24px; border-radius: 8px; flex: 0 0 auto;
   background: var(--grad-accent); color: #fff;
@@ -670,11 +672,12 @@ html[data-theme='dark'] .ai-gen-bar.err { color: var(--warn); }
   font-family: var(--font-mono); font-weight: 800; font-size: 11.5px;
   box-shadow: var(--grad-shadow);
 }
-.ai-sec-head h4 { flex: 1; font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.ai-sec-head h4 { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .ai-flag {
-  flex: 0 0 auto;
+  flex: 0 0 auto; max-width: 100%;
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
-  border-radius: var(--radius-pill); padding: 3px 9px; white-space: nowrap;
+  border-radius: var(--radius-pill); padding: 3px 9px;
+  white-space: normal; text-align: center; overflow-wrap: anywhere;
 }
 .ai-flag.hot { color: var(--warn); background: var(--warn-bg); border: 1px solid var(--warn-border); }
 .ai-flag.warm { color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-border); }
@@ -723,14 +726,15 @@ html[data-theme='dark'] .ai-table td { color: var(--text-dim); }
    inside its own box instead of clipping the last column off-screen. */
 .ai-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ai-box {
-  display: flex; align-items: flex-start; gap: 9px;
+  display: flex; align-items: flex-start; gap: 9px; flex-wrap: wrap;
   font-size: 12.5px; line-height: 1.55; color: var(--text);
   border-radius: var(--radius-sm); padding: 9px 12px; margin-top: 8px;
 }
 .ai-box-label {
-  flex: 0 0 auto;
+  flex: 0 0 auto; max-width: 100%;
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: var(--radius-pill); margin-top: 1px; white-space: nowrap;
+  padding: 3px 8px; border-radius: var(--radius-pill); margin-top: 1px;
+  white-space: normal; text-align: center; overflow-wrap: anywhere;
 }
 .ai-important { background: var(--warn-bg); border: 1px solid var(--warn-border); }
 .ai-important .ai-box-label { color: var(--warn); border: 1px solid var(--warn-border); }
