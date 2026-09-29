@@ -6,7 +6,12 @@ export async function extractPdf(file) {
   // the initial bundle so the app starts fast).
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist')
-    const workerUrl = 'pdf.worker.min.mjs'
+    // Absolute URL: pdf.js's fake-worker fallback does import(workerSrc), and a
+    // bare specifier like 'pdf.worker.min.mjs' can't be resolved there — the
+    // Worker constructor would tolerate it, but the fallback path errors out
+    // with "Failed to resolve module specifier". Also lets the service worker
+    // serve the precached file when the origin is unreachable.
+    const workerUrl = new URL('pdf.worker.min.mjs', document.baseURI).href
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
     workerSet = true
   }
