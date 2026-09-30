@@ -7,7 +7,7 @@ import { detectTopics } from '../../core/engine/topics.js';
 import { sentences, slideCoverage, stripSlideMarkers } from '../../core/engine/textproc.js';
 import { summarizeDoc } from '../../core/engine/summarize.js';
 import { ensureAIReviewer, reviewerToHtml } from '../../core/engine/reviewer-ai.js';
-import { generateQuiz, MCQ_ONLY_MIX } from '../../core/engine/quizgen.js';
+import { maybeScheduleReminders } from '../../core/services/reminders.js';
 import { icon } from '../../shared/icons.js';
 import { typeLabel } from '../../shared/helpers.js';
 import { exportSummary, printStudySheet, exportReviewerPdf, exportAiReviewerPdf } from '../../core/engine/export.js';
@@ -143,10 +143,27 @@ export class ReviewerPage implements AfterViewInit {
         if (def) keyTermDefs.push({ term, def });
       }
     }
-    const q = generateQuiz(doc, { count: 6, mix: { ...MCQ_ONLY_MIX }, difficulty: 'medium', shuffle: false, fixedSeed: 7 });
-    const reviewQs = (q.questions || []).filter((x: any) => x.type !== 'short');
+    // Part IV is active recall, not a quiz: prompts made from the section
+    // titles and key terms, each with an expandable hint. Section prompts come
+    // first; generic single words ("energy", "cells") never become prompts.
+    const GENERIC_TERMS = new Set(['energy', 'cells', 'cell', 'chemical', 'process', 'system', 'systems', 'example', 'water', 'level', 'levels', 'other', 'within', 'which', 'their', 'these', 'those', 'about', 'would', 'could', 'where', 'every', 'without', 'through', 'this', 'that', 'with', 'from']);
+    const seenHints = new Set<string>();
+    const recallPrompts: any[] = [];
+    const addPrompt = (prompt: string, hint: string) => {
+      if (recallPrompts.length >= 7 || !prompt) return;
+      const key = hint.trim().toLowerCase().slice(0, 60);
+      if (key && seenHints.has(key)) return;
+      if (key) seenHints.add(key);
+      recallPrompts.push({ prompt, hint });
+    };
+    for (const sec of summary.sections) {
+      addPrompt(`Can you explain “${sec.title}” in your own words?`, sec.points[0] || '');
+      if (recallPrompts.length < 7) addPrompt(`Can you list the key ideas of “${sec.title}” without looking?`, sec.points[1] || sec.points[0] || '');
+    }
+    const strongTerms = keyTermDefs.filter(t => t.term.length >= 5 && !GENERIC_TERMS.has(t.term.toLowerCase()));
+    for (const t of strongTerms) addPrompt(`Can you define “${t.term}” without looking?`, t.def);
     this.nlp = {
-      sents, topics, summary, sections, keyTermDefs, reviewQs,
+      sents, topics, summary, sections, keyTermDefs, recallPrompts,
       readTargets: {
         summary: summary.sections.flatMap((s: any) => s.points),
         full: sections.flatMap((s: any) => s.paras)
@@ -156,7 +173,7 @@ export class ReviewerPage implements AfterViewInit {
 
   private summaryHtml(): string {
     const doc = this.doc();
-    const { summary, sections, keyTermDefs, reviewQs } = this.nlp;
+    const { summary, sections, keyTermDefs, recallPrompts } = this.nlp;
     if (!summary.tldr.length) {
       return `<div class="empty-state"><h3>Not enough to summarize</h3><p>This document has too little readable text. Try the Full text tab.</p></div>`;
     }
@@ -202,60 +219,20 @@ export class ReviewerPage implements AfterViewInit {
             </div>`).join('')}
         </div>`);
     }
-    if (reviewQs.length) {
+    if (recallPrompts.length) {
       parts.push(`
         <div class="rvw-part">
-          <div class="rvw-part-head"><span class="rvw-num">IV</span><h3>Test Yourself</h3></div>
-          <ol class="rvq-list">
-            ${reviewQs.map((q: any) => this.selfTestItemHtml(q)).join('')}
-          </ol>
+          <div class="rvw-part-head"><span class="rvw-num">IV</span><h3>Check your recall</h3></div>
+          <ul class="rvq-list">
+            ${recallPrompts.map((p: any) => `
+              <li class="rvq">
+                <div class="rvq-q">${this.esc(p.prompt)}</div>
+                ${p.hint ? `<details class="rvq-reveal"><summary>Show hint</summary><span>${this.esc(p.hint)}</span></details>` : ''}
+              </li>`).join('')}
+          </ul>
         </div>`);
     }
     return parts.join('') + `<p class="sum-note">Pointers forged from your document — open <strong>Full text</strong> to read everything.</p>`;
-  }
-
-  private selfTestItemHtml(q: any): string {
-    const TYPE_LABEL: Record<string, string> = { tf: 'TRUE or FALSE', matching: 'MATCHING', ordering: 'ORDERING' };
-    let qText = '', optsHtml = '', ansHtml = '';
-    const optList = (arr: string[], numbered = false) =>
-      `<div class="rvq-opts">${(arr || []).map((o, oi) =>
-        `<span>${numbered ? oi + 1 + '.' : String.fromCharCode(65 + oi) + '.'} ${this.esc(o)}</span>`).join('')}</div>`;
-    if (q.type === 'mcq' || q.type === 'except') {
-      qText = (q.type === 'except' ? '<span class="rvq-tag">EXCEPT</span> ' : '') + this.esc(q.stem);
-      optsHtml = optList(q.options);
-      ansHtml = q.options?.[q.answerIndex] ?? '';
-    } else if (q.type === 'multi') {
-      qText = '<span class="rvq-tag">SELECT 2</span> ' + this.esc(q.stem);
-      optsHtml = optList(q.options);
-      ansHtml = (q.answerIndices || []).map((i: number) => q.options?.[i]).filter(Boolean).join(' · ');
-    } else if (q.type === 'tf') {
-      qText = `<span class="rvq-tag">T/F</span> ${this.esc(q.statement)}`;
-      ansHtml = q.answer ? 'True' : 'False';
-    } else if (q.type === 'fib') {
-      qText = this.esc(q.stem);
-      optsHtml = optList(q.choices, true);
-      ansHtml = q.choices?.[q.answerIndex] ?? '';
-    } else if (q.type === 'id') {
-      qText = `Identify the term: ${this.esc(q.clue)}`;
-      ansHtml = q.answer ?? '';
-    } else if (q.type === 'matching') {
-      qText = `${this.esc(q.prompt)}`;
-      optsHtml = `
-        <div class="rvq-opts rvq-match">
-          <div class="rvq-match-col"><b>Terms</b>${(q.pairs || []).map((p: any) => `<span>${this.esc(p.left)}</span>`).join('')}</div>
-          <div class="rvq-match-col"><b>Definitions</b>${(q.rightOrder || []).map((pi: number) => `<span>${this.esc(q.pairs?.[pi]?.right || '')}</span>`).join('')}</div>
-        </div>`;
-      ansHtml = (q.pairs || []).map((p: any) => `${p.left} → ${p.right}`).join(' · ');
-    } else if (q.type === 'ordering') {
-      qText = `${this.esc(q.prompt)}`;
-      optsHtml = optList(q.shuffled || q.steps, true);
-      ansHtml = (q.steps || []).map((s: string, si: number) => `${si + 1}. ${s}`).join('  ·  ');
-    } else return '';
-    const tag = TYPE_LABEL[q.type] ? `<span class="rvq-tag">${TYPE_LABEL[q.type]}</span> ` : '';
-    return `<li class="rvq">
-      <div class="rvq-q">${tag}${qText}${optsHtml}</div>
-      <details class="rvq-reveal"><summary>Check answer</summary><span>${this.esc(ansHtml)}</span></details>
-    </li>`;
   }
 
   private fullHtml(): string {
