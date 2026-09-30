@@ -16,14 +16,14 @@
       @if (aiState() === 'ready') {
         <div class="ai-mode-toggle">
           <button type="button" [class.on]="aiMode()" (click)="setAiMode(true)"><span [innerHTML]="'sparkles' | ico"></span> AI reviewer</button>
-          <button type="button" [class.on]="!aiMode()" (click)="setAiMode(false)">Quick notes</button>
+          <button type="button" [class.on]="!aiMode()" (click)="setAiMode(false)">Pointers to review</button>
         </div>
       }
       @if (coverage(); as cov) {
         <p class="faint" style="font-size:11.5px;margin:4px 2px 0;text-align:center">✓ {{ cov }}</p>
       }
       @if (aiState() === 'generating') {
-        <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Quick notes shown meanwhile.</div>
+        <div class="ai-gen-bar"><span class="ai-dot"></span> Forging your AI reviewer from this file… usually under a minute. Pointers to review shown meanwhile.</div>
       }
       @if (aiState() === 'error') {
         <div class="ai-gen-bar err">AI reviewer couldn't be generated<button type="button" class="ai-retry" (click)="retryAi()">Retry</button><button type="button" class="ai-retry" (click)="byok.open('The AI relay is busy or out of requests. Add your own free AI key to generate the reviewer.')">Add a key</button></div>

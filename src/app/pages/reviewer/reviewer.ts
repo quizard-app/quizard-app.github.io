@@ -107,7 +107,7 @@ export class ReviewerPage implements AfterViewInit {
 
   private buildNlp() {
     const doc = this.doc();
-    // slide/page markers are pipeline bookkeeping — quick-notes NLP should
+    // slide/page markers are pipeline bookkeeping — pointers NLP should
     // never see them as sentences or topics
     const plain = stripSlideMarkers(String(doc.text || ''));
     const sents = sentences(plain);
@@ -473,7 +473,7 @@ export class ReviewerPage implements AfterViewInit {
     this.buildingPdf.set(true);
     try {
       // AI reviewers build as a text-based PDF (instant, even for huge docs);
-      // the quick-notes fallback still uses the screenshot renderer.
+      // the pointers fallback still uses the screenshot renderer.
       if (this.aiMode() && this.aiReviewer()) await exportAiReviewerPdf(this.aiReviewer(), this.doc().name);
       else await exportReviewerPdf(content, this.doc().name);
       this.toast.toast('Reviewer PDF downloaded ✓');
