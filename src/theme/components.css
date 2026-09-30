@@ -623,7 +623,7 @@ svg { max-width: 100%; }
 }
 
 /* ── Library filters ── */
-.lib-filters { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.lib-filters { margin-top: 14px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
 .filter-row { display: flex; align-items: center; gap: 8px; }
 .filter-label { color: var(--text-faint); display: grid; place-items: center; flex: 0 0 auto; }
 .filter-label svg { width: 16px; height: 16px; }

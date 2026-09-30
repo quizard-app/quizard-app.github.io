@@ -42,7 +42,7 @@
 
 .lib-tools {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 .lib-tools .text-input { flex: 1 1 170px; min-width: 170px; padding: 11px 16px; }
 .lib-tools .seg button { padding: 8px 14px; font-size: 12px; white-space: nowrap; }
