@@ -4,7 +4,7 @@ import { IonContent } from '@ionic/angular';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { listAttempts, listDocs, getWeakTerms, listMistakes } from '../../core/engine/storage.js';
 import { icon } from '../../shared/icons.js';
-import { dayLabel, fmtTime, scorePill } from '../../shared/helpers.js';
+import { dayLabel, fmtTime, scorePill, mergeActivity } from '../../shared/helpers.js';
 import { emptyProgressArt } from '../../shared/art.js';
 import { UiStateService } from '../../core/services/ui-state.service';
 
@@ -50,7 +50,7 @@ export class HistoryPage implements OnInit {
   weakTerms = signal<any[]>([]);
   maxWeight = signal(1);
   docStats = signal<any[]>([]);
-  groups = signal<{ day: string; items: any[] }[]>([]);
+  activity = signal<any[]>([]);
   trendHtml = signal<SafeHtml | string>('');
   heatmapHtml = signal<SafeHtml | string>('');
   nextAction = signal<{ docId: string; icon: string; title: string; sub: string } | null>(null);
@@ -139,13 +139,7 @@ export class HistoryPage implements OnInit {
     }
     this.nextAction.set(next);
 
-    const map = new Map<string, any[]>();
-    for (const a of attempts.slice(0, 40) as any[]) {
-      const key = dayLabel(a.date);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(a);
-    }
-    this.groups.set([...map.entries()].map(([day, items]) => ({ day, items })));
+    this.activity.set(mergeActivity(attempts, 12));
   }
 
   // 10-week study calendar: one column per week, one cell per day — the

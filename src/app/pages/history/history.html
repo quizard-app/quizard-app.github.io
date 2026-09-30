@@ -69,22 +69,23 @@
       </div>
     }
 
-    @if (groups().length) {
+    @if (activity().length) {
       <div class="section-title">Recent activity</div>
-      @for (g of groups(); track g.day) {
-        <div class="history-day">
-          @for (a of g.items; track a.id) {
-            <div class="history-item">
-              <div class="hi-icon" [style.color]="pctColor(a.percent >= 50 ? 80 : 30)" [style.background]="a.percent >= 50 ? 'var(--good-bg)' : 'var(--bad-bg)'" [innerHTML]="hiIcon(a)"></div>
-              <div class="hi-main">
-                <div class="hi-name">{{ a.docName }}</div>
-                <div class="hi-meta">{{ fmtTime(a.date) }} · {{ a.correct }}/{{ a.total }} correct · {{ Math.round(a.durationSec) }}s</div>
+      <div class="history-day">
+        @for (a of activity(); track a.id) {
+          <div class="history-item">
+            <div class="hi-icon" [style.color]="pctColor(a.percent >= 50 ? 80 : 30)" [style.background]="a.percent >= 50 ? 'var(--good-bg)' : 'var(--bad-bg)'" [innerHTML]="hiIcon(a)"></div>
+            <div class="hi-main">
+              <div class="hi-name">{{ a.docName }}</div>
+              <div class="hi-meta">
+                @if (a.rounds > 1) { {{ a.rounds }} rounds · best {{ a.best }}% · last {{ fmtTime(a.date) }} }
+                @else { {{ fmtTime(a.date) }} · {{ a.correct }}/{{ a.total }} correct · {{ Math.round(a.durationSec) }}s }
               </div>
-              <span class="score-pill {{ pillOf(a.percent) }}">{{ a.percent }}%</span>
             </div>
-          }
-        </div>
-      }
+            <span class="score-pill {{ pillOf(a.percent) }}">{{ a.percent }}%</span>
+          </div>
+        }
+      </div>
     }
   </div>
 

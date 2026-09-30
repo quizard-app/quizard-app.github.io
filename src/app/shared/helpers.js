@@ -32,6 +32,34 @@ export function dayLabel(ts) {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
+// Recent-activity rollup: attempts on the same document on the same day
+// collapse into one row (rounds + best score + time of the last round) so the
+// Progress page shows a short summary instead of growing with every attempt.
+// Attempts must be newest-first (as listAttempts returns them); the result
+// keeps that order and is capped.
+export function mergeActivity(attempts, cap = 12) {
+  const merged = new Map()
+  for (const a of attempts || []) {
+    const key = (a.docId || a.docName || 'other') + '|' + dayLabel(a.date)
+    const cur = merged.get(key)
+    if (!cur) {
+      merged.set(key, { ...a, rounds: 1, best: a.percent, lastDate: a.date })
+      continue
+    }
+    cur.rounds++
+    cur.best = Math.max(cur.best, a.percent)
+    cur.percent = cur.best
+    if (a.date > cur.lastDate) {
+      cur.lastDate = a.date
+      cur.correct = a.correct
+      cur.total = a.total
+      cur.durationSec = a.durationSec
+    }
+    cur.date = cur.lastDate
+  }
+  return [...merged.values()].slice(0, cap)
+}
+
 export function esc(s) {
   const div = document.createElement('div')
   div.textContent = String(s ?? '')
