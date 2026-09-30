@@ -61,7 +61,7 @@
     @if (visibleDocs().length) {
       <div class="doc-list">
         @for (doc of visibleDocs(); track doc.id) {
-          <div class="doc-card stagger" [class.selecting]="selectMode()" [class.picked]="selected().has(doc.id)" (click)="selectMode() ? toggleSelected(doc.id) : openDoc(doc)" [attr.data-tooltip]="selectMode() ? '' : 'Open document details'">
+          <div class="doc-card" [class.selecting]="selectMode()" [class.picked]="selected().has(doc.id)" (click)="selectMode() ? toggleSelected(doc.id) : openDoc(doc)" [attr.data-tooltip]="selectMode() ? '' : 'Open document details'">
             @if (selectMode()) {
               <div class="pick-circle"><span [innerHTML]="'check' | ico"></span></div>
             }

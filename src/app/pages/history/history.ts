@@ -186,7 +186,7 @@ export class HistoryPage implements OnInit {
         const n = perDay.get(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) || 0;
         const cls = !inYear || future ? 'future' : n > 0 ? 'on' : '';
         const label = inYear ? `${n} quiz${n === 1 ? '' : 's'} · ${monthNames[d.getMonth()]} ${d.getDate()}` : '';
-        cells.push(`<span class="heat-cell ${cls}" style="animation-delay:${w * 8}ms" title="${label}"></span>`);
+        cells.push(`<span class="heat-cell ${cls}" title="${label}"></span>`);
       }
     }
 

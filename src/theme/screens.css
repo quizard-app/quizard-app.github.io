@@ -79,6 +79,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  /* skip layout/paint for cards scrolled far out of view — the library list
+     stays fast to build and scroll with hundreds of documents (unsupported
+     browsers just render normally) */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 78px;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
@@ -442,6 +447,8 @@ html[data-theme='dark'] .type-card.on .t-head { color: var(--accent); }
   display: grid; grid-template-columns: 40px 1fr auto;
   gap: 14px; align-items: center;
   padding: 16px 0; border-bottom: 1px solid var(--border);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
 }
 .history-item:last-child { border-bottom: none; }
 .hi-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center; flex-shrink: 0; background: var(--surface-2); border: 1px solid var(--border); }

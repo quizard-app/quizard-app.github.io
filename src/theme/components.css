@@ -696,11 +696,13 @@ svg { max-width: 100%; }
 }
 ion-tab-button.tab-selected .tab-tile { animation: tile-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-/* heat cells rise in with a wave (delay set inline per cell) */
-.heat-cell { animation: rise-in 0.4s ease-out backwards; }
+/* the whole study calendar fades in once — animating all ~365 cells
+   individually (each with its own stagger delay) queued hundreds of
+   concurrent compositor animations on phones */
+.gh-grid { animation: fadeIn 0.4s ease-out backwards; }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen > *, .trend-svg, .heat-cell, .tab-tile, .btn, .doc-card, .exam-card, .exam-entry {
+  .screen > *, .trend-svg, .gh-grid, .tab-tile, .btn, .doc-card, .exam-card, .exam-entry {
     animation: none !important;
     transition: none !important;
   }
