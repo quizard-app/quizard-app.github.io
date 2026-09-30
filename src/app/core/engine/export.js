@@ -271,9 +271,9 @@ const QUIZ_SECTIONS = [
 
 export function buildSummaryMarkdown(doc) {
   const summary = summarizeDoc(stripSlideMarkers(doc.text))
-  const out = [`# ${doc.name}`, '', `_Study sheet · generated ${stamp()}_`, '']
+  const out = [`# ${doc.name}`, '', `_Pointers to review · generated ${stamp()}_`, '']
   if (summary.tldr.length) {
-    out.push('## In a nutshell', '')
+    out.push('## Key pointers', '')
     summary.tldr.forEach(p => out.push(`- ${p}`))
     out.push('')
   }
@@ -363,7 +363,7 @@ export function buildQuizMarkdown(docName, questions, review) {
 }
 
 export function exportSummary(doc) {
-  download(`quizard-summary-${slug(doc.name)}.md`, buildSummaryMarkdown(doc))
+  download(`quizard-pointers-${slug(doc.name)}.md`, buildSummaryMarkdown(doc))
 }
 
 /* Real PDF handout: same structure as the reviewer screen, generated with
@@ -390,33 +390,34 @@ export async function exportPdfHandout(doc, extras = {}) {
 
   // title block
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
-  pdf.text('S T U D Y   R E V I E W E R', M, M + 8)
+  pdf.text('P O I N T E R S   T O   R E V I E W', M, M + 8)
   y = M + 26
   text(doc.name, { size: 20, bold: true, gap: 2 })
   text(`${(doc.wordCount || 0).toLocaleString()} words · forged from your document · ${stamp()}`, { size: 9, color: '#868ea8', gap: 10 })
   rule()
 
-  // I. overview
+  // I. key pointers
   const summary = summarizeDoc(stripSlideMarkers(doc.text))
   if (summary.tldr.length) {
-    text('I. Overview', { size: 13, bold: true, color: '#5b3df5' })
-    summary.tldr.forEach(p => text(p, { size: 11 }))
+    text('I. Key pointers', { size: 13, bold: true, color: '#5b3df5' })
+    summary.tldr.forEach(p => text('•  ' + p, { size: 10.5, color: '#475069', indent: 10, gap: 2 }))
+    y += 4
   }
 
   // II. key terms
   if (extras.keyTermDefs?.length) {
     rule()
-    text('II. Key Terms & Definitions', { size: 13, bold: true, color: '#5b3df5' })
+    text('II. Key terms to know', { size: 13, bold: true, color: '#5b3df5' })
     for (const t of extras.keyTermDefs) {
       text(t.term, { size: 11, bold: true, color: '#5b3df5', gap: 1 })
       text(t.def, { size: 10.5, color: '#475069', indent: 12, gap: 8 })
     }
   }
 
-  // III. section notes
+  // III. pointers by section
   if (summary.sections.length) {
     rule()
-    text('III. Section Notes', { size: 13, bold: true, color: '#5b3df5' })
+    text('III. Pointers by section', { size: 13, bold: true, color: '#5b3df5' })
     summary.sections.forEach((sec, i) => {
       need(30)
       text(`${String(i + 1).padStart(2, '0')}  ${sec.title}`, { size: 11.5, bold: true, gap: 3 })
@@ -583,7 +584,7 @@ export function printStudySheet(doc) {
     `<h2>${escHtml(sec.title)}</h2><ul>${sec.points.map(p => `<li>${escHtml(p)}</li>`).join('')}</ul>`
   ).join('')
   const tldr = summary.tldr.length
-    ? `<h2>In a nutshell</h2>${summary.tldr.map(p => `<p>${escHtml(p)}</p>`).join('')}`
+    ? `<h2>Key pointers</h2><ul>${summary.tldr.map(p => `<li>${escHtml(p)}</li>`).join('')}</ul>`
     : ''
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(doc.name)}</title>
     <style>
@@ -591,7 +592,7 @@ export function printStudySheet(doc) {
       h1{font-size:22px} h2{font-size:16px;margin-top:22px;color:#5b3df5} ul{margin:6px 0} li{margin:3px 0}
       .meta{color:#868ea8;font-size:13px} hr{border:none;border-top:1px solid #e4e9f2;margin:18px 0}
     </style></head><body>
-    <h1>${escHtml(doc.name)}</h1><p class="meta">Study sheet · ${(doc.wordCount || 0).toLocaleString()} words · exported from Quizard</p>
+    <h1>${escHtml(doc.name)}</h1><p class="meta">Pointers to review · ${(doc.wordCount || 0).toLocaleString()} words · exported from Quizard</p>
     ${tldr}${sections}
     <hr><p class="meta">Generated ${stamp()}</p>
     <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>

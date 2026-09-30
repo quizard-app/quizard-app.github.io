@@ -163,21 +163,23 @@ export class ReviewerPage implements AfterViewInit {
     const parts: string[] = [];
     parts.push(`
       <div class="rvw-head">
-        <div class="rvw-eyebrow">${this.ico('book')} Study Reviewer</div>
+        <div class="rvw-eyebrow">${this.ico('listChecks')} Pointers to Review</div>
         <h1 class="rvw-title">${this.esc(doc.name)}</h1>
         <div class="rvw-meta">${typeLabel(doc.type)} · ${doc.wordCount.toLocaleString()} words · ${sections.length} section${sections.length === 1 ? '' : 's'} · ${keyTermDefs.length} key term${keyTermDefs.length === 1 ? '' : 's'}</div>
       </div>`);
     if (summary.tldr.length) {
       parts.push(`
         <div class="rvw-part">
-          <div class="rvw-part-head"><span class="rvw-num">I</span><h3>Overview</h3></div>
-          ${summary.tldr.map((p: string) => `<p class="rvw-overview" data-point>${this.esc(p)}</p>`).join('')}
+          <div class="rvw-part-head"><span class="rvw-num">I</span><h3>Key pointers</h3></div>
+          <ul class="sum-points">
+            ${summary.tldr.map((p: string) => `<li data-point>${this.esc(p)}</li>`).join('')}
+          </ul>
         </div>`);
     }
     if (keyTermDefs.length) {
       parts.push(`
         <div class="rvw-part">
-          <div class="rvw-part-head"><span class="rvw-num">II</span><h3>Key Terms &amp; Definitions</h3></div>
+          <div class="rvw-part-head"><span class="rvw-num">II</span><h3>Key terms to know</h3></div>
           <dl class="rvw-terms">
             ${keyTermDefs.map((t: any) => `<div class="rvw-term"><dt>${this.esc(t.term)}</dt><dd>${this.esc(t.def)}</dd></div>`).join('')}
           </dl>
@@ -186,7 +188,7 @@ export class ReviewerPage implements AfterViewInit {
     if (summary.sections.length) {
       parts.push(`
         <div class="rvw-part">
-          <div class="rvw-part-head"><span class="rvw-num">III</span><h3>Section Notes</h3></div>
+          <div class="rvw-part-head"><span class="rvw-num">III</span><h3>Pointers by section</h3></div>
           ${summary.sections.map((sec: any, i: number) => `
             <div class="sum-section">
               <div class="sum-head">
@@ -209,7 +211,7 @@ export class ReviewerPage implements AfterViewInit {
           </ol>
         </div>`);
     }
-    return parts.join('') + `<p class="sum-note">Forged from your document — open <strong>Full text</strong> to read everything.</p>`;
+    return parts.join('') + `<p class="sum-note">Pointers forged from your document — open <strong>Full text</strong> to read everything.</p>`;
   }
 
   private selfTestItemHtml(q: any): string {
@@ -466,7 +468,7 @@ export class ReviewerPage implements AfterViewInit {
     // straight to the homepage — the doc page is one tap away in the library
     this.router.navigateByUrl('/tabs/library');
   }
-  exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded study sheet (.md)'); }
+  exportMd() { exportSummary(this.doc()); this.toast.toast('Downloaded pointers (.md)'); }
   async exportPdf() {
     const content = this.content?.nativeElement;
     if (this.buildingPdf() || !content || !this.reviewerReady()) return;
