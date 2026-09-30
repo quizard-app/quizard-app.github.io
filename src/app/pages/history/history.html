@@ -1,4 +1,7 @@
 <ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="refresh($event)">
+    <ion-refresher-content refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
   <header class="app-header">
     <div class="brand"><span class="mark" [innerHTML]="iconFor('logo')"></span>Progress</div>
     <button class="icon-btn" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="iconFor(ui.theme() === 'dark' ? 'sun' : 'moon')"></button>

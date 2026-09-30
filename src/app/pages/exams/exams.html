@@ -1,4 +1,9 @@
 <ion-content [fullscreen]="true">
+  @if (!detailId()) {
+    <ion-refresher slot="fixed" (ionRefresh)="refresh($event)">
+      <ion-refresher-content refreshingSpinner="crescent"></ion-refresher-content>
+    </ion-refresher>
+  }
   @if (detailId()) {
     @if (exam(); as exam) {
       <header class="back-header">

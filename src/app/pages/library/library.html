@@ -1,4 +1,7 @@
 <ion-content [fullscreen]="true">
+  <ion-refresher slot="fixed" (ionRefresh)="refresh($event)">
+    <ion-refresher-content refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
   <header class="app-header">
     <div class="brand"><span class="mark" [innerHTML]="icoLog"></span>Quizard</div>
     <div style="display:flex;gap:2px;align-items:center">

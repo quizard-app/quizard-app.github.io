@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { IonContent } from '@ionic/angular';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { listAttempts, listDocs, getWeakTerms, listMistakes } from '../../core/engine/storage.js';
 import { icon } from '../../shared/icons.js';
@@ -33,7 +33,7 @@ function calcStreak(attempts: any[]) {
 
 @Component({
   selector: 'app-history',
-  imports: [IonContent],
+  imports: [IonContent, IonRefresher, IonRefresherContent],
   templateUrl: './history.html',
 })
 export class HistoryPage implements OnInit {
@@ -65,7 +65,15 @@ export class HistoryPage implements OnInit {
   readonly dayLabel = dayLabel;
   readonly Math = Math;
 
-  async ngOnInit() {
+  async ngOnInit() { await this.load(); }
+
+  async refresh(ev: Event) {
+    await this.load();
+    (ev as CustomEvent).detail?.complete?.();
+  }
+
+  private async load() {
+    const prevYear = this.selectedYear();
     const [attempts, docs, weakTerms, mistakes] = await Promise.all([
       listAttempts(), listDocs(), getWeakTerms(null).catch(() => []), listMistakes().catch(() => [])
     ]);
@@ -81,10 +89,10 @@ export class HistoryPage implements OnInit {
     this.accuracy.set(totalQ ? Math.round((totalC / totalQ) * 100) : null);
     this.trendHtml.set(this.trust(this.trendChart(attempts)));
     // GitHub-style year grid: default to the current year, offer every year
-    // with activity in the dropdown
-    this.selectedYear.set(new Date().getFullYear());
+    // with activity in the dropdown — a manual refresh keeps the year chosen
     const ys = [...new Set((attempts as any[]).map(a => new Date(a.date).getFullYear()))];
     this.years.set(ys.sort((a, b) => b - a));
+    this.selectedYear.set(ys.includes(prevYear) ? prevYear : new Date().getFullYear());
     this.heatmapHtml.set(this.trust(this.heatmap(this.allAttempts, this.selectedYear())));
 
     // per-document rollup: rounds, average, best, last played, banked misses

@@ -661,6 +661,9 @@ svg { max-width: 100%; }
 .acc-sync-link:hover b { text-decoration: underline; }
 .icon-btn.on { color: var(--accent-strong); background: var(--accent-soft); }
 
+/* pull-to-refresh spinner tinted to the app accent */
+ion-refresher { color: var(--accent-strong); }
+
 /* ── Page motion: staggered entrance, chart draw-in, press feedback ── */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(14px); }

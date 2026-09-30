@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { IonContent, IonMenuButton } from '@ionic/angular';
+import { IonContent, IonMenuButton, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import { filter, map, startWith } from 'rxjs';
 import {
   getActiveAccountId, getAccount, listDocs, deleteDoc, restoreDoc, purgeDeletedDoc, loadSettings, saveSettings, deriveFolders, deriveTags, updateDoc, listAttempts
@@ -24,7 +24,7 @@ const SORTS = [
 
 @Component({
   selector: 'app-library',
-  imports: [IonMenuButton, IonContent, IcoPipe],
+  imports: [IonMenuButton, IonContent, IonRefresher, IonRefresherContent, IcoPipe],
   templateUrl: './library.html',
 })
 export class LibraryPage {

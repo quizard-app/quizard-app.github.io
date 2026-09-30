@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IonContent } from '@ionic/angular';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import { getExam, listExams, deleteExam, getDoc, listDueCards, getWeakTerms } from '../../core/engine/storage.js';
 import { buildExamQuiz, countdownLabel, rankExamTopics } from '../../core/engine/exam.js';
 import { authorExamQuiz } from '../../core/engine/quiz-ai.js';
@@ -15,7 +15,7 @@ import { NavController } from '@ionic/angular';
 
 @Component({
   selector: 'app-exams',
-  imports: [IonContent, IcoPipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, IcoPipe],
   templateUrl: './exams.html',
 })
 export class ExamsPage implements OnInit {
@@ -106,6 +106,12 @@ export class ExamsPage implements OnInit {
   private async loadList() {
     const exams = await listExams();
     this.exams.set(exams);
+  }
+
+  // pull-to-refresh on the exams list tab
+  async refresh(ev: Event) {
+    await this.loadList();
+    (ev as CustomEvent).detail?.complete?.();
   }
 
   cdOf(e: any) { return countdownLabel(e.examDate); }
