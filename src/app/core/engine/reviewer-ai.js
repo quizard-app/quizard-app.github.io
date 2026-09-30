@@ -434,7 +434,7 @@ export function reviewerToHtml(reviewer, esc) {
       // 🔹 sub-terms: "Meaning:" line + attribute bullets + per-term memory
       for (const t of (sec.terms || [])) {
         out.push(`<div class="ai-term" data-para>`)
-        out.push(`<div class="ai-term-name">🔹 ${e(t.term)}</div>`)
+        out.push(`<div class="ai-term-name">${e(t.term)}</div>`)
         if (t.meaning) {
           const m = t.meaning.replace(/^meaning:\s*/i, '')
           out.push(`<p class="ai-term-meaning"><span class="ai-term-label">Meaning:</span> ${e(m)}</p>`)

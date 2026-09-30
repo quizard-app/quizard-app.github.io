@@ -95,7 +95,7 @@ describe('reviewerToHtml (extended format)', () => {
   it('renders sub-terms, meaning lines, mnemonics, id drills and final review', () => {
     const html = reviewerToHtml(sanitizeReviewer(RAW), esc)
     expect(html).toContain('ai-term-name')
-    expect(html).toContain('🔹 Morality')
+    expect(html).toContain('<div class="ai-term-name">Morality</div>') // term name, CSS dot marker (no emoji)
     expect(html).toContain('ai-term-label')
     expect(html).toContain('Meaning:')
     expect(html).not.toContain('Meaning: Meaning:') // prefix stripped once

@@ -672,9 +672,9 @@ html[data-theme='dark'] .ai-gen-bar.err { color: var(--warn); }
   font-family: var(--font-mono); font-weight: 800; font-size: 11.5px;
   box-shadow: var(--grad-shadow);
 }
-.ai-sec-head h4 { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.ai-sec-head h4 { flex: 1 1 0; min-width: min(100%, 58%); font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .ai-flag {
-  flex: 0 0 auto; max-width: 100%;
+  flex: 0 0 auto; max-width: 100%; margin-left: auto;
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
   border-radius: var(--radius-pill); padding: 3px 9px;
   white-space: normal; text-align: center; overflow-wrap: anywhere;
@@ -688,11 +688,11 @@ html[data-theme='dark'] .ai-def-term { color: var(--accent); }
 .ai-expl { font-size: 13.5px; line-height: 1.65; color: var(--text-dim); margin-bottom: 8px; }
 .ai-bullets { list-style: none; margin: 2px 0 8px; display: grid; gap: 5px; }
 .ai-bullets li {
-  position: relative; padding-left: 18px;
+  position: relative; padding-left: 14px;
   font-size: 13.5px; line-height: 1.6; color: var(--text);
 }
 .ai-bullets li::before {
-  content: ''; position: absolute; left: 2px; top: 11px;
+  content: ''; position: absolute; left: 0; top: 11px;
   width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
   box-shadow: 0 0 5px var(--accent-glow);
 }
@@ -768,7 +768,17 @@ html[data-theme='dark'] .ai-hy-label { color: var(--accent); }
   border-radius: var(--radius-md);
   padding: 11px 14px; margin: 0 0 10px;
 }
-.ai-term-name { font-weight: 800; font-size: 14.5px; margin-bottom: 4px; }
+/* the 🔹 emoji became a wide, uneven "dot + gap" on phones — a CSS dot keeps
+   the marker tight and identical to the list bullets */
+.ai-term-name {
+  position: relative; padding-left: 14px;
+  font-weight: 800; font-size: 14.5px; margin-bottom: 4px;
+}
+.ai-term-name::before {
+  content: ''; position: absolute; left: 0; top: 7px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
 .ai-term-meaning { font-size: 13.5px; line-height: 1.55; margin: 0 0 6px; }
 .ai-term-label { font-weight: 700; color: var(--accent-strong); }
 html[data-theme='dark'] .ai-term-label { color: var(--accent); }
