@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readSheet, scoreSheet, FLAG, toGray, threshold, homography, applyH } from '../src/app/core/engine/omr.js'
-import { SHEET, frameRect, markerCenters, bubbleCenter, bubbleSheetLayout } from '../src/app/core/engine/sheet-spec.js'
+import { SHEET, frameRect, markerCenters, bubbleCenter, bubbleSheetLayout, idDigitCenter } from '../src/app/core/engine/sheet-spec.js'
 
 // Synthetic sheet renderer: draws the exact sheet-spec geometry into a raw
 // RGBA pixel buffer — the same thing the PDF printer puts on paper, so the
@@ -50,6 +50,19 @@ function renderSheet({ count = 10, answers = [], marks = {}, scale = 2.2, rotate
       ring(c.x, c.y, SHEET.circleR, 0)
       if (answers[i] === b) disk(c.x, c.y, SHEET.circleR * 0.8, 0, !!marks.soft)
     }
+  }
+
+  // student-number strip: ring all 20 digit bubbles, shade the number
+  if (marks.studentNo != null) {
+    for (let row = 0; row < 2; row++) for (let d = 0; d <= 9; d++) {
+      const c = idDigitCenter(count, row, d)
+      ring(c.x, c.y, SHEET.idBubbleR, 0)
+    }
+    const digits = [Math.floor(marks.studentNo / 10), marks.studentNo % 10]
+    digits.forEach((d, row) => {
+      const c = idDigitCenter(count, row, d)
+      disk(c.x, c.y, SHEET.idBubbleR * 0.85, 0)
+    })
   }
 
   // optional extra marks (double shading)
@@ -144,6 +157,21 @@ describe('readSheet — synthetic sheets', () => {
     const bad = res.flags.filter(f => f === FLAG.BLANK || f === FLAG.MULTI).length
     expect(bad).toBe(0)
     expect(res.answers).toEqual(answers)
+  })
+
+  it('reads the shaded student number for auto-assignment', () => {
+    const img = renderSheet({ count: 10, answers: [0, 2, 1, 3, 0, 2, 1, 3, 0, 2], marks: { studentNo: 7 } })
+    const res = readSheet(img, 10)
+    expect(res.ok).toBe(true)
+    expect(res.studentNumber).toBe(7)
+  })
+
+  it('returns no student number when the strip is blank', () => {
+    const img = renderSheet({ count: 10, answers: [0, 2, 1, 3, 0, 2, 1, 3, 0, 2] })
+    const res = readSheet(img, 10)
+    expect(res.ok).toBe(true)
+    expect(res.studentNumber).toBeNull()
+    expect(res.studentReason).toBe('blank')
   })
 
   it('fails gracefully when the markers are missing', () => {

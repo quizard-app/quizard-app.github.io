@@ -1,5 +1,5 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect, idDigitCenter } from './sheet-spec.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
 
@@ -158,7 +158,7 @@ export async function exportBubbleSheets(quiz, copies = 1) {
   for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
     if (copy > 0) pdf.addPage()
 
-    headerBlock(pdf, quiz, 'Shade ONE circle per row fully with pen or pencil.')
+    headerBlock(pdf, quiz, 'Shade ONE answer circle per row + your student number, fully.')
 
     // frame + corner markers (geometry from sheet-spec.js)
     const f = frameRect(quiz.items.length)
@@ -196,6 +196,21 @@ export async function exportBubbleSheets(quiz, copies = 1) {
         idx++
       }
     })
+
+    // student-number strip: two rows of digit bubbles (tens / ones, 0–9).
+    // The scanner reads these first, so a shuffled pile still identifies
+    // whose sheet it is — numbers belong to students, not to seats.
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6); pdf.setTextColor('#374151')
+    pdf.text('STUDENT NO.', f.x + 8, f.y + f.h - 27)
+    for (let row = 0; row < 2; row++) {
+      for (let d = 0; d <= 9; d++) {
+        const c = idDigitCenter(quiz.items.length, row, d)
+        pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.9)
+        pdf.circle(c.x, c.y, SHEET.idBubbleR, 'S')
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(4.5); pdf.setTextColor('#9ca3af')
+        pdf.text(String(d), c.x, c.y + 1.4, { align: 'center', baseline: 'middle' })
+      }
+    }
 
     // write-in fields below the frame
     const by = f.y + f.h + 34

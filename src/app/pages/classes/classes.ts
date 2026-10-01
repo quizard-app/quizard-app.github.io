@@ -31,6 +31,10 @@ export class ClassesPage {
   paste = signal('');
 
   readonly previewCount = computed(() => parseRoster(this.paste()).students.length);
+  readonly editingRoster = computed(() => {
+    const cls = this.classes().find(c => c.id === this.editingId());
+    return (cls?.students || []).slice().sort((a: any, b: any) => (a.no || 0) - (b.no || 0));
+  });
   readonly previewSkipped = computed(() => parseRoster(this.paste()).skipped);
   readonly totalStudents = computed(() => this.classes().reduce((s, c) => s + (c.students?.length || 0), 0));
 
@@ -84,7 +88,7 @@ export class ClassesPage {
       name,
       grade: this.grade().trim(),
       section: this.section().trim(),
-      students: parsed.students.map(s => ({
+      students: parsed.students.map((s: any) => ({
         name: s.name,
         grade: s.grade || this.grade().trim(),
         section: s.section || this.section().trim(),

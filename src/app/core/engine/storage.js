@@ -345,8 +345,11 @@ export async function listDocs() {
 // ── Teacher app: class rosters and answer keys ────────────────────────────
 
 /**
+ * @typedef {{ id?: string, no?: number, name: string, grade: string, section: string }} RosterStudent
+ */
+/**
  * @typedef {{ id: string, accountId: string, name: string, grade: string,
- *   section: string, students: { name: string, grade: string, section: string }[],
+ *   section: string, students: RosterStudent[],
  *   createdAt: number }} TeacherClass
  */
 /**
@@ -356,12 +359,33 @@ export async function listDocs() {
  *   createdAt: number }} AnswerKey
  */
 
+// Classes saved before student numbering existed get id/no assigned on
+// first read (and persisted), so scans can always resolve the number.
+function migrateClassStudents(c) {
+  if (!c.students?.length) return c
+  if (c.students.every(st => st.id && st.no)) return c
+  let nextNo = Math.max(0, ...c.students.map(st => st.no || 0)) + 1
+  const students = c.students.map(st => {
+    const out = { ...st }
+    if (!out.id) out.id = uid()
+    if (!out.no) out.no = nextNo++
+    return out
+  })
+  return { ...c, students }
+}
+
 /** @returns {Promise<TeacherClass[]>} */
 export async function listClasses() {
   const db = await dbPromise
   const accountId = await requireAccount()
   const all = await db.getAll('classes')
-  return all.filter(c => c.accountId === accountId).sort((a, b) => b.createdAt - a.createdAt)
+  const out = []
+  for (const raw of all.filter(c => c.accountId === accountId)) {
+    const c = migrateClassStudents(raw)
+    if (c !== raw) await db.put('classes', c)
+    out.push(c)
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt)
 }
 
 /** @param {Partial<TeacherClass>} data @returns {Promise<TeacherClass>} */
@@ -374,6 +398,18 @@ export async function saveClass(data) {
     students: [], createdAt: existing?.createdAt || Date.now(), ...data, accountId
   }
   if (!record.id) record.id = uid()
+  // every student needs a stable id AND a stable number: the number is what
+  // students shade on the bubble sheet, and it belongs to the student — not
+  // to their position in the list — so roster edits never shift it.
+  // Re-parsed rosters are matched back by name so editing keeps numbers.
+  const prev = existing?.students || []
+  let nextNo = Math.max(0, ...prev.map(st => st.no || 0), ...((record.students || []).map(st => st.no || 0))) + 1
+  record.students = (record.students || []).map(st => {
+    if (st.id && st.no) return st
+    const prior = prev.find(p => p.id === st.id) || prev.find(p => p.name === st.name)
+    if (prior) return { ...st, id: prior.id, no: prior.no }
+    return { ...st, id: st.id || uid(), no: st.no || nextNo++ }
+  })
   await db.put('classes', record)
   return record
 }
@@ -383,8 +419,11 @@ export async function getClass(id) {
   if (!id) return null
   const db = await dbPromise
   const accountId = await requireAccount()
-  const c = await db.get('classes', id)
-  return c && c.accountId === accountId ? c : null
+  let c = await db.get('classes', id)
+  if (!c || c.accountId !== accountId) return null
+  c = migrateClassStudents(c)
+  await db.put('classes', c)
+  return c
 }
 
 /** @param {string} id */

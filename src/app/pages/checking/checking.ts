@@ -33,6 +33,7 @@ export class CheckingPage {
   flags = signal<string[]>([]);
   photo = signal<string>('');
   studentName = signal('');
+  autoStudent = signal<{ name: string; classId: string; className: string } | null>(null);
 
   cameraActive = signal(false);
   private stream: MediaStream | null = null;
@@ -137,13 +138,23 @@ export class CheckingPage {
       return;
     }
     const answers = result.answers, flags = result.flags;
+    // the shaded student number identifies whose sheet this is — seating,
+    // shuffling and photocopies don't matter; the roster lookup is by number
+    let auto: { name: string; classId: string; className: string } | null = null;
+    if (result.studentNumber != null) {
+      for (const cls of this.classes()) {
+        const st = (cls.students || []).find((x: any) => x.no === result.studentNumber);
+        if (st) { auto = { name: st.name, classId: cls.id, className: cls.name }; break; }
+      }
+    }
     this.zone.run(() => {
       this.qrHit.set(result.qr);
       this.detectedQuiz.set(quiz);
       this.answers.set(answers);
       this.flags.set(flags);
       this.photo.set(dataToJpeg(data));
-      this.studentName.set('');
+      this.autoStudent.set(auto);
+      this.studentName.set(auto?.name || '');
       this.stage.set('result');
       this.processing.set(false);
     });
@@ -170,7 +181,8 @@ export class CheckingPage {
 
   async saveResult() {
     const quiz = this.detectedQuiz();
-    const cls = this.pickedClass();
+    const auto = this.autoStudent();
+    const cls = auto ? this.classes().find(c => c.id === auto.classId) || this.pickedClass() : this.pickedClass();
     const s = this.scored();
     if (!quiz || !cls || !s || !this.studentName().trim()) return;
     await saveSheet({
@@ -199,6 +211,7 @@ export class CheckingPage {
     this.answers.set([]);
     this.flags.set([]);
     this.photo.set('');
+    this.autoStudent.set(null);
   }
 
   flagColor(f: string) {

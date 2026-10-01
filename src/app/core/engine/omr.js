@@ -9,7 +9,7 @@
 // → answer per row with ambiguity flags (blank / multi / faint).
 
 import jsQR from 'jsqr'
-import { SHEET, frameRect, bubbleSheetLayout, markerCenters, bubbleCenter } from './sheet-spec.js'
+import { SHEET, frameRect, bubbleSheetLayout, markerCenters, bubbleCenter, idDigitCenter } from './sheet-spec.js'
 
 export function toGray(data, width, height) {
   const gray = new Float32Array(width * height)
@@ -208,7 +208,8 @@ export const FLAG = { OK: 'ok', BLANK: 'blank', MULTI: 'multi', FAINT: 'faint' }
 
 /**
  * @typedef {{ ok: true, answers: number[], flags: string[], fills: number[][],
- *   qr: string | null, markers: { x: number, y: number }[], scale: number }} SheetRead
+ *   qr: string | null, markers: { x: number, y: number }[], scale: number,
+ *   studentNumber: number | null, studentReason: string | null }} SheetRead
  */
 /**
  * @typedef {{ ok: false, reason: 'markers'|'frame', qr: string | null }} SheetReadFail
@@ -259,7 +260,12 @@ export function readSheet(image, itemCount) {
     if (top < 0.55) { answers.push(order[0]); flags.push(FLAG.FAINT); continue }
     answers.push(order[0]); flags.push(FLAG.OK)
   }
-  return { ok: true, answers, flags, fills, qr, markers: quad, scale }
+  const student = readStudentNumber(binary, width, height, H, itemCount)
+  return {
+    ok: true, answers, flags, fills, qr, markers: quad, scale,
+    studentNumber: student.ok ? student.number : null,
+    studentReason: student.ok ? null : student.reason,
+  }
 }
 
 // Ink fraction along the printed frame's four edges (sampled via H).
@@ -286,6 +292,31 @@ function frameInk(binary, width, height, H, itemCount) {
     if (hit) dark++
   }
   return total ? dark / total >= 0.6 : false
+}
+
+/**
+ * Read the shaded student number (two digits, tens + ones). Returns
+ * { ok: true, number } when both digits resolve cleanly, ok:false when the
+ * strip is blank or ambiguous — the UI then falls back to the manual pick.
+ * @returns {{ ok: boolean, number?: number, reason?: 'blank'|'ambiguous' }}
+ */
+export function readStudentNumber(binary, width, height, H, itemCount) {
+  const digits = []
+  for (let row = 0; row < 2; row++) {
+    const fills = []
+    for (let d = 0; d <= 9; d++) {
+      const c = idDigitCenter(itemCount, row, d)
+      fills.push(inkFraction(binary, width, height, H, c.x, c.y, Math.max(3, Math.round(SHEET.idBubbleR * 1.4))))
+    }
+    const order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].sort((a, b) => fills[b] - fills[a])
+    const top = fills[order[0]], second = fills[order[1]]
+    if (top < 0.35) return { ok: false, reason: 'blank' }
+    if (top - second < 0.12) return { ok: false, reason: 'ambiguous' }
+    digits.push(order[0])
+  }
+  const number = digits[0] * 10 + digits[1]
+  if (number < 1) return { ok: false, reason: 'blank' } // 00 shaded = nothing
+  return { ok: true, number }
 }
 
 /** Score detected answers against a saved quiz's items. */

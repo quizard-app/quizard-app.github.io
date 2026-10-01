@@ -6,7 +6,7 @@
 export const SHEET = {
   W: 612, H: 792, M: 40,
   frameX: 130, frameY: 92, frameW: 442,
-  headerH: 46,   // frame height = rows * pitch + headerH
+  headerH: 46,   // frame height = rows * pitch + headerH + idBand
   gridDy: 26,    // grid top inside the frame
   circleR: 6.5,
   bubbleGap: 10, // gap between circles
@@ -17,6 +17,16 @@ export const SHEET = {
   // QR clearance: the code must never touch the corner markers or the
   // bubble columns, or thresholding merges them into one blob (scan bug)
   qrSize: 72, qrInset: 100,
+  // student-number strip (bottom-left inside the frame): two rows of digit
+  // bubbles 0–9 (tens / ones). Students shade their own class number, so the
+  // scanner knows whose sheet it is — seating, shuffling, photocopies and
+  // collection order all stop mattering. Numbers belong to students (stored
+  // per roster entry), not to seats or list positions.
+  idBand: 36,
+  idBubbleR: 4.2,
+  idGap: 12.4,
+  idX: 46,            // first digit bubble center x, relative to frame left
+  idRowsDy: [26, 12], // tens / ones row centers above the frame bottom
 }
 
 export function bubbleSheetLayout(count) {
@@ -37,7 +47,17 @@ export function bubbleSheetLayout(count) {
 
 export function frameRect(count) {
   const { rows } = bubbleSheetLayout(count)
-  return { x: SHEET.frameX, y: SHEET.frameY, w: SHEET.frameW, h: rows * SHEET.pitch + SHEET.headerH }
+  return { x: SHEET.frameX, y: SHEET.frameY, w: SHEET.frameW, h: rows * SHEET.pitch + SHEET.headerH + SHEET.idBand }
+}
+
+// Centers of the ten digit bubbles in one student-number row.
+// row 0 = tens digit, row 1 = ones digit; digit 0..9.
+export function idDigitCenter(count, row, digit) {
+  const f = frameRect(count)
+  return {
+    x: f.x + SHEET.idX + digit * SHEET.idGap,
+    y: f.y + f.h - SHEET.idRowsDy[row],
+  }
 }
 
 // Corner-marker centroids in reading order TL, TR, BR, BL — the scanner's

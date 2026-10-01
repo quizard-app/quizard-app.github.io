@@ -20,12 +20,13 @@ each through the standard flow: tests → build → browser verification → dep
 | 6 | Teacher picks the number of questions (up to 50); the printed sheet adapts to the count. |
 | 7 | Teacher reviews/edits every item before export. Generated quizzes + keys are saved on-device and re-printable offline. |
 | 8 | AI generation is the **only online step**. Scanning, scoring, saving, results = zero internet. |
-| 9 | Bubble sheet (see spec below) — generic sheets v1 (teacher confirms student from roster); personalized per-student QR sheets as a v2 upgrade. |
-| 10 | Scanner reads bubbles + QR only — never handwritten fields. No AI in the scanner at all. |
+| 9 | Bubble sheet (see spec below) — every sheet carries a student-number digit grid (tens/ones 0–9); numbers are assigned per student and stored, so roster edits never shift them. |
+| 10 | Scanner reads bubbles + QR + the shaded student number — never handwriting. Unreadable number falls back to the manual roster pick. No AI in the scanner at all. |
 
 ## Bubble answer sheet spec (v1)
 
 - Two-column grid, up to 50 items (25 rows × 2 cols), A–D outline circles, adapts to chosen count
+- Student-number strip (bottom-left): shade your class number — the scanner auto-assigns the student
 - Four black corner markers + QR code (encodes quiz/key ID) inside the frame — alignment + auto-identification at scan time
 - Pre-printed top: subject + quiz title. Write-ins below: **Student Name, Date, Grade & Section** (replaces Test ID)
 - Photocopies of the template scan fine
