@@ -9,7 +9,6 @@ import {
 } from '../../core/engine/storage.js';
 import { testApiKey, getApiKey, setApiKey, hasApiKey, hasRelay } from '../../core/engine/gemini.js';
 import { setAiConfig, activeModel } from '../../core/engine/ai-providers.js';
-import { maybeScheduleReminders } from '../../core/services/reminders.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -59,8 +58,6 @@ export class SettingsPage implements OnInit {
   keyStatus = signal('');
   keyInput = '';
   testing = false;
-  explaining = signal(this.s.aiExplain !== false);
-  remindersOn = signal(this.s.reminders === true);
 
   get showNudge() { return (!this.lastBackup || Date.now() - this.lastBackup > BACKUP_NUDGE_MS) && this.docCount > 0; }
   get version() { return '1.1'; }
@@ -315,18 +312,7 @@ export class SettingsPage implements OnInit {
   }
   keyPlaceholder() { return `Paste your ${this.byok.providerConfig.label} API key`; }
   modelLabel() { return activeModel() || 'provider default'; }
-  setExplain(on: boolean) { this.explaining.set(on); saveSettings({ aiExplain: on }); this.refreshSettings(); }
 
-  async toggleReminders(on: boolean) {
-    this.remindersOn.set(on);
-    saveSettings({ reminders: on }); this.refreshSettings();
-    if (on) {
-      const r = await maybeScheduleReminders();
-      if (!r.enabled) { this.toast.toast(r.reason || 'Reminders unavailable', true); this.remindersOn.set(false); saveSettings({ reminders: false }); this.refreshSettings(); }
-      else this.toast.toast('Reminders on ✓');
-    } else this.toast.toast('Reminders off');
-  }
-  setWizardVoice(on: boolean) { saveSettings({ wizardVoice: on }); this.refreshSettings(); }
   setSkipIntro(on: boolean) { saveSettings({ skipIntro: on }); this.refreshSettings(); this.toast.toast(on ? 'Intro will be skipped' : 'Intro plays on launch'); }
 
   replayIntro() { saveSettings({ onboarded: false }); this.refreshSettings(); this.router.navigateByUrl('/onboarding'); }
