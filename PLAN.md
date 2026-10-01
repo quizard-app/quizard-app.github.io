@@ -16,7 +16,7 @@ each through the standard flow: tests → build → browser verification → dep
 | 2 | Tabs: **Classes · Keys · Create · Check papers · Results** (+ Settings). |
 | 3 | Roster upload: paste or .txt/.csv — name, grade, section. Stored on-device. |
 | 4 | Answer keys accept three shapes: **answer only** (`1. Photosynthesis` — AI writes the question), **question + answer** (`What do plants use to make food? → Photosynthesis` — AI uses the teacher's question and only invents the 3 distractors), or **compact letter key** (`BCADB…` — scoring only, for an already-made quiz). Keys are per subject. |
-| 5 | Create tab: upload file (PDF/PPTX/DOCX/TXT/MD — existing engine) + **two modes, teacher chooses**: *file + key* (AI grounds questions in the file, the key fixes correct answers) or *file only* (AI generates and derives the key). |
+| 5 | Create tab: upload file (PDF/PPTX/DOCX/TXT/MD — existing engine) + **three modes, teacher chooses**: *Full AI* (file only — AI writes questions, options, and key), *Anchor to my key* (key fixes correct answers, AI writes questions), or *Match my format* (teacher pastes their own MCQ examples — question, options A–D, correct answer marked — and AI generates new questions from the file mimicking that exact style; examples are in-context references each generation, not permanent training). |
 | 6 | Teacher picks the number of questions (up to 50); the printed sheet adapts to the count. |
 | 7 | Teacher reviews/edits every item before export. Generated quizzes + keys are saved on-device and re-printable offline. |
 | 8 | AI generation is the **only online step**. Scanning, scoring, saving, results = zero internet. |
@@ -57,7 +57,8 @@ Routes are pruned as phases replace them; final code sweep in Phase 4.
 
 ### Phase 2 — Create: generate + export
 - File upload → text extraction (reuse engine)
-- Generation, two modes (file+key / file-only), teacher-set item count
+- Generation, three modes (Full AI / anchor to key / match-my-format with the teacher's MCQ examples as style references), teacher-set item count
+- Key parser extended to recognize full MCQ examples (question + options A–D + marked correct answer) in the same paste box
 - Review/edit screen (edit question text, options, correct answer)
 - Save quiz (+ key) on-device
 - Export: quiz PDF (no answers) + **teacher's answer-key copy** (questions with correct answers marked) + bubble sheet PDF (two-column, corner markers, QR)
