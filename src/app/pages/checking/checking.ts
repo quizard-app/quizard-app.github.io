@@ -6,6 +6,7 @@ import { readSheet, scoreSheet, decodeQr, FLAG } from '../../core/engine/omr.js'
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ByokService } from '../../core/services/byok.service';
 
 @Component({
   selector: 'app-checking',
@@ -15,6 +16,7 @@ import { ToastService } from '../../core/services/toast.service';
 export class CheckingPage {
   router = inject(Router);
   ui = inject(UiStateService);
+  readonly byok = inject(ByokService);
   private toast = inject(ToastService);
   private zone = inject(NgZone);
 

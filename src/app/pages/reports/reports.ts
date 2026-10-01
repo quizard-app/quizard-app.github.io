@@ -9,6 +9,7 @@ import { fmtDate } from '../../shared/helpers.js';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { ByokService } from '../../core/services/byok.service';
 
 @Component({
   selector: 'app-reports',
@@ -18,6 +19,7 @@ import { ConfirmService } from '../../core/services/confirm.service';
 export class ReportsPage {
   router = inject(Router);
   ui = inject(UiStateService);
+  readonly byok = inject(ByokService);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
 

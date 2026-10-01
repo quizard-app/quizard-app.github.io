@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { extractText } from '../../core/engine/extract/index.js';
 import { parseKeyText } from '../../core/engine/answerkey.js';
@@ -22,6 +23,7 @@ const MODES = [
   templateUrl: './create.html',
 })
 export class CreatePage {
+  router = inject(Router);
   ui = inject(UiStateService);
   readonly byok = inject(ByokService);
   private toast = inject(ToastService);

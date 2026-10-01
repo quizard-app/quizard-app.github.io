@@ -3,7 +3,7 @@ import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel } from '@ionic/angu
 import { addIcons } from 'ionicons';
 import {
   peopleOutline, people, keyOutline, key, sparklesOutline, sparkles,
-  scanOutline, scan, statsChartOutline, statsChart, settingsOutline, settings
+  scanOutline, scan, statsChartOutline, statsChart
 } from 'ionicons/icons';
 
 // Eager shell: under zoneless CD (Angular 22 makes OnPush the default) an
@@ -20,7 +20,7 @@ export class TabsPage {
   constructor() {
     addIcons({
       peopleOutline, people, keyOutline, key, sparklesOutline, sparkles,
-      scanOutline, scan, statsChartOutline, statsChart, settingsOutline, settings
+      scanOutline, scan, statsChartOutline, statsChart
     });
   }
 }
