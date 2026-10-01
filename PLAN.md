@@ -15,7 +15,7 @@ each through the standard flow: tests → build → browser verification → dep
 | 1 | Teacher-only app. All student features retire (quiz-taking, reviewer, exams, streaks/progress, tutorial gamification). |
 | 2 | Tabs: **Classes · Keys · Create · Check papers · Results** (+ Settings). |
 | 3 | Roster upload: paste or .txt/.csv — name, grade, section. Stored on-device. |
-| 4 | Answer keys: typed/pasted (`1. Photosynthesis`, compact `ACBDA…`), per subject. |
+| 4 | Answer keys accept three shapes: **answer only** (`1. Photosynthesis` — AI writes the question), **question + answer** (`What do plants use to make food? → Photosynthesis` — AI uses the teacher's question and only invents the 3 distractors), or **compact letter key** (`BCADB…` — scoring only, for an already-made quiz). Keys are per subject. |
 | 5 | Create tab: upload file (PDF/PPTX/DOCX/TXT/MD — existing engine) + **two modes, teacher chooses**: *file + key* (AI grounds questions in the file, the key fixes correct answers) or *file only* (AI generates and derives the key). |
 | 6 | Teacher picks the number of questions (up to 50); the printed sheet adapts to the count. |
 | 7 | Teacher reviews/edits every item before export. Generated quizzes + keys are saved on-device and re-printable offline. |
@@ -60,7 +60,7 @@ Routes are pruned as phases replace them; final code sweep in Phase 4.
 - Generation, two modes (file+key / file-only), teacher-set item count
 - Review/edit screen (edit question text, options, correct answer)
 - Save quiz (+ key) on-device
-- Export: quiz PDF (no answers) + bubble sheet PDF (two-column, corner markers, QR)
+- Export: quiz PDF (no answers) + **teacher's answer-key copy** (questions with correct answers marked) + bubble sheet PDF (two-column, corner markers, QR)
 - Acceptance: teacher can print a complete paper quiz offline thereafter
 
 ### Phase 3 — Check papers (offline scanner)
