@@ -122,7 +122,7 @@ export class TutorialPage implements OnDestroy {
     const doneMap = { ...(loadSettings().tutorialDoneAccounts || {}) };
     if (aid) doneMap[aid] = true;
     saveSettings({ tutorialDone: true, tutorialDoneAccounts: doneMap });
-    this.nav('/tabs/library');
+    this.nav('/tabs/classes');
   }
 
   update() {

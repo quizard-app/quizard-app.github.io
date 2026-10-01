@@ -11,29 +11,29 @@ const SLIDES = [
   {
     art: 'logo',
     eyebrow: 'Meet Quizard',
-    title: 'Turn any document into practice',
-    body: 'Your notes, slides and readings become instant quizzes. Study from what you already have — anywhere, even offline.',
+    title: 'The teacher\u2019s paper-quiz workstation',
+    body: 'Set up your classes, provide the answer key, and let AI draft the quiz — then print it with matching bubble sheets.',
     accent: 'purple'
   },
   {
     art: 'fileText',
     eyebrow: 'Any format',
     title: 'PDF, Word, PowerPoint & text',
-    body: 'Drop a file or paste text. We extract the key ideas on-device in seconds — no upload, no account needed.',
+    body: 'Upload your lesson files and we extract the key ideas on-device. Or skip the file and just paste your answer key.',
     accent: 'blue'
   },
   {
     art: 'zap',
-    eyebrow: 'Your way',
-    title: 'Multiple choice, fully tunable',
-    body: 'Exam-style 4-option questions generated from your material. Set the count, difficulty, topics and timer — then go.',
+    eyebrow: 'Print, shade, scan',
+    title: 'Check a class pile with your camera',
+    body: 'Students answer on printable bubble sheets. Photograph each sheet and the app reads the shaded answers — fully offline.',
     accent: 'amber'
   },
   {
     art: 'lock',
     eyebrow: 'Private by design',
-    title: 'Your data stays on this device',
-    body: 'Your files, scores and questions are generated locally. AI question writing and wizard voice are optional cloud features — everything else works offline.',
+    title: 'Student data stays on this device',
+    body: 'Rosters, keys and scores never leave your phone. Only AI question writing uses the internet — everything else works offline.',
     accent: 'green'
   }
 ];

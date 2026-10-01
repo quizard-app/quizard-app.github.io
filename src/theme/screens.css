@@ -134,7 +134,7 @@
 .doc-card .btn-secondary svg { width: 15px; height: 15px; }
 @media (max-width: 480px) {
   .doc-card { grid-template-columns: 44px minmax(0, 1fr); }
-  .doc-actions { grid-column: 2; justify-content: flex-start; margin-top: 6px; }
+  .doc-actions { grid-column: 2; justify-content: flex-end; margin-top: 6px; }
 }
 
 /* ── Import ── */
@@ -1716,6 +1716,24 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 .q-wiz-fb { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 10px; display: block; }
 .lib-hero { display: flex; align-items: center; gap: 16px; }
 .lib-wiz { width: 84px; height: 84px; object-fit: contain; flex: none; }
+
+/* ── Teacher app (Classes / Keys): roster + key sheets ── */
+.hero-ico {
+  width: 60px; height: 60px; border-radius: 18px; flex: none;
+  background: var(--accent-soft); color: var(--accent-strong);
+  display: grid; place-items: center;
+}
+.hero-ico svg { width: 28px; height: 28px; }
+.empty-ico {
+  width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px;
+  background: var(--accent-soft); color: var(--accent-strong);
+  display: grid; place-items: center;
+}
+.empty-ico svg { width: 30px; height: 30px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-height: 1.5; font-size: 13px; }
+.file-btn { position: relative; overflow: hidden; justify-content: center; margin-top: 10px; }
+.parse-note { font-size: 12.5px; color: var(--accent-strong); font-weight: 600; margin: 10px 0 0; text-align: center; }
 @keyframes markIn {
   from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
   to { opacity: 1; transform: scale(1) rotate(0); }

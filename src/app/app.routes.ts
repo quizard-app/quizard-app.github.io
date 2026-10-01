@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+// Teacher app (see PLAN.md): the student shell is retired. Old student pages
+// stay on disk until the Phase 4 cleanup but are no longer routed or bundled.
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'welcome' },
   {
@@ -15,58 +17,17 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/accounts/accounts').then(m => m.AccountsPage)
   },
   {
-    path: 'tutorial',
-    loadComponent: () => import('./pages/tutorial/tutorial').then(m => m.TutorialPage)
-  },
-  {
     path: 'tabs',
     loadComponent: () => import('./tabs/tabs').then(m => m.TabsPage),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'library' },
-      { path: 'library', loadComponent: () => import('./pages/library/library').then(m => m.LibraryPage) },
-      { path: 'exams', loadComponent: () => import('./pages/exams/exams').then(m => m.ExamsPage) },
-      { path: 'history', loadComponent: () => import('./pages/history/history').then(m => m.HistoryPage) },
-      { path: 'import', loadComponent: () => import('./pages/import/import').then(m => m.ImportPage) },
+      { path: '', pathMatch: 'full', redirectTo: 'classes' },
+      { path: 'classes', loadComponent: () => import('./pages/classes/classes').then(m => m.ClassesPage) },
+      { path: 'keys', loadComponent: () => import('./pages/keys/keys').then(m => m.KeysPage) },
+      { path: 'create', loadComponent: () => import('./pages/create/create').then(m => m.CreatePage) },
+      { path: 'checking', loadComponent: () => import('./pages/checking/checking').then(m => m.CheckingPage) },
+      { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.ReportsPage) },
       { path: 'settings', loadComponent: () => import('./pages/settings/settings').then(m => m.SettingsPage) }
     ]
-  },
-  {
-    path: 'doc/:id',
-    loadComponent: () => import('./pages/docdetail/docdetail').then(m => m.DocDetailPage)
-  },
-  {
-    path: 'doc/:id/setup',
-    loadComponent: () => import('./pages/setup/setup').then(m => m.SetupPage)
-  },
-  {
-    path: 'reviewer/:id',
-    loadComponent: () => import('./pages/reviewer/reviewer').then(m => m.ReviewerPage)
-  },
-  {
-    path: 'quiz',
-    loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
-  },
-  {
-    path: 'results',
-    loadComponent: () => import('./pages/results/results').then(m => m.ResultsPage)
-  },
-  {
-    // legacy list links: the list now lives as the Exams tab
-    path: 'exams',
-    pathMatch: 'full',
-    redirectTo: 'tabs/exams'
-  },
-  {
-    path: 'exams/:id',
-    loadComponent: () => import('./pages/exams/exams').then(m => m.ExamsPage)
-  },
-  {
-    path: 'exam-chat',
-    loadComponent: () => import('./pages/exam-chat/exam-chat').then(m => m.ExamChatPage)
-  },
-  {
-    path: 'quiz-review',
-    loadComponent: () => import('./pages/quiz/quiz').then(m => m.QuizPage)
   },
   { path: '**', redirectTo: 'welcome' }
 ];

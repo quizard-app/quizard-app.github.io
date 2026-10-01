@@ -88,7 +88,7 @@ export class AccountsPage implements OnInit {
     try {
       const out = await pullSync(code, this.restorePass);
       this.toast.toast(`Restored — ${out.docs ?? '?'} documents merged ✓`);
-      this.router.navigateByUrl('/tabs/library');
+      this.router.navigateByUrl('/tabs/classes');
     } catch (err: any) {
       this.restoreMsg.set(String(err?.message || 'Restore failed'));
     } finally {
@@ -103,7 +103,7 @@ export class AccountsPage implements OnInit {
     setActiveAccount(acc.id);
     this.ui.account.set(acc);
     this.toast.toast(`Welcome back, ${acc.name}`);
-    this.router.navigateByUrl('/tabs/library');
+    this.router.navigateByUrl('/tabs/classes');
   }
 
   validatePin(): boolean {
@@ -170,7 +170,7 @@ export class AccountsPage implements OnInit {
       setActiveAccount(acc.id);
       this.ui.account.set(acc);
       this.toast.toast(`Welcome back, ${acc.name}`);
-      this.router.navigateByUrl('/tabs/library');
+      this.router.navigateByUrl('/tabs/classes');
     } else {
       this.shaking = true;
       setTimeout(() => { this.shaking = false; }, 400);

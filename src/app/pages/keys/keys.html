@@ -1,0 +1,69 @@
+<ion-content [fullscreen]="true">
+  <header class="app-header">
+    <div class="brand"><span class="mark" [innerHTML]="'logo' | ico"></span>Answer keys</div>
+    <div style="display:flex;gap:2px;align-items:center">
+      <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [attr.data-tooltip]="ui.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
+    </div>
+  </header>
+  <div class="screen lib-screen" [class.screen-center]="!keys().length">
+    @if (keys().length) {
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'listChecks' | ico"></div>
+        <div>
+          <h1>Answer keys</h1>
+          <p>{{ keys().length }} key{{ keys().length === 1 ? '' : 's' }} ready for checking papers</p>
+        </div>
+      </div>
+      <div class="doc-list">
+        @for (key of keys(); track key.id) {
+          <div class="doc-card" (click)="openSheet(key)" data-tooltip="View key">
+            <div class="doc-icon folder" [innerHTML]="'listChecks' | ico"></div>
+            <div class="doc-info">
+              <div class="doc-name">{{ key.subject }}@if (key.title) { <span class="faint"> — {{ key.title }}</span> }</div>
+              <div class="doc-meta">
+                <span>{{ key.items.length }} item{{ key.items.length === 1 ? '' : 's' }} · </span>
+                @if (key.format === 'qa') { <span>with questions · </span> } @else if (key.format === 'letters') { <span>letter key · </span> }
+                <span>{{ dateOf(key.createdAt) }}</span>
+              </div>
+            </div>
+            <div class="doc-actions">
+              <button class="icon-btn doc-delete-btn" (click)="remove(key); $event.stopPropagation()" [attr.aria-label]="'Delete ' + key.subject + ' key'" data-tooltip="Delete key" [innerHTML]="'trash' | ico"></button>
+            </div>
+          </div>
+        }
+      </div>
+      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add key</button>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-ico" [innerHTML]="'listChecks' | ico"></div>
+        <h3>No answer keys yet</h3>
+        <p>Paste your key — answers only, questions with answers, or a compact letter key like BCADB. The scanner scores against this.</p>
+        <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add key</button>
+      </div>
+    }
+
+    @if (sheetOpen()) {
+      <div class="org-overlay" (click)="closeSheet()">
+        <div class="org-sheet" (click)="$event.stopPropagation()">
+          <h3>{{ editingId() ? 'Edit key' : 'Add answer key' }}</h3>
+          <div class="form-row">
+            <input class="text-input" placeholder="Subject (e.g. Science)" [attr.aria-label]="'Subject'" maxlength="40" autocomplete="off" [value]="subject()" (input)="subject.set($any($event.target).value)" />
+            <input class="text-input" placeholder="Title (optional)" [attr.aria-label]="'Title'" maxlength="60" [value]="title()" (input)="title.set($any($event.target).value)" />
+          </div>
+          <textarea class="text-input roster-paste" rows="8" placeholder="Paste your key — all of these work:&#10;&#10;1. Photosynthesis&#10;2. What do plants use for food? → Photosynthesis&#10;or a letter key: BCADBACDDA…" [attr.aria-label]="'Answer key text'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+          @if (previewCount()) {
+            <p class="parse-note">
+              {{ previewCount() }} item{{ previewCount() === 1 ? '' : 's' }} detected
+              @if (previewWithQuestions()) { · {{ previewWithQuestions() }} with questions }
+              @if (preview().notes.length) { · {{ preview().notes.length }} line{{ preview().notes.length === 1 ? '' : 's' }} skipped }
+            </p>
+          }
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="closeSheet()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!subject().trim() || !previewCount()" (click)="saveSheet()">Save key</button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</ion-content>

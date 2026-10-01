@@ -41,7 +41,7 @@ export class WelcomePage implements OnInit, OnDestroy {
   // Where the splash hands over (only used when the splash actually plays):
   // fresh devices go to onboarding, returning students to the profile
   // picker — PIN enforcement + sync-code restore live there.
-  private launchTo: '/accounts' | '/onboarding' | '/tabs/library' = '/onboarding';
+  private launchTo: '/accounts' | '/onboarding' | '/tabs/classes' = '/onboarding';
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private router: Router) {}
@@ -60,7 +60,7 @@ export class WelcomePage implements OnInit, OnDestroy {
     });
   }
 
-  private async decideLaunch(): Promise<{ splash: boolean; to: '/accounts' | '/onboarding' | '/tabs/library' }> {
+  private async decideLaunch(): Promise<{ splash: boolean; to: '/accounts' | '/onboarding' | '/tabs/classes' }> {
     try {
       const accounts = await listAccounts();
       const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
@@ -74,7 +74,7 @@ export class WelcomePage implements OnInit, OnDestroy {
         const last = lastId ? accounts.find(a => a.id === lastId) : null;
         if (last && !last.pinHash) {
           setActiveAccount(last.id);
-          return { splash: false, to: '/tabs/library' };
+          return { splash: false, to: '/tabs/classes' };
         }
         return { splash: false, to: '/accounts' };
       }

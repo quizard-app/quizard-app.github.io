@@ -13,17 +13,14 @@ export class IdlePreloadService {
     if (this.started || typeof window === 'undefined') return;
     this.started = true;
     const warm = () => {
-      // core study loop first, then the rest
+      // teacher tabs first (Classes is the landing tab), then the rest
       const targets = [
-        () => import('../../pages/quiz/quiz'),
-        () => import('../engine/quizgen.js'),
+        () => import('../../pages/classes/classes'),
         () => import('../engine/storage.js'),
-        () => import('../../pages/import/import'),
-        () => import('../../pages/library/library'),
-        () => import('../../pages/setup/setup'),
-        () => import('../../pages/results/results'),
-        () => import('../../pages/reviewer/reviewer'),
-        () => import('../../pages/history/history'),
+        () => import('../../pages/keys/keys'),
+        () => import('../../pages/create/create'),
+        () => import('../../pages/checking/checking'),
+        () => import('../../pages/reports/reports'),
         () => import('../../pages/settings/settings')
       ];
       let i = 0;

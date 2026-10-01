@@ -11,7 +11,7 @@ import { nextState, GRADES } from './srs.js'
 /** @typedef {import('./db-types.js').DocImage} DocImage */
 /** @typedef {import('./db-types.js').WeakTerm} WeakTerm */
 
-const dbPromise = openDB('quizard', 9, {
+const dbPromise = openDB('quizard', 10, {
   upgrade(db, oldVersion, _newVersion, transaction) {
     if (oldVersion < 8) {
       // docs gain optional `original` (source file blob) and `visualAnalysis`
@@ -22,6 +22,13 @@ const dbPromise = openDB('quizard', 9, {
       const exams = db.createObjectStore('exams', { keyPath: 'id' })
       exams.createIndex('accountId', 'accountId')
       exams.createIndex('status', 'status')
+    }
+    if (oldVersion < 10) {
+      // teacher app: class rosters and answer keys
+      const classes = db.createObjectStore('classes', { keyPath: 'id' })
+      classes.createIndex('accountId', 'accountId')
+      const keys = db.createObjectStore('keys', { keyPath: 'id' })
+      keys.createIndex('accountId', 'accountId')
     }
     if (oldVersion < 1) {
       const docs = db.createObjectStore('docs', { keyPath: 'id' })
@@ -326,6 +333,95 @@ export async function listDocs() {
   if (stale.length) await Promise.all(stale.map(id => purgeDocRecords(id)))
   out.sort((a, b) => b.createdAt - a.createdAt)
   return out
+}
+
+// ── Teacher app: class rosters and answer keys ────────────────────────────
+
+/**
+ * @typedef {{ id: string, accountId: string, name: string, grade: string,
+ *   section: string, students: { name: string, grade: string, section: string }[],
+ *   createdAt: number }} TeacherClass
+ */
+/**
+ * @typedef {{ id: string, accountId: string, subject: string, title: string,
+ *   format: 'qa'|'answers'|'letters', items: { n: number, question: string, answer: string }[],
+ *   createdAt: number }} AnswerKey
+ */
+
+/** @returns {Promise<TeacherClass[]>} */
+export async function listClasses() {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const all = await db.getAll('classes')
+  return all.filter(c => c.accountId === accountId).sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/** @param {Partial<TeacherClass>} data @returns {Promise<TeacherClass>} */
+export async function saveClass(data) {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const existing = data.id ? await db.get('classes', data.id) : null
+  const record = {
+    id: existing?.id || data.id || uid(), accountId, name: '', grade: '', section: '',
+    students: [], createdAt: existing?.createdAt || Date.now(), ...data, accountId
+  }
+  if (!record.id) record.id = uid()
+  await db.put('classes', record)
+  return record
+}
+
+/** @param {string} id @returns {Promise<TeacherClass | null>} */
+export async function getClass(id) {
+  if (!id) return null
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const c = await db.get('classes', id)
+  return c && c.accountId === accountId ? c : null
+}
+
+/** @param {string} id */
+export async function deleteClass(id) {
+  if (!id) return
+  const db = await dbPromise
+  await db.delete('classes', id)
+}
+
+/** @returns {Promise<AnswerKey[]>} */
+export async function listKeys() {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const all = await db.getAll('keys')
+  return all.filter(k => k.accountId === accountId).sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/** @param {Partial<AnswerKey>} data @returns {Promise<AnswerKey>} */
+export async function saveKey(data) {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const existing = data.id ? await db.get('keys', data.id) : null
+  const record = {
+    id: existing?.id || data.id || uid(), accountId, subject: '', title: '', format: 'answers',
+    items: [], createdAt: existing?.createdAt || Date.now(), ...data, accountId
+  }
+  if (!record.id) record.id = uid()
+  await db.put('keys', record)
+  return record
+}
+
+/** @param {string} id @returns {Promise<AnswerKey | null>} */
+export async function getKey(id) {
+  if (!id) return null
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const k = await db.get('keys', id)
+  return k && k.accountId === accountId ? k : null
+}
+
+/** @param {string} id */
+export async function deleteKey(id) {
+  if (!id) return
+  const db = await dbPromise
+  await db.delete('keys', id)
 }
 
 /** @param {string} id @param {Partial<Doc>} patch @returns {Promise<Doc | null>} */
