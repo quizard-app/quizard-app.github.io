@@ -1040,6 +1040,8 @@ ion-tab-button .tab-tile ion-icon { font-size: 18px; }
 ion-tab-button.tab-selected .tab-tile { display: flex; }
 ion-tab-button.tab-selected .tab-plain { display: none; }
 ion-tab-button .tab-plain { font-size: 23px; }
+/* six tabs: trim Ionic's native padding so every label fits on one line */
+ion-tab-button { --padding-start: 2px; --padding-end: 2px; min-width: 0 !important; }
 .exam-entry .exam-ico {
   width: 26px; height: 26px; border-radius: 8px;
   background: var(--grad-accent); color: #fff;
