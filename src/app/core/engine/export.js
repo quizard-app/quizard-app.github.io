@@ -1,6 +1,7 @@
 import { summarizeDoc } from './summarize.js'
 import { stripSlideMarkers } from './textproc.js'
 import { rankExamTopics } from './exam.js'
+import qrModule from 'qrcode-generator'
 
 function download(filename, content, mime = 'text/markdown') {
   const blob = new Blob([content], { type: mime })
@@ -589,4 +590,159 @@ function slug(name) {
 
 function escHtml(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+}
+
+// ── Teacher app exports (PLAN.md Phase 2): quiz paper, teacher key, bubble sheets ──
+
+// Pure geometry for the printable bubble sheet: two balanced columns of A–D
+// rows inside the frame (single column for very short quizzes). Exported for
+// unit tests and reused by the Phase 3 scanner to locate bubbles.
+export function bubbleSheetLayout(count) {
+  const single = count <= 8
+  const columns = single
+    ? [{ start: 1, count }]
+    : [
+        { start: 1, count: Math.ceil(count / 2) },
+        { start: Math.ceil(count / 2) + 1, count: Math.floor(count / 2) }
+      ]
+  return {
+    single,
+    columns,
+    rows: Math.max(...columns.map(c => c.count)),
+    letters: ['A', 'B', 'C', 'D']
+  }
+}
+
+function bubbleQr(pdf, text, x, y, size) {
+  // qrcode-generator is CJS; esbuild interop gives us the factory
+  const qrFactory = qrModule.default || qrModule
+  const qr = qrFactory(0, 'M')
+  qr.addData(text)
+  qr.make()
+  const cells = qr.getModuleCount()
+  const cell = size / cells
+  pdf.setFillColor('#0b0820')
+  for (let r = 0; r < cells; r++) {
+    for (let c = 0; c < cells; c++) {
+      if (qr.isDark(r, c)) pdf.rect(x + c * cell, y + r * cell, cell + 0.2, cell + 0.2, 'F')
+    }
+  }
+}
+
+const BUBBLE = { W: 612, H: 792, M: 40, circleR: 6.5, pitch: 22, colGap: 24 }
+
+function headerBlock(pdf, quiz, subtitle) {
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
+  pdf.text('Q U I Z A R D', BUBBLE.M, BUBBLE.M + 6)
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor('#1c2438')
+  const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
+  pdf.text(title, BUBBLE.M, BUBBLE.M + 26)
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor('#6b7280')
+  pdf.text(pdfSafe(subtitle), BUBBLE.M, BUBBLE.M + 40)
+}
+
+// Shared scaffold for the quiz paper and the teacher's key copy.
+export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
+  const { jsPDF } = await import('jspdf')
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
+  const W = 612, H = 792, M = 48
+  let y = 0
+  const need = h => { if (y + h > H - M) { pdf.addPage(); y = M } }
+  const text = (str, { size = 11, bold = false, color = '#1c2438', gap = 4, indent = 0 } = {}) => {
+    pdf.setFont('helvetica', bold ? 'bold' : 'normal')
+    pdf.setFontSize(size)
+    pdf.setTextColor(color)
+    const lines = pdf.splitTextToSize(pdfSafe(str), W - M * 2 - indent)
+    need(lines.length * (size + 3))
+    lines.forEach(line => { pdf.text(line, M + indent, y + size); y += size + 3 })
+    y += gap
+  }
+
+  headerBlock(pdf, quiz, withAnswers
+    ? 'Teacher copy — correct answers marked'
+    : 'Student name: ________________    Date: ____________    Grade & Section: ____________')
+  y = M + 56
+  text('Directions: Read each question. Shade the letter of the best answer on the answer sheet.', { size: 9.5, color: '#6b7280', gap: 10 })
+
+  quiz.items.forEach((it, i) => {
+    need(60)
+    text(`${i + 1}. ${it.question}`, { bold: false, gap: 3 })
+    it.options.forEach((o, oi) => {
+      const correct = withAnswers && oi === it.answerIndex
+      text(`${'ABCD'[oi]}. ${o}${correct ? '   (ANSWER)' : ''}`, { size: 10.5, indent: 16, bold: correct, color: correct ? '#166534' : '#1c2438', gap: 1 })
+    })
+    if (withAnswers) text('', { size: 4, gap: 2 })
+  })
+
+  pdf.save(`quizard-${withAnswers ? 'key' : 'quiz'}-${slug(quiz.subject || quiz.title)}.pdf`)
+}
+
+// The scannable answer sheet: frame, corner markers, QR (quiz id), two-column
+// A–D bubble grid, and the write-in fields the teacher asked for.
+export async function exportBubbleSheets(quiz, copies = 1) {
+  const { jsPDF } = await import('jspdf')
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
+  const { W, H, M, circleR, pitch } = BUBBLE
+  const layout = bubbleSheetLayout(quiz.items.length)
+
+  for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
+    if (copy > 0) pdf.addPage()
+
+    headerBlock(pdf, quiz, 'Shade ONE circle per row fully with pen or pencil.')
+
+    // frame + corner markers
+    const fx = 130, fy = M + 52, fw = W - fx - M, fh = layout.rows * pitch + 46
+    pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.6)
+    pdf.rect(fx, fy, fw, fh, 'S')
+    pdf.setFillColor('#0b0820')
+    const mk = 10, inset = 6
+    for (const [cx, cy] of [[fx + inset, fy + inset], [fx + fw - inset - mk, fy + inset], [fx + inset, fy + fh - inset - mk], [fx + fw - inset - mk, fy + fh - inset - mk]]) {
+      pdf.rect(cx, cy, mk, mk, 'F')
+    }
+
+    // QR (identifies the quiz/key at scan time)
+    bubbleQr(pdf, `QZ1:${quiz.id}`, fx + fw - 108, fy + fh - 108, 92)
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor('#6b7280')
+    pdf.text('Do not write inside the QR code', fx + fw - 108, fy + fh - 12)
+
+    // bubble grid
+    const gridTop = fy + 26
+    const colX = i => fx + 22 + i * ((fw - 40) / (layout.single ? 1 : 2))
+    let idx = 0
+    layout.columns.forEach((col, ci) => {
+      for (let r = 0; r < col.count; r++) {
+        const n = col.start + r
+        const item = quiz.items[idx]
+        const qy = gridTop + r * pitch
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#374151')
+        pdf.text(String(n), colX(ci), qy + 4)
+        for (let b = 0; b < 4; b++) {
+          const bx = colX(ci) + 26 + b * (circleR * 2 + 10) + circleR
+          pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1)
+          pdf.circle(bx, qy, circleR, 'S')
+          pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
+          pdf.text(layout.letters[b], bx, qy + 2, { align: 'center', baseline: 'middle' })
+        }
+        idx++
+      }
+    })
+
+    // write-in fields below the frame
+    const by = fy + fh + 34
+    pdf.setFontSize(10); pdf.setTextColor('#1c2438')
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Student Name:', M, by)
+    pdf.setFont('helvetica', 'normal')
+    pdf.line(M + 78, by + 2, W / 2 - 14, by + 2)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Date:', W / 2, by)
+    pdf.setFont('helvetica', 'normal')
+    pdf.line(W / 2 + 30, by + 2, W / 2 + 130, by + 2)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Grade & Section:', M, by + 24)
+    pdf.setFont('helvetica', 'normal')
+    pdf.line(M + 90, by + 26, W / 2 + 60, by + 26)
+  }
+
+  pdf.save(`quizard-bubble-sheets-${slug(quiz.subject || quiz.title)}.pdf`)
 }

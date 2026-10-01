@@ -1,0 +1,143 @@
+<ion-content [fullscreen]="true">
+  <header class="app-header">
+    <div class="brand">
+      @if (stage() === 'review') {
+        <button class="icon-btn" (click)="backToSetup()" aria-label="Back to setup" [innerHTML]="'chevronLeft' | ico"></button>
+      }
+      <span class="mark" [innerHTML]="'logo' | ico"></span>Create
+    </div>
+    <div style="display:flex;gap:2px;align-items:center">
+      <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
+    </div>
+  </header>
+
+  @if (stage() === 'setup') {
+    <div class="screen lib-screen">
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'sparkles' | ico"></div>
+        <div>
+          <h1>Create a quiz</h1>
+          <p>AI writes it, you review it, then print with bubble sheets.</p>
+        </div>
+      </div>
+
+      <div class="section-title">1 · How should the AI write it?</div>
+      <div class="mode-list">
+        @for (m of modes; track m.id) {
+          <button class="mode-card" [class.on]="mode() === m.id" (click)="setMode(m.id)">
+            <span class="mode-title">{{ m.label }}</span>
+            <span class="mode-hint">{{ m.hint }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="section-title">2 · Your material</div>
+      <label class="btn btn-secondary file-btn" [class.busy]="extracting()">
+        <span [innerHTML]="'upload' | ico"></span> {{ extracting() ? 'Extracting…' : (fileName() || 'Upload lesson file (PDF, PPT, Word, txt)') }}
+        <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" (change)="onFile($event)" hidden />
+      </label>
+      @if (fileName()) {
+        <button class="file-clear" (click)="clearFile()">remove file</button>
+      }
+      <textarea class="text-input roster-paste" rows="4" placeholder="…or paste lesson text here" [attr.aria-label]="'Lesson text'" [value]="lessonPaste()" (input)="lessonPaste.set($any($event.target).value)"></textarea>
+
+      <div class="section-title">3 · Your answer key @if (mode() === 'format') { <span class="faint" style="font-weight:400">— paste your own multiple-choice questions as examples</span> }</div>
+      @if (mode() === 'key' || mode() === 'format') {
+        @if (savedKeys().length) {
+          <select class="text-input" [attr.aria-label]="'Use a saved key'" (change)="pickedKeyId.set($any($event.target).value || null); keyPaste.set('')">
+            <option value="">— paste a new key below —</option>
+            @for (k of savedKeys(); track k.id) {
+              <option [value]="k.id" [selected]="pickedKeyId() === k.id">{{ k.subject }}{{ k.title ? ' — ' + k.title : '' }} ({{ k.items.length }} items)</option>
+            }
+          </select>
+        }
+        @if (!pickedKeyId()) {
+          <textarea class="text-input roster-paste" rows="7" placeholder="Paste your key. All of these work:&#10;&#10;1. Photosynthesis&#10;2. What do plants use for food? → Photosynthesis&#10;&#10;Or your own multiple-choice questions (for Match my format):&#10;1. What is X?&#10;A. …  *B. …  C. …  D. …" [attr.aria-label]="'Answer key'" [value]="keyPaste()" (input)="keyPaste.set($any($event.target).value)"></textarea>
+          @if (keyStats(); as ks) {
+            <p class="parse-note">
+              {{ ks.count }} item{{ ks.count === 1 ? '' : 's' }} detected
+              @if (ks.format === 'mcq') { · {{ ks.complete }} complete examples }
+              @else if (ks.format === 'qa') { · with questions }
+              @if (ks.notes) { · {{ ks.notes }} skipped }
+            </p>
+          }
+        } @else if (pickedKey()) {
+          <p class="parse-note">Using saved key “{{ pickedKey().subject }}” — {{ pickedKey().items.length }} items</p>
+        }
+      } @else {
+        <p class="faint" style="font-size:12.5px;margin:-4px 0 0">Full AI mode — the AI writes the questions and the key itself.</p>
+      }
+
+      <div class="section-title">4 · How many questions?</div>
+      <div class="count-row">
+        @for (c of [10, 20, 30, 40, 50]; track c) {
+          <button class="count-chip" [class.on]="count() === c" (click)="setCount(c)">{{ c }}</button>
+        }
+        <input class="text-input count-input" type="number" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" [attr.aria-label]="'Number of questions'" />
+      </div>
+
+      <div class="section-title">5 · Subject & title</div>
+      <div class="form-row">
+        <input class="text-input" placeholder="Subject (e.g. Science)" [attr.aria-label]="'Subject'" maxlength="40" [value]="subject()" (input)="subject.set($any($event.target).value)" />
+        <input class="text-input" placeholder="Quiz title (optional)" [attr.aria-label]="'Title'" maxlength="60" [value]="title()" (input)="title.set($any($event.target).value)" />
+      </div>
+
+      @if (error()) {
+        <div class="gen-error"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> {{ error() }}</div>
+      }
+
+      <button class="btn btn-primary gen-btn" [disabled]="!canGenerate()" (click)="generate()">
+        <span [innerHTML]="'sparkles' | ico"></span> {{ generating() ? 'Generating… this can take a minute' : 'Generate quiz' }}
+      </button>
+      <p class="faint center" style="font-size:11.5px;padding-bottom:12px">Generation is the only step that uses the internet.</p>
+    </div>
+  } @else {
+    <div class="screen lib-screen">
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'edit' | ico"></div>
+        <div>
+          <h1>Review & edit</h1>
+          <p>Tap the circle beside the correct option. Fix anything the AI got wrong.</p>
+        </div>
+      </div>
+
+      <div class="doc-list">
+        @for (it of items(); track $index) {
+          <div class="qcard">
+            <div class="qhead">
+              <span class="qnum">{{ it.n }}</span>
+              <button class="icon-btn" (click)="removeItem($index)" [attr.aria-label]="'Remove question ' + it.n" [innerHTML]="'trash' | ico"></button>
+            </div>
+            <textarea class="text-input q-edit" rows="2" [attr.aria-label]="'Question ' + it.n" [value]="it.question" (input)="editQ($index, $any($event.target).value)"></textarea>
+            @for (o of it.options; track $index; let oi = $index) {
+              <div class="opt-row">
+                <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer($index, oi)" [attr.aria-label]="'Mark option ' + ('ABCD'[oi]) + ' correct'">
+                  @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
+                </button>
+                <input class="text-input" [value]="o" (input)="setOpt($index, oi, $any($event.target).value)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
+
+      <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
+        <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
+      </button>
+
+      @if (quizId()) {
+        <div class="export-grid">
+          <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
+          <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+          <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
+        </div>
+        <div class="copies-row">
+          <span class="faint">Sheets to print:</span>
+          <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
+        </div>
+        <p class="faint center" style="font-size:11.5px;padding-bottom:12px">PDFs download to your device — print them anywhere, no internet needed.</p>
+      }
+    </div>
+  }
+</ion-content>

@@ -11,7 +11,7 @@ import { nextState, GRADES } from './srs.js'
 /** @typedef {import('./db-types.js').DocImage} DocImage */
 /** @typedef {import('./db-types.js').WeakTerm} WeakTerm */
 
-const dbPromise = openDB('quizard', 10, {
+const dbPromise = openDB('quizard', 11, {
   upgrade(db, oldVersion, _newVersion, transaction) {
     if (oldVersion < 8) {
       // docs gain optional `original` (source file blob) and `visualAnalysis`
@@ -29,6 +29,13 @@ const dbPromise = openDB('quizard', 10, {
       classes.createIndex('accountId', 'accountId')
       const keys = db.createObjectStore('keys', { keyPath: 'id' })
       keys.createIndex('accountId', 'accountId')
+    }
+    if (oldVersion < 11) {
+      // teacher app: generated quizzes (bubble-sheet scans land in Phase 3)
+      const quizzes = db.createObjectStore('quizzes', { keyPath: 'id' })
+      quizzes.createIndex('accountId', 'accountId')
+      db.createObjectStore('sheets', { keyPath: 'id' })
+        .createIndex('accountId', 'accountId')
     }
     if (oldVersion < 1) {
       const docs = db.createObjectStore('docs', { keyPath: 'id' })
@@ -344,7 +351,8 @@ export async function listDocs() {
  */
 /**
  * @typedef {{ id: string, accountId: string, subject: string, title: string,
- *   format: 'qa'|'answers'|'letters', items: { n: number, question: string, answer: string }[],
+ *   format: 'qa'|'answers'|'letters'|'mcq', items: { n: number, question: string,
+ *   answer?: string, options?: string[], answerIndex?: number }[],
  *   createdAt: number }} AnswerKey
  */
 
@@ -422,6 +430,51 @@ export async function deleteKey(id) {
   if (!id) return
   const db = await dbPromise
   await db.delete('keys', id)
+}
+
+/**
+ * @typedef {{ id: string, accountId: string, subject: string, title: string,
+ *   source: 'ai'|'key'|'format', items: { n: number, question: string,
+ *   options: string[], answerIndex: number }[], createdAt: number }} TeacherQuiz
+ */
+
+/** @returns {Promise<TeacherQuiz[]>} */
+export async function listQuizzes() {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const all = await db.getAll('quizzes')
+  return all.filter(q => q.accountId === accountId).sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/** @param {Partial<TeacherQuiz>} data @returns {Promise<TeacherQuiz>} */
+export async function saveQuiz(data) {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const existing = data.id ? await db.get('quizzes', data.id) : null
+  const record = {
+    id: existing?.id || data.id || uid(), accountId, subject: '', title: '',
+    source: 'ai', items: [], createdAt: existing?.createdAt || Date.now(),
+    ...data, accountId
+  }
+  if (!record.id) record.id = uid()
+  await db.put('quizzes', record)
+  return record
+}
+
+/** @param {string} id @returns {Promise<TeacherQuiz | null>} */
+export async function getQuiz(id) {
+  if (!id) return null
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const q = await db.get('quizzes', id)
+  return q && q.accountId === accountId ? q : null
+}
+
+/** @param {string} id */
+export async function deleteQuiz(id) {
+  if (!id) return
+  const db = await dbPromise
+  await db.delete('quizzes', id)
 }
 
 /** @param {string} id @param {Partial<Doc>} patch @returns {Promise<Doc | null>} */
