@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1790867726973,
+  "timestamp": 1790868416458,
   "index": "/index.html",
   "assetGroups": [
     {
@@ -93,6 +93,7 @@
         "/icons/icon-72x72.png",
         "/icons/icon-96x96.png",
         "/icons/icon-maskable-512.png",
+        "/wizard/wizard-logo.jpg",
         "/wizard/wizard-welcome.jpg"
       ],
       "patterns": []
@@ -181,6 +182,7 @@
     "/pdf.worker.min.mjs": "7ddea47e05782b133b44183cb009d9ebaea65f55",
     "/styles-7OQA7ZWC.css": "48a92d513720bfe1708907c491d76917faea0782",
     "/sw.js": "db24343172d8175c538b0ecfbee5341f33490ece",
+    "/wizard/wizard-logo.jpg": "a236229c326c8a285a99145b3fdf66da8b8fb824",
     "/wizard/wizard-welcome.jpg": "b23de14e35d04cb5c39c4c27e16a5d35464bbfce"
   },
   "navigationUrls": [
