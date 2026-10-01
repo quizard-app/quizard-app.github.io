@@ -138,12 +138,12 @@ export class AccountsPage implements OnInit {
     doneMap[acc.id] = false;
     saveSettings({ tutorialAccountId: acc.id, tutorialDone: false, tutorialDoneAccounts: doneMap, tourSeen: [] });
     this.toast.toast(`Welcome, ${acc.name}!`);
-    this.router.navigateByUrl('/tutorial');
+    this.router.navigateByUrl('/tabs/classes');
   }
 
   back() {
     if (this.cameFromPicker) this.go({ mode: 'picker' });
-    else this.router.navigateByUrl('/onboarding');
+    else this.router.navigateByUrl('/tabs/classes');
   }
 
   // ── lock pad ──

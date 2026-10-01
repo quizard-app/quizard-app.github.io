@@ -14,18 +14,6 @@ const DUST = [
   { l: '40%', t: '14%', d: '1.1s' }, { l: '58%', t: '82%', d: '.3s' }
 ];
 
-// The "Get Started" slides replay on the first visit of a browser session.
-// sessionStorage survives a reload but dies with the tab, so reopening the
-// site replays the intro while a reload in the same session skips it.
-const INTRO_SEEN_KEY = 'quizard-intro-seen';
-
-function introSeenThisSession() {
-  try { return sessionStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch { return false; }
-}
-function markIntroSeen() {
-  try { sessionStorage.setItem(INTRO_SEEN_KEY, '1'); } catch { /* private mode */ }
-}
-
 @Component({
   selector: 'app-welcome',
   imports: [],
@@ -39,9 +27,9 @@ export class WelcomePage implements OnInit, OnDestroy {
   readonly heroUrl = assetUrl('wizard/wizard-welcome.jpg');
   exiting = false;
   // Where the splash hands over (only used when the splash actually plays):
-  // fresh devices go to onboarding, returning students to the profile
+  // fresh devices go to profile creation, returning users to the profile
   // picker — PIN enforcement + sync-code restore live there.
-  private launchTo: '/accounts' | '/onboarding' | '/tabs/classes' = '/onboarding';
+  private launchTo: '/accounts' | '/tabs/classes' = '/accounts';
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private router: Router) {}
@@ -60,13 +48,11 @@ export class WelcomePage implements OnInit, OnDestroy {
     });
   }
 
-  private async decideLaunch(): Promise<{ splash: boolean; to: '/accounts' | '/onboarding' | '/tabs/classes' }> {
+  private async decideLaunch(): Promise<{ splash: boolean; to: '/accounts' | '/tabs/classes' }> {
     try {
       const accounts = await listAccounts();
       const fresh = !accounts.length || (accounts.length === 1 && accounts[0].name === 'My account');
-      const introSeen = introSeenThisSession();
-      markIntroSeen();
-      if (fresh) return { splash: true, to: '/onboarding' };
+      if (fresh) return { splash: true, to: '/accounts' };
       // "Skip intro on launch": straight into the app with the last profile —
       // but a PIN-protected profile still goes through the picker gate.
       if (loadSettings().skipIntro) {
@@ -78,11 +64,10 @@ export class WelcomePage implements OnInit, OnDestroy {
         }
         return { splash: false, to: '/accounts' };
       }
-      // Returning students always get the splash; the slides replay on the
-      // session's first visit, reloads in the same session go to the picker.
-      return { splash: true, to: introSeen ? '/accounts' : '/onboarding' };
+      // Returning users get the splash, then the profile picker.
+      return { splash: true, to: '/accounts' };
     } catch {
-      return { splash: true, to: '/onboarding' };
+      return { splash: true, to: '/accounts' };
     }
   }
 

@@ -315,19 +315,6 @@ export class SettingsPage implements OnInit {
 
   setSkipIntro(on: boolean) { saveSettings({ skipIntro: on }); this.refreshSettings(); this.toast.toast(on ? 'Intro will be skipped' : 'Intro plays on launch'); }
 
-  replayIntro() { saveSettings({ onboarded: false }); this.refreshSettings(); this.router.navigateByUrl('/onboarding'); }
-  async replayTour() {
-    let aid = this.ui.account()?.id || getActiveAccountId() || localStorage.getItem('quizard-active-account');
-    if (!aid) {
-      const accs = await listAccounts();
-      if (accs.length) { aid = accs[0].id; setActiveAccount(aid); this.ui.account.set(accs[0]); }
-    } else if (!getActiveAccountId()) {
-      setActiveAccount(aid);
-      if (!this.ui.account()) { try { this.ui.account.set(await getAccount(aid) || null); } catch {} }
-    }
-    saveSettings({ tutorialDone: false, tourSeen: [] }); this.refreshSettings();
-    this.router.navigateByUrl('/tutorial');
-  }
 
   switchAccount() {
     setActiveAccount(null);

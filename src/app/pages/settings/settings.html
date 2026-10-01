@@ -67,15 +67,7 @@
           <button [class.on]="theme() === 'light'" (click)="ui.setTheme('light')" data-tooltip="Light theme — bright and clean">Light</button>
         </div>
       </div>
-      <div class="row" style="border-bottom:none" data-tooltip="Watch the welcome walkthrough again">
-        <div><div class="label">Replay introduction</div><div class="sub">See the welcome slides shown on first launch</div></div>
-        <button class="btn btn-secondary" (click)="replayIntro()"><span [innerHTML]="'refresh' | ico"></span> Replay</button>
-      </div>
-      <div class="row" style="border-bottom:none" data-tooltip="Replay the wizard's guided tour of the app">
-        <div><div class="label">Replay wizard tutorial</div><div class="sub">Walk through adding, quizzing and progress again</div></div>
-        <button class="btn btn-secondary" (click)="replayTour()"><span [innerHTML]="'refresh' | ico"></span> Replay</button>
-      </div>
-      <div class="row" style="border-bottom:none" data-tooltip="Skip the welcome splash and slides — go straight to the app on launch">
+      <div class="row" style="border-bottom:none" data-tooltip="Skip the welcome splash — go straight to the app on launch">
         <div><div class="label">Skip intro on launch</div><div class="sub">Open directly into the app every time</div></div>
         <div class="switch" [class.on]="s.skipIntro" (click)="setSkipIntro(!s.skipIntro)" data-tooltip="Toggle skip intro"></div>
       </div>
