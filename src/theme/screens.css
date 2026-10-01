@@ -1782,6 +1782,29 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
 .export-grid .btn { justify-content: center; padding: 11px 6px; font-size: 12.5px; }
 .copies-row { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 12px; font-size: 12.5px; }
+
+/* ── Check papers: session bar, camera, answer grid ── */
+.session-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.session-bar .btn { padding: 7px 12px; font-size: 12px; }
+.session-list { margin-bottom: 14px; }
+.session-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+.session-row:last-child { border-bottom: none; }
+.session-name { font-size: 13px; font-weight: 600; }
+.camera-view { width: 100%; max-width: 420px; display: block; margin: 0 auto 12px; border-radius: var(--radius-md); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
+.scan-thumb { width: 72px; height: 96px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); flex: none; }
+.answer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; }
+.ans-chip {
+  display: flex; align-items: center; gap: 5px; padding: 6px 7px; cursor: pointer;
+  border-radius: var(--radius-xs); background: var(--surface); border: 1px solid var(--border);
+}
+.ans-n { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+.ans-l { font-weight: 800; font-size: 13px; margin-left: auto; }
+.ans-chip.good .ans-l { color: var(--good, #16a34a); }
+.ans-chip.warn { border-color: var(--warn-border, #b45309); }
+.ans-chip.warn .ans-l { color: var(--warn, #b45309); }
+.ans-chip.bad { border-color: var(--bad-border, #b91c1c); }
+.ans-chip.bad .ans-l { color: var(--bad, #b91c1c); }
+.ans-chip.dim .ans-l { color: var(--text-faint); }
 @keyframes markIn {
   from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
   to { opacity: 1; transform: scale(1) rotate(0); }

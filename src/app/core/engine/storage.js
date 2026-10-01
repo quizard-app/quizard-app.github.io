@@ -477,6 +477,45 @@ export async function deleteQuiz(id) {
   await db.delete('quizzes', id)
 }
 
+/**
+ * @typedef {{ id: string, accountId: string, classId: string, className: string,
+ *   quizId: string, studentName: string, answers: number[], flags: string[],
+ *   correct: number, total: number, percent: number, photo?: string,
+ *   createdAt: number }} SheetResult
+ */
+
+/** @param {Partial<SheetResult>} data @returns {Promise<SheetResult>} */
+export async function saveSheet(data) {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const record = {
+    id: data.id || uid(), accountId, classId: '', className: '', quizId: '',
+    studentName: '', answers: [], flags: [], correct: 0, total: 0, percent: 0,
+    createdAt: Date.now(), ...data, accountId
+  }
+  if (!record.id) record.id = uid()
+  await db.put('sheets', record)
+  return record
+}
+
+/** @param {{ classId?: string, quizId?: string }} [opts] @returns {Promise<SheetResult[]>} */
+export async function listSheets(opts = {}) {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const all = await db.getAll('sheets')
+  let out = all.filter(s => s.accountId === accountId)
+  if (opts.classId) out = out.filter(s => s.classId === opts.classId)
+  if (opts.quizId) out = out.filter(s => s.quizId === opts.quizId)
+  return out.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/** @param {string} id */
+export async function deleteSheet(id) {
+  if (!id) return
+  const db = await dbPromise
+  await db.delete('sheets', id)
+}
+
 /** @param {string} id @param {Partial<Doc>} patch @returns {Promise<Doc | null>} */
 export async function updateDoc(id, patch) {
   if (!id) return null

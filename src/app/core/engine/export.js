@@ -2,6 +2,9 @@ import { summarizeDoc } from './summarize.js'
 import { stripSlideMarkers } from './textproc.js'
 import { rankExamTopics } from './exam.js'
 import qrModule from 'qrcode-generator'
+import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect } from './sheet-spec.js'
+
+export { bubbleSheetLayout } from './sheet-spec.js'
 
 function download(filename, content, mime = 'text/markdown') {
   const blob = new Blob([content], { type: mime })
@@ -593,25 +596,8 @@ function escHtml(s) {
 }
 
 // ── Teacher app exports (PLAN.md Phase 2): quiz paper, teacher key, bubble sheets ──
-
-// Pure geometry for the printable bubble sheet: two balanced columns of A–D
-// rows inside the frame (single column for very short quizzes). Exported for
-// unit tests and reused by the Phase 3 scanner to locate bubbles.
-export function bubbleSheetLayout(count) {
-  const single = count <= 8
-  const columns = single
-    ? [{ start: 1, count }]
-    : [
-        { start: 1, count: Math.ceil(count / 2) },
-        { start: Math.ceil(count / 2) + 1, count: Math.floor(count / 2) }
-      ]
-  return {
-    single,
-    columns,
-    rows: Math.max(...columns.map(c => c.count)),
-    letters: ['A', 'B', 'C', 'D']
-  }
-}
+// Geometry lives in sheet-spec.js — the Phase 3 scanner samples the same
+// constants, so the printed sheet and the scanner agree by construction.
 
 function bubbleQr(pdf, text, x, y, size) {
   // qrcode-generator is CJS; esbuild interop gives us the factory
@@ -629,16 +615,14 @@ function bubbleQr(pdf, text, x, y, size) {
   }
 }
 
-const BUBBLE = { W: 612, H: 792, M: 40, circleR: 6.5, pitch: 22, colGap: 24 }
-
 function headerBlock(pdf, quiz, subtitle) {
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
-  pdf.text('Q U I Z A R D', BUBBLE.M, BUBBLE.M + 6)
+  pdf.text('Q U I Z A R D', SHEET.M, SHEET.M + 6)
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor('#1c2438')
   const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
-  pdf.text(title, BUBBLE.M, BUBBLE.M + 26)
+  pdf.text(title, SHEET.M, SHEET.M + 26)
   pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor('#6b7280')
-  pdf.text(pdfSafe(subtitle), BUBBLE.M, BUBBLE.M + 40)
+  pdf.text(pdfSafe(subtitle), SHEET.M, SHEET.M + 40)
 }
 
 // Shared scaffold for the quiz paper and the teacher's key copy.
@@ -682,66 +666,64 @@ export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
 export async function exportBubbleSheets(quiz, copies = 1) {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
-  const { W, H, M, circleR, pitch } = BUBBLE
-  const layout = bubbleSheetLayout(quiz.items.length)
 
   for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
     if (copy > 0) pdf.addPage()
 
     headerBlock(pdf, quiz, 'Shade ONE circle per row fully with pen or pencil.')
 
-    // frame + corner markers
-    const fx = 130, fy = M + 52, fw = W - fx - M, fh = layout.rows * pitch + 46
+    // frame + corner markers (geometry from sheet-spec.js)
+    const f = frameRect(quiz.items.length)
     pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.6)
-    pdf.rect(fx, fy, fw, fh, 'S')
+    pdf.rect(f.x, f.y, f.w, f.h, 'S')
     pdf.setFillColor('#0b0820')
-    const mk = 10, inset = 6
-    for (const [cx, cy] of [[fx + inset, fy + inset], [fx + fw - inset - mk, fy + inset], [fx + inset, fy + fh - inset - mk], [fx + fw - inset - mk, fy + fh - inset - mk]]) {
+    const mk = SHEET.marker, inset = SHEET.markerInset
+    for (const [cx, cy] of [[f.x + inset, f.y + inset], [f.x + f.w - inset - mk, f.y + inset], [f.x + inset, f.y + f.h - inset - mk], [f.x + f.w - inset - mk, f.y + f.h - inset - mk]]) {
       pdf.rect(cx, cy, mk, mk, 'F')
     }
 
     // QR (identifies the quiz/key at scan time)
-    bubbleQr(pdf, `QZ1:${quiz.id}`, fx + fw - 108, fy + fh - 108, 92)
+    const qr = qrRect(quiz.items.length)
+    bubbleQr(pdf, `QZ1:${quiz.id}`, qr.x, qr.y, qr.size)
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor('#6b7280')
-    pdf.text('Do not write inside the QR code', fx + fw - 108, fy + fh - 12)
+    pdf.text('Do not write inside the QR code', qr.x, qr.y + qr.size + 10)
 
     // bubble grid
-    const gridTop = fy + 26
-    const colX = i => fx + 22 + i * ((fw - 40) / (layout.single ? 1 : 2))
+    const layout = bubbleSheetLayout(quiz.items.length)
+    const gridTop = f.y + SHEET.gridDy
     let idx = 0
     layout.columns.forEach((col, ci) => {
       for (let r = 0; r < col.count; r++) {
-        const n = col.start + r
         const item = quiz.items[idx]
-        const qy = gridTop + r * pitch
+        const qy = gridTop + r * SHEET.pitch
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#374151')
-        pdf.text(String(n), colX(ci), qy + 4)
+        pdf.text(String(col.start + r), columnX(quiz.items.length, ci), qy + 4)
         for (let b = 0; b < 4; b++) {
-          const bx = colX(ci) + 26 + b * (circleR * 2 + 10) + circleR
+          const bx = columnX(quiz.items.length, ci) + SHEET.rowLabelPad + b * (SHEET.circleR * 2 + SHEET.bubbleGap) + SHEET.circleR
           pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1)
-          pdf.circle(bx, qy, circleR, 'S')
+          pdf.circle(bx, qy, SHEET.circleR, 'S')
           pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
-          pdf.text(layout.letters[b], bx, qy + 2, { align: 'center', baseline: 'middle' })
+          pdf.text(SHEET.letters[b], bx, qy + 2, { align: 'center', baseline: 'middle' })
         }
         idx++
       }
     })
 
     // write-in fields below the frame
-    const by = fy + fh + 34
+    const by = f.y + f.h + 34
     pdf.setFontSize(10); pdf.setTextColor('#1c2438')
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Student Name:', M, by)
+    pdf.text('Student Name:', SHEET.M, by)
     pdf.setFont('helvetica', 'normal')
-    pdf.line(M + 78, by + 2, W / 2 - 14, by + 2)
+    pdf.line(SHEET.M + 78, by + 2, SHEET.W / 2 - 14, by + 2)
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Date:', W / 2, by)
+    pdf.text('Date:', SHEET.W / 2, by)
     pdf.setFont('helvetica', 'normal')
-    pdf.line(W / 2 + 30, by + 2, W / 2 + 130, by + 2)
+    pdf.line(SHEET.W / 2 + 30, by + 2, SHEET.W / 2 + 130, by + 2)
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Grade & Section:', M, by + 24)
+    pdf.text('Grade & Section:', SHEET.M, by + 24)
     pdf.setFont('helvetica', 'normal')
-    pdf.line(M + 90, by + 26, W / 2 + 60, by + 26)
+    pdf.line(SHEET.M + 90, by + 26, SHEET.W / 2 + 60, by + 26)
   }
 
   pdf.save(`quizard-bubble-sheets-${slug(quiz.subject || quiz.title)}.pdf`)
