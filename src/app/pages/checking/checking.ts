@@ -54,7 +54,8 @@ export class CheckingPage {
 
   // ── setup ──
   async startSession() {
-    if (!this.classId()) return;
+    // class pick is optional — sheets identify the quiz and the student
+    // themselves via the QR + the shaded student number
     await this.refreshSession();
     this.stage.set('scan');
   }
