@@ -8,6 +8,7 @@ import { exportTeacherQuizPdf, exportBubbleSheets } from '../../core/engine/expo
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ByokService } from '../../core/services/byok.service';
 
 const MODES = [
   { id: 'ai', label: 'Full AI', hint: 'AI writes everything from your file' },
@@ -22,6 +23,7 @@ const MODES = [
 })
 export class CreatePage {
   ui = inject(UiStateService);
+  readonly byok = inject(ByokService);
   private toast = inject(ToastService);
 
   readonly modes = MODES;
