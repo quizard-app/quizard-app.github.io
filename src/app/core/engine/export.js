@@ -1,5 +1,5 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect, idDigitCenter } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect, idDigitCenter, rowPitch } from './sheet-spec.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
 
@@ -114,7 +114,7 @@ function headerBlock(pdf, quiz, subtitle) {
 }
 
 // Shared scaffold for the quiz paper and the teacher's key copy.
-export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
+export async function buildTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
   const W = 612, H = 792, M = 48
@@ -146,14 +146,25 @@ export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
     if (withAnswers) text('', { size: 4, gap: 2 })
   })
 
+  return pdf
+}
+
+export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
+  const pdf = await buildTeacherQuizPdf(quiz, { withAnswers })
   pdf.save(`quizard-${withAnswers ? 'key' : 'quiz'}-${slug(quiz.subject || quiz.title)}.pdf`)
 }
 
 // The scannable answer sheet: frame, corner markers, QR (quiz id), two-column
 // A–D bubble grid, and the write-in fields the teacher asked for.
-export async function exportBubbleSheets(quiz, copies = 1) {
+/**
+ * @typedef {'letter' | 'a4' | 'long'} PaperSize
+ */
+const PAPER = { letter: [612, 792], a4: [595, 842], long: [612, 936] }
+
+// Builds the bubble-sheet document (preview renders this; export saves it).
+export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
   const { jsPDF } = await import('jspdf')
-  const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
+  const pdf = new jsPDF({ unit: 'pt', format: PAPER[size] || PAPER.letter })
 
   for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
     if (copy > 0) pdf.addPage()
@@ -183,7 +194,7 @@ export async function exportBubbleSheets(quiz, copies = 1) {
     layout.columns.forEach((col, ci) => {
       for (let r = 0; r < col.count; r++) {
         const item = quiz.items[idx]
-        const qy = gridTop + r * SHEET.pitch
+        const qy = gridTop + r * rowPitch(quiz.items.length)
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#374151')
         pdf.text(String(col.start + r), columnX(quiz.items.length, ci), qy + 4)
         for (let b = 0; b < 4; b++) {
@@ -201,7 +212,7 @@ export async function exportBubbleSheets(quiz, copies = 1) {
     // The scanner reads these first, so a shuffled pile still identifies
     // whose sheet it is — numbers belong to students, not to seats.
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6); pdf.setTextColor('#374151')
-    pdf.text('STUDENT NO.', f.x + 8, f.y + f.h - 27)
+    pdf.text('STUDENT NO.', f.x + 8, f.y + f.h - 29)
     for (let row = 0; row < 2; row++) {
       for (let d = 0; d <= 9; d++) {
         const c = idDigitCenter(quiz.items.length, row, d)
@@ -229,5 +240,10 @@ export async function exportBubbleSheets(quiz, copies = 1) {
     pdf.line(SHEET.M + 90, by + 26, SHEET.W / 2 + 60, by + 26)
   }
 
+  return pdf
+}
+
+export async function exportBubbleSheets(quiz, copies = 1, size = 'letter') {
+  const pdf = await buildBubbleSheetsPdf(quiz, copies, size)
   pdf.save(`quizard-bubble-sheets-${slug(quiz.subject || quiz.title)}.pdf`)
 }

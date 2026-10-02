@@ -91,6 +91,7 @@ export function findMarkerQuads(binary, width, height, itemCount) {
       && b.bw / b.bh > 0.45 && b.bw / b.bh < 2.2 && b.fill >= fillMin
   }
   let cand = all.filter(b => passes(b, 0.85))
+  console.log('DBG cand:', JSON.stringify(all.filter(b => passes(b, 0.6)).map(b => ({ x: Math.round(b.cx), y: Math.round(b.cy), side: Math.round((b.bw + b.bh) / 2), fill: +b.fill.toFixed(2) }))))
   if (cand.length < 4) cand = all.filter(b => passes(b, 0.6))
   if (cand.length > 60) cand = [...cand].sort((a, b) => b.fill - a.fill).slice(0, 60)
   if (cand.length < 4) return null

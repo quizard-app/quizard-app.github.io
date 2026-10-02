@@ -5,13 +5,14 @@
 
 export const SHEET = {
   W: 612, H: 792, M: 40,
-  frameX: 130, frameY: 92, frameW: 442,
-  headerH: 46,   // frame height = rows * pitch + headerH + idBand
-  gridDy: 26,    // grid top inside the frame
+  frameW: 442,
+  frameY: 84,    // frame top — below the printed header block
+  headerH: 44,   // frame height = rows * rowPitch(count) + headerH + idBand
+  gridDy: 24,    // grid top inside the frame
   circleR: 6.5,
   bubbleGap: 10, // gap between circles
   rowLabelPad: 26,
-  pitch: 22,
+  pitch: 22,     // max row pitch (shrinks for 50-item sheets, see rowPitch)
   letters: ['A', 'B', 'C', 'D'],
   marker: 10, markerInset: 6,
   // QR clearance: the code must never touch the corner markers or the
@@ -22,11 +23,25 @@ export const SHEET = {
   // scanner knows whose sheet it is — seating, shuffling, photocopies and
   // collection order all stop mattering. Numbers belong to students (stored
   // per roster entry), not to seats or list positions.
-  idBand: 36,
+  idBand: 40,
   idBubbleR: 4.2,
   idGap: 12.4,
-  idX: 46,            // first digit bubble center x, relative to frame left
-  idRowsDy: [26, 12], // tens / ones row centers above the frame bottom
+  idX: 54,            // first digit bubble center x, relative to frame left
+  idRowsDy: [30, 15], // tens / ones row centers above the frame bottom
+}
+
+// The frame is centered on the page — balanced margins like a proper OMR form.
+export function frameX() {
+  return Math.round((SHEET.W - SHEET.frameW) / 2)
+}
+
+// Row pitch shrinks for tall sheets so the frame, the write-in fields and a
+// printable bottom margin always fit the page.
+export function rowPitch(count) {
+  const rows = bubbleSheetLayout(count).rows
+  const bottomReserve = 72 // write-in fields + printer margin
+  const avail = SHEET.H - bottomReserve - SHEET.frameY - SHEET.gridDy - SHEET.headerH - SHEET.idBand
+  return Math.min(SHEET.pitch, Math.floor((avail / rows) * 10) / 10)
 }
 
 export function bubbleSheetLayout(count) {
@@ -47,7 +62,7 @@ export function bubbleSheetLayout(count) {
 
 export function frameRect(count) {
   const { rows } = bubbleSheetLayout(count)
-  return { x: SHEET.frameX, y: SHEET.frameY, w: SHEET.frameW, h: rows * SHEET.pitch + SHEET.headerH + SHEET.idBand }
+  return { x: frameX(), y: SHEET.frameY, w: SHEET.frameW, h: Math.round(rows * rowPitch(count) + SHEET.headerH + SHEET.idBand) }
 }
 
 // Centers of the ten digit bubbles in one student-number row.
@@ -88,7 +103,7 @@ export function bubbleCenter(count, item, letter) {
   let row = item
   for (const c of layout.columns) { if (row < c.count) break; row -= c.count; col++ }
   const x = columnX(count, col) + SHEET.rowLabelPad + letter * (SHEET.circleR * 2 + SHEET.bubbleGap) + SHEET.circleR
-  const y = f.y + SHEET.gridDy + row * SHEET.pitch
+  const y = f.y + SHEET.gridDy + row * rowPitch(count)
   return { x, y }
 }
 

@@ -2366,3 +2366,8 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 /* The account screens render inside ion-content (restores scrolling on short
    phones) but bring their own padding — zero the global content padding. */
 .acc-content { --padding-start: 0; --padding-end: 0; }
+
+/* ── Create tab: print preview modal ── */
+.preview-sheet { width: min(92vw, 400px); max-height: 86vh; overflow: auto; }
+.preview-canvas-wrap { display: grid; place-items: center; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px; }
+.preview-canvas { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.4); }

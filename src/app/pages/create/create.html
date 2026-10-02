@@ -137,9 +137,37 @@
         <div class="copies-row">
           <span class="faint">Sheets to print:</span>
           <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
+          <span class="faint">Paper:</span>
+          <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
+            <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
+            <option value="a4" [selected]="paper() === 'a4'">A4</option>
+            <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
+          </select>
         </div>
         <p class="faint center" style="font-size:11.5px;padding-bottom:12px">PDFs download to your device — print them anywhere, no internet needed.</p>
       }
+    </div>
+  }
+
+  @if (previewOpen()) {
+    <div class="org-overlay" (click)="closePreview()">
+      <div class="org-sheet preview-sheet" (click)="$event.stopPropagation()">
+        <h3>Preview — {{ previewLabel() }}</h3>
+        @if (previewBusy()) {
+          <p class="parse-note">Building the preview…</p>
+        } @else {
+          <p class="faint" style="font-size:11.5px;text-align:center;margin:0 0 10px">
+            Page 1 of {{ previewPages() }}{{ previewPages() > 1 ? ' — one page per sheet' : '' }}
+          </p>
+          <div class="preview-canvas-wrap">
+            <canvas class="preview-canvas"></canvas>
+          </div>
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="closePreview()">Close</button>
+            <button class="btn btn-primary" (click)="downloadPreview()"><span [innerHTML]="'download' | ico"></span> Download PDF</button>
+          </div>
+        }
+      </div>
     </div>
   }
 </ion-content>

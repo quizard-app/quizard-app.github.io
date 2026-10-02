@@ -5,7 +5,7 @@ import { extractText } from '../../core/engine/extract/index.js';
 import { parseKeyText } from '../../core/engine/answerkey.js';
 import { generateTeacherQuiz, clampCount, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
 import { listKeys, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
-import { exportTeacherQuizPdf, exportBubbleSheets } from '../../core/engine/export.js';
+import { buildTeacherQuizPdf, buildBubbleSheetsPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -170,23 +170,86 @@ export class CreatePage {
     this.toast.toast('Quiz saved ✓ — printable copies are ready below');
   }
 
-  async printQuiz() { await this.exportWith(getQuiz, 'quiz'); }
-  async printKey() { await this.exportWith(getQuiz, 'key'); }
-  async printSheets() { await this.exportWith(getQuiz, 'sheets'); }
+  // ── preview → download flow ──
+  previewOpen = signal(false);
+  previewBusy = signal(false);
+  previewPages = signal(1);
+  previewLabel = signal('');
+  previewDoc: any = null;
+  previewFilename = '';
 
-  private async exportWith(getter: (id: string) => Promise<TeacherQuiz | null>, kind: 'quiz' | 'key' | 'sheets') {
+  async printQuiz() { await this.previewWith(getQuiz, 'quiz'); }
+  async printKey() { await this.previewWith(getQuiz, 'key'); }
+  async printSheets() { await this.previewWith(getQuiz, 'sheets'); }
+
+  private async previewWith(getter: (id: string) => Promise<TeacherQuiz | null>, kind: 'quiz' | 'key' | 'sheets') {
     const id = this.quizId();
     if (!id) return;
     const quiz = await getter(id);
     if (!quiz) return;
+    this.previewBusy.set(true);
     try {
-      if (kind === 'quiz') await exportTeacherQuizPdf(quiz);
-      else if (kind === 'key') await exportTeacherQuizPdf(quiz, { withAnswers: true });
-      else await exportBubbleSheets(quiz, this.copies());
+      if (kind === 'quiz') {
+        this.previewDoc = await buildTeacherQuizPdf(quiz);
+        this.previewFilename = `quizard-quiz-${slugify(quiz.subject || quiz.title)}`;
+        this.previewLabel.set('Student quiz paper');
+      } else if (kind === 'key') {
+        this.previewDoc = await buildTeacherQuizPdf(quiz, { withAnswers: true });
+        this.previewFilename = `quizard-key-${slugify(quiz.subject || quiz.title)}`;
+        this.previewLabel.set('Teacher’s answer key');
+      } else {
+        this.previewDoc = await buildBubbleSheetsPdf(quiz, this.copies(), this.paper());
+        this.previewFilename = `quizard-bubble-sheets-${slugify(quiz.subject || quiz.title)}`;
+        this.previewLabel.set(`Bubble answer sheets (${this.paper()})`);
+      }
+      this.previewOpen.set(true);
+      this.previewBusy.set(false); // the canvas mounts in the non-busy branch
+      await this.renderPreview();
     } catch (e: any) {
       this.toast.toast(e?.message || 'Could not build the PDF', true);
+      this.previewBusy.set(false);
     }
   }
+
+  private async renderPreview() {
+    // wait for the modal's canvas to mount (zoneless re-render)
+    let canvas: HTMLCanvasElement | null = null;
+    for (let i = 0; i < 25 && !canvas; i++) {
+      canvas = document.querySelector('canvas.preview-canvas') as HTMLCanvasElement | null;
+      if (!canvas) await new Promise(r => setTimeout(r, 80));
+    }
+    if (!canvas || !this.previewDoc) return;
+    try {
+      const pdfjs: any = await import('pdfjs-dist');
+      // same worker setup as the import pipeline: absolute URL so both the
+      // real worker and the fake-worker fallback resolve, and the service
+      // worker can serve the precached file offline
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.mjs', document.baseURI).href;
+      const buf = this.previewDoc.output('arraybuffer');
+      const pdf = await pdfjs.getDocument({ data: buf, isEvalSupported: false }).promise;
+      this.previewPages.set(pdf.numPages);
+      const pdfPage = await pdf.getPage(1);
+      const scale = 340 / pdfPage.getViewport({ scale: 1 }).width;
+      const vp = pdfPage.getViewport({ scale });
+      canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+      await pdfPage.render({ canvas, canvasContext: canvas.getContext('2d')!, viewport: vp }).promise;
+    } catch (e: any) {
+      this.toast.toast('Preview failed — you can still download the PDF', true);
+    }
+  }
+
+  downloadPreview() {
+    if (this.previewDoc) this.previewDoc.save(`${this.previewFilename}.pdf`);
+    this.toast.toast('PDF downloaded ✓');
+  }
+
+  closePreview() {
+    this.previewOpen.set(false);
+    this.previewDoc = null;
+  }
+
+  paper = signal<'letter' | 'a4' | 'long'>('letter');
+  setPaper(p: any) { this.paper.set(p); }
 
   backToSetup() {
     this.stage.set('setup');
@@ -195,4 +258,8 @@ export class CreatePage {
     this.savedKeys.set([]);
     void this.ionViewWillEnter();
   }
+}
+
+function slugify(v: any) {
+  return String(v || 'doc').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'doc'
 }
