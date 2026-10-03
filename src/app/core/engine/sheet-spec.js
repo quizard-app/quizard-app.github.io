@@ -4,30 +4,47 @@
 // points on a Letter page (612 x 792 pt).
 
 export const SHEET = {
-  W: 612, H: 792, M: 40,
-  frameW: 442,
-  frameY: 84,    // frame top — below the printed header block
-  headerH: 44,   // frame height = rows * rowPitch(count) + headerH + idBand
-  gridDy: 24,    // grid top inside the frame
-  circleR: 6.5,
-  bubbleGap: 10, // gap between circles
-  rowLabelPad: 26,
+  W: 612, H: 792, M: 44,
+  frameW: 368,
+  frameY: 96,    // frame top — below the printed header lockup
+  headerH: 26,   // frame height = rows * rowPitch(count) + headerH + idBand
+  gridDy: 20,    // grid top inside the frame
+  circleR: 7,
+  bubbleGap: 13, // gap between circles
+  // The A–D letter printed inside each circle. Its ink lands exactly where the
+  // scanner samples, so it raises the ink floor of every bubble equally — the
+  // BLANK and MULTI thresholds only survive because that floor stays small.
+  // `letterR` is the worst-case ink radius (the synthetic scan test draws a
+  // solid patch this size); `letterCap` is Helvetica's cap height, used to
+  // centre the letter on the bubble.
+  letterR: 1.5, letterCap: 4.7,
+  // Fraction of circleR the scanner samples inside, so the label-ink budget
+  // below can be reasoned about (and tested) without duplicating the number.
+  scanRadiusFrac: 0.85,
+  colPad: 20,    // frame edge -> column origin
+  rowLabelPad: 43, // column origin -> left edge of the first bubble
+  rowLabelGap: 7,  // right edge of the row number -> first bubble
   pitch: 22,     // max row pitch (shrinks for 50-item sheets, see rowPitch)
   letters: ['A', 'B', 'C', 'D'],
-  marker: 10, markerInset: 6,
-  // QR clearance: the code must never touch the corner markers or the
-  // bubble columns, or thresholding merges them into one blob (scan bug)
-  qrSize: 72, qrInset: 100,
+  // The four alignment squares the scanner's homography is built from. They
+  // are parked in the page margins, outside the printed box, so the answer
+  // area holds nothing but the grid and the QR.
+  marker: 10, markerGap: 24,
+  // QR clearance: the code must never touch the bubble columns or the marker
+  // squares, or thresholding merges them into one blob (scan bug). It lives in
+  // the frame's bottom band, under the right-hand column.
+  qrSize: 76, qrPadX: 28, qrPadY: 8,
   // student-number strip (bottom-left inside the frame): two rows of digit
   // bubbles 0–9 (tens / ones). Students shade their own class number, so the
   // scanner knows whose sheet it is — seating, shuffling, photocopies and
   // collection order all stop mattering. Numbers belong to students (stored
   // per roster entry), not to seats or list positions.
-  idBand: 40,
+  idBand: 88,    // frame height also reserves this for the strip + QR
   idBubbleR: 4.2,
   idGap: 12.4,
-  idX: 54,            // first digit bubble center x, relative to frame left
+  idX: 22,            // first digit bubble center x, relative to frame left
   idRowsDy: [30, 15], // tens / ones row centers above the frame bottom
+  idLabelDy: 46,      // "STUDENT NO." caption baseline above the frame bottom
 }
 
 // The frame is centered on the page — balanced margins like a proper OMR form.
@@ -39,7 +56,7 @@ export function frameX() {
 // printable bottom margin always fit the page.
 export function rowPitch(count) {
   const rows = bubbleSheetLayout(count).rows
-  const bottomReserve = 72 // write-in fields + printer margin
+  const bottomReserve = 76 // write-in fields + printer margin
   const avail = SHEET.H - bottomReserve - SHEET.frameY - SHEET.gridDy - SHEET.headerH - SHEET.idBand
   return Math.min(SHEET.pitch, Math.floor((avail / rows) * 10) / 10)
 }
@@ -75,24 +92,30 @@ export function idDigitCenter(count, row, digit) {
   }
 }
 
-// Corner-marker centroids in reading order TL, TR, BR, BL — the scanner's
-// four known PDF-space points for the homography.
-export function markerCenters(count) {
+// Top-left corners of the four alignment squares, in reading order
+// TL, TR, BR, BL. They sit in the page margins, clear of the frame.
+export function markerRects(count) {
   const f = frameRect(count)
-  const c = SHEET.marker / 2
-  const i = SHEET.markerInset
+  const m = SHEET.marker, g = SHEET.markerGap
   return [
-    { x: f.x + i + c, y: f.y + i + c },
-    { x: f.x + f.w - i - c, y: f.y + i + c },
-    { x: f.x + f.w - i - c, y: f.y + f.h - i - c },
-    { x: f.x + i + c, y: f.y + f.h - i - c },
+    { x: f.x - g - m, y: f.y },
+    { x: f.x + f.w + g, y: f.y },
+    { x: f.x + f.w + g, y: f.y + f.h - m },
+    { x: f.x - g - m, y: f.y + f.h - m },
   ]
+}
+
+// Marker centroids in reading order TL, TR, BR, BL — the scanner's four known
+// PDF-space points for the homography.
+export function markerCenters(count) {
+  const c = SHEET.marker / 2
+  return markerRects(count).map(r => ({ x: r.x + c, y: r.y + c }))
 }
 
 export function columnX(count, colIndex) {
   const f = frameRect(count)
   const { single } = bubbleSheetLayout(count)
-  return f.x + 22 + colIndex * ((f.w - 40) / (single ? 1 : 2))
+  return f.x + SHEET.colPad + colIndex * ((f.w - SHEET.colPad * 2) / (single ? 1 : 2))
 }
 
 // Center of one answer bubble. item is 0-based, letter 0..3 (A–D).
@@ -107,7 +130,17 @@ export function bubbleCenter(count, item, letter) {
   return { x, y }
 }
 
+// Right edge of a row's number label, so callers can right-align it just left
+// of the first bubble.
+export function rowLabelRight(count, colIndex) {
+  return columnX(count, colIndex) + SHEET.rowLabelPad - SHEET.rowLabelGap
+}
+
 export function qrRect(count) {
   const f = frameRect(count)
-  return { x: f.x + f.w - SHEET.qrInset, y: f.y + f.h - SHEET.qrInset, size: SHEET.qrSize }
+  return {
+    x: f.x + f.w - SHEET.qrPadX - SHEET.qrSize,
+    y: f.y + f.h - SHEET.qrPadY - SHEET.qrSize,
+    size: SHEET.qrSize,
+  }
 }

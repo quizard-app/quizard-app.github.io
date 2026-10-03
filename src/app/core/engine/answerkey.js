@@ -2,6 +2,9 @@
 // Four accepted shapes:
 //
 //   1. Photosynthesis                              → answer only
+//   1. B. Data Integrity                           → answer + the letter it
+//      held on the teacher's own paper (kept in `answerLetter`, never merged
+//      into the answer text)
 //   2. What do plants use for food? → Photosynthesis   → question + answer
 //   1.A 2.B 3.C   or   BCADBACD…                   → compact letter keys
 //   1. What is X?                                  → full MCQ examples
@@ -20,6 +23,11 @@
 const QA_SEPARATOR = /\s*(?:→|=>|—|–|=|: )\s*/
 const LETTERS_ONLY = /^[A-Da-d\s]+$/
 const OPTION_LINE = /^\(?([A-Da-d])[\).]\s+(.+)$/
+// The shape teachers actually hand in: "1. B. Data Integrity" — optional
+// number, the position the correct option had on THEIR paper, then the answer
+// text. The letter belongs to the old paper's A–D, not to the answer, so it is
+// split off instead of being glued on the front of the answer string.
+const KEYED_LINE = /^(?:(\d{1,3})\s*[.):\-–—]\s*)?([A-Da-d])\s*[.):\-–—]\s*(.+)$/
 
 // Recognize full MCQ example blocks: a question line, 2–6 option lines
 // (A. … *B. …), and an optional "Answer: X" line. Returns { items, used }
@@ -72,8 +80,9 @@ function tryParseMcqBlocks(lines) {
 }
 
 /**
- * @returns {{ format: 'qa'|'answers'|'letters'|'mcq',
- *   items: { n: number, question: string, answer?: string, options?: string[], answerIndex?: number }[],
+ * @returns {{ format: 'qa'|'answers'|'letters'|'keyed'|'mcq',
+ *   items: { n: number, question: string, answer?: string, answerLetter?: string,
+ *     options?: string[], answerIndex?: number }[],
  *   notes: string[] }}
  */
 export function parseKeyText(text) {
@@ -105,6 +114,23 @@ export function parseKeyText(text) {
 
   const items = []
   const notes = []
+
+  // Letter-prefixed key: only claimed when EVERY line has that shape, so a
+  // single stray line falls back to the plain answer/question parsing below
+  // rather than losing that entry's meaning.
+  const keyed = lines.map(l => KEYED_LINE.exec(l))
+  if (keyed.every(Boolean)) {
+    return {
+      format: 'keyed',
+      items: keyed.map((m, i) => ({
+        n: m[1] ? parseInt(m[1], 10) : i + 1,
+        answerLetter: m[2].toUpperCase(),
+        question: '',
+        answer: m[3].trim(),
+      })),
+      notes: [],
+    }
+  }
 
   // full MCQ examples take precedence when present
   const mcq = tryParseMcqBlocks(lines)

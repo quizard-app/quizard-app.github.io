@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { listSheets, listClasses, listQuizzes, getQuiz, type SheetResult } from '../../core/engine/storage.js';
-import { itemAnalysis, weakestItems, resultsCsv } from '../../core/engine/reports.js';
+import { itemAnalysis, weakestItems, resultsCsv, sectionBreakdown } from '../../core/engine/reports.js';
 import { exportClassReportPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { fmtDate } from '../../shared/helpers.js';
@@ -71,6 +71,7 @@ export class ReportsPage {
     if (!q) return [];
     return weakestItems(this.classSheets(), q.items, 5);
   });
+  readonly sections = computed(() => sectionBreakdown(this.classSheets()));
 
   async openClass(id: string) {
     this.selectedClassId.set(id);

@@ -60,3 +60,50 @@ describe('parseKeyText', () => {
     expect(items).toEqual([])
   })
 })
+
+describe('parseKeyText — letter-prefixed answers', () => {
+  // the shape teachers actually hand in: "1. B. Data Integrity"
+  const numbered = `1. B. Data Integrity
+2. C. Confidentiality
+3. A. Professional Ethics
+4. D. Accountability`
+
+  it('splits the number, the option letter and the answer text apart', () => {
+    const r = parseKeyText(numbered)
+    expect(r.format).toBe('keyed')
+    expect(r.items).toEqual([
+      { n: 1, answerLetter: 'B', question: '', answer: 'Data Integrity' },
+      { n: 2, answerLetter: 'C', question: '', answer: 'Confidentiality' },
+      { n: 3, answerLetter: 'A', question: '', answer: 'Professional Ethics' },
+      { n: 4, answerLetter: 'D', question: '', answer: 'Accountability' },
+    ])
+    expect(r.notes).toEqual([])
+  })
+
+  it('accepts the same shape without the leading number', () => {
+    const r = parseKeyText('B. Data Integrity\nC. Confidentiality')
+    expect(r.format).toBe('keyed')
+    expect(r.items.map(it => [it.n, it.answerLetter, it.answer])).toEqual([
+      [1, 'B', 'Data Integrity'],
+      [2, 'C', 'Confidentiality'],
+    ])
+  })
+
+  it('accepts closing brackets and short numeric answers', () => {
+    expect(parseKeyText('1) B) Data Integrity\n2) C) 10').items).toEqual([
+      { n: 1, answerLetter: 'B', question: '', answer: 'Data Integrity' },
+      { n: 2, answerLetter: 'C', question: '', answer: '10' },
+    ])
+  })
+
+  it('only claims the keyed shape when every line matches it', () => {
+    const r = parseKeyText('1. B. Data Integrity\n2. What is X? → Carbon')
+    expect(r.format).toBe('qa')
+    expect(r.items[0]).toEqual({ n: 1, question: '', answer: 'B. Data Integrity' })
+  })
+
+  it('leaves a bare letter key to the letters format', () => {
+    expect(parseKeyText('BCADBACD').format).toBe('letters')
+    expect(parseKeyText('1.A 2.B 3.C 4.D').format).toBe('letters')
+  })
+})

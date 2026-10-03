@@ -517,8 +517,14 @@ export async function deleteQuiz(id) {
 }
 
 /**
+ * A checked sheet. `studentNo` / `grade` / `section` are a snapshot taken from
+ * the roster entry at scan time — the same reason `className` is stored: a
+ * report must stay accurate after the roster is later edited. Results saved
+ * before these fields existed simply have them blank.
  * @typedef {{ id: string, accountId: string, classId: string, className: string,
- *   quizId: string, studentName: string, answers: number[], flags: string[],
+ *   quizId: string, studentNo?: number | null, studentName: string,
+ *   grade?: string, section?: string,
+ *   answers: number[], flags: string[],
  *   correct: number, total: number, percent: number, photo?: string,
  *   createdAt: number }} SheetResult
  */
@@ -529,7 +535,8 @@ export async function saveSheet(data) {
   const accountId = await requireAccount()
   const record = {
     id: data.id || uid(), accountId, classId: '', className: '', quizId: '',
-    studentName: '', answers: [], flags: [], correct: 0, total: 0, percent: 0,
+    studentNo: null, studentName: '', grade: '', section: '',
+    answers: [], flags: [], correct: 0, total: 0, percent: 0,
     createdAt: Date.now(), ...data, accountId
   }
   if (!record.id) record.id = uid()

@@ -4,7 +4,8 @@ import { IonContent } from '@ionic/angular';
 import { extractText } from '../../core/engine/extract/index.js';
 import { parseKeyText } from '../../core/engine/answerkey.js';
 import { generateTeacherQuiz, clampCount, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
-import { listKeys, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
+import { listKeys, listQuizzes, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
+import { fmtDate } from '../../shared/helpers.js';
 import { buildTeacherQuizPdf, buildBubbleSheetsPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -30,8 +31,12 @@ export class CreatePage {
 
   readonly modes = MODES;
   readonly maxItems = MAX_ITEMS;
+  readonly dateOf = fmtDate;
+  readonly letters = ['A', 'B', 'C', 'D'];
 
-  stage = signal<'setup' | 'review'>('setup');
+  stage = signal<'home' | 'setup' | 'review' | 'export'>('home');
+  homeQuizzes = signal<any[]>([]);
+  selectedQuiz = signal<any>(null);
   mode = signal<'ai' | 'key' | 'format'>('ai');
   subject = signal('');
   title = signal('');
@@ -79,6 +84,7 @@ export class CreatePage {
     it.question.trim() && it.options.every((o: string) => o.trim()) && it.answerIndex >= 0));
 
   async ionViewWillEnter() {
+    if (this.stage() === 'home') this.homeQuizzes.set(await listQuizzes());
     if (this.stage() === 'setup') this.savedKeys.set(await listKeys());
   }
 
@@ -167,7 +173,9 @@ export class CreatePage {
       items: this.items(),
     });
     this.quizId.set(quiz.id);
-    this.toast.toast('Quiz saved ✓ — printable copies are ready below');
+    this.selectedQuiz.set(quiz);
+    this.stage.set('export');
+    this.toast.toast('Quiz saved ✓ — printable copies are ready');
   }
 
   // ── preview → download flow ──
@@ -178,14 +186,43 @@ export class CreatePage {
   previewDoc: any = null;
   previewFilename = '';
 
+  async openSaved(id: string) {
+    const quiz = await getQuiz(id);
+    if (!quiz) return;
+    this.selectedQuiz.set(quiz);
+    this.stage.set('export');
+  }
+
+  backHome() {
+    this.stage.set('home');
+    this.selectedQuiz.set(null);
+    this.quizId.set(null);
+    void this.ionViewWillEnter();
+  }
+
+  startNewQuiz() {
+    this.stage.set('setup');
+    this.items.set([]);
+    this.quizId.set(null);
+    this.selectedQuiz.set(null);
+    this.mode.set('ai');
+    this.subject.set(''); this.title.set(''); this.fileText.set(''); this.fileName.set('');
+    this.lessonPaste.set(''); this.keyPaste.set(''); this.pickedKeyId.set(null);
+    this.error.set('');
+    this.savedKeys.set([]);
+    void this.ionViewWillEnter();
+  }
+
   async printQuiz() { await this.previewWith(getQuiz, 'quiz'); }
   async printKey() { await this.previewWith(getQuiz, 'key'); }
   async printSheets() { await this.previewWith(getQuiz, 'sheets'); }
 
   private async previewWith(getter: (id: string) => Promise<TeacherQuiz | null>, kind: 'quiz' | 'key' | 'sheets') {
-    const id = this.quizId();
-    if (!id) return;
-    const quiz = await getter(id);
+    let quiz = this.selectedQuiz();
+    if (!quiz) {
+      const id = this.quizId();
+      quiz = id ? await getter(id) : null;
+    }
     if (!quiz) return;
     this.previewBusy.set(true);
     try {

@@ -47,16 +47,45 @@ const CSV_ESC = (v) => {
 }
 
 /**
+ * Per-section rollup of one class's checked sheets. Sheets with no section —
+ * results saved before sections were recorded, or students the roster leaves
+ * blank — are left out rather than bucketed under an empty heading.
+ * @param {{ section?: string, percent?: number }[]} sheets
+ * @returns {{ section: string, count: number, avg: number, highest: number, lowest: number }[]}
+ */
+export function sectionBreakdown(sheets) {
+  const by = new Map()
+  for (const s of sheets) {
+    const key = String(s.section || '').trim()
+    if (!key) continue
+    const pct = Number(s.percent) || 0
+    const g = by.get(key) || { section: key, count: 0, sum: 0, high: pct, low: pct }
+    g.count++
+    g.sum += pct
+    if (pct > g.high) g.high = pct
+    if (pct < g.low) g.low = pct
+    by.set(key, g)
+  }
+  return [...by.values()]
+    .map(g => ({ section: g.section, count: g.count, avg: Math.round(g.sum / g.count), highest: g.high, lowest: g.low }))
+    .sort((a, b) => a.section.localeCompare(b.section, undefined, { numeric: true }))
+}
+
+/**
  * Class results as CSV: one row per checked sheet, then per-item columns.
- * @param {{ studentName: string, className: string, percent: number,
+ * `studentNo` / `grade` / `section` are blank for results saved before those
+ * fields were captured.
+ * @param {{ studentNo?: number | null, studentName: string, grade?: string,
+ *   section?: string, className: string, percent: number,
  *   correct: number, total: number, createdAt: number, answers: number[] }[]} sheets
  * @param {{ answerIndex: number }[]} items
  */
 export function resultsCsv(sheets, items) {
-  const head = ['Student', 'Class', 'Score %', 'Correct', 'Total', 'Date',
+  const head = ['No', 'Student', 'Grade', 'Section', 'Class', 'Score %', 'Correct', 'Total', 'Date',
     ...items.map((_, i) => `Q${i + 1}`)]
   const rows = sheets.map(s => [
-    s.studentName, s.className, s.percent, s.correct, s.total,
+    s.studentNo ?? '', s.studentName, s.grade || '', s.section || '', s.className,
+    s.percent, s.correct, s.total,
     new Date(s.createdAt).toLocaleString(),
     ...items.map((_, i) => {
       const a = s.answers?.[i]

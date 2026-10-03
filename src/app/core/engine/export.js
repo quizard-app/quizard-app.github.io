@@ -1,5 +1,6 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerCenters, columnX, qrRect, idDigitCenter, rowPitch } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, idDigitCenter, rowPitch } from './sheet-spec.js'
+import { sectionBreakdown } from './reports.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
 
@@ -28,6 +29,12 @@ function pdfSafe(s) {
 }
 
 export async function exportClassReportPdf(cls, quiz, sheets, analysis) {
+  const pdf = await buildClassReportPdf(cls, quiz, sheets, analysis)
+  pdf.save(`quizard-results-${slug(cls.name)}.pdf`)
+}
+
+/** Same report as exportClassReportPdf, but returns the document for preview. */
+export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
   const W = 612, H = 792, M = 48
@@ -56,10 +63,30 @@ export async function exportClassReportPdf(cls, quiz, sheets, analysis) {
     need(22)
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10.5); pdf.setTextColor('#1c2438')
     pdf.text(pdfSafe(s.studentName), M + 6, y + 10)
-    pdf.setFont('helvetica', 'normal')
+    // roster snapshot: number, grade and section travel with the result
+    const who = [s.studentNo != null ? `#${s.studentNo}` : '', s.grade, s.section].filter(Boolean).join(' · ')
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor('#9ca3af')
+    if (who) pdf.text(pdfSafe(who), M + 6 + pdf.getTextWidth(s.studentName) + 12, y + 10)
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10.5); pdf.setTextColor('#1c2438')
     pdf.text(`${s.correct}/${s.total}`, W - M - 90, y + 10)
     pdf.text(`${s.percent}%`, W - M - 34, y + 10)
     y += 16
+  }
+
+  const sections = sectionBreakdown(sheets)
+  if (sections.length > 1) {
+    y += 10
+    text('By section', { size: 13, bold: true, gap: 6 })
+    for (const g of sections) {
+      need(20)
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10.5); pdf.setTextColor('#1c2438')
+      pdf.text(pdfSafe(g.section), M + 6, y + 10)
+      pdf.setTextColor('#6b7280')
+      pdf.text(`${g.count} checked · low ${g.lowest}% · high ${g.highest}%`, M + 120, y + 10)
+      pdf.setFont('helvetica', 'bold'); pdf.setTextColor('#1c2438')
+      pdf.text(`${g.avg}%`, W - M - 34, y + 10)
+      y += 16
+    }
   }
 
   y += 10
@@ -80,7 +107,7 @@ export async function exportClassReportPdf(cls, quiz, sheets, analysis) {
   }
   if (!analysis.some(r => r.attempted)) text('No attempts recorded yet.', { size: 10, color: '#6b7280' })
 
-  pdf.save(`quizard-results-${slug(cls.name)}.pdf`)
+  return pdf
 }
 
 // ── Teacher app exports (PLAN.md Phase 2): quiz paper, teacher key, bubble sheets ──
@@ -154,55 +181,95 @@ export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
   pdf.save(`quizard-${withAnswers ? 'key' : 'quiz'}-${slug(quiz.subject || quiz.title)}.pdf`)
 }
 
-// The scannable answer sheet: frame, corner markers, QR (quiz id), two-column
-// A–D bubble grid, and the write-in fields the teacher asked for.
+// The scannable answer sheet. One clean bordered box holding nothing but the
+// numbered bubble grid, the student-number strip and the QR; a compact header
+// lockup above and write-in rules below. Every coordinate comes from
+// sheet-spec.js, which the Phase 3 scanner also samples, so what is printed is
+// what is read back.
 /**
  * @typedef {'letter' | 'a4' | 'long'} PaperSize
  */
 const PAPER = { letter: [612, 792], a4: [595, 842], long: [612, 936] }
 
+// A 24x19 vector printer — the standard PDF fonts have no glyph for one.
+function printerGlyph(pdf, x, y) {
+  pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.8)
+  pdf.setFillColor('#ffffff')
+  pdf.rect(x + 6, y, 12, 6, 'FD')      // paper feeding in
+  pdf.setFillColor('#e9e6f7')
+  pdf.rect(x, y + 5, 24, 9, 'FD')      // body
+  pdf.setFillColor('#ffffff')
+  pdf.rect(x + 5, y + 12, 14, 7, 'FD') // sheet coming out
+}
+
+function sheetHeader(pdf, quiz) {
+  const right = SHEET.W - SHEET.M
+
+  // left lockup: purple roundel + wordmark + tagline
+  pdf.setFillColor('#7c3aed'); pdf.circle(SHEET.M + 11, 30, 11, 'F')
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(13); pdf.setTextColor('#ffffff')
+  pdf.text('Q', SHEET.M + 11, 34.5, { align: 'center' })
+  pdf.setFontSize(15); pdf.setTextColor('#1c2438')
+  pdf.text('Q U I Z A R D', SHEET.M + 30, 34)
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
+  pdf.text('P R I N T A B L E   A N S W E R   S H E E T S', SHEET.M + 31, 44)
+
+  // right: printer glyph + PRINT SHEETS
+  printerGlyph(pdf, right - 24, 18)
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
+  pdf.text('PRINT SHEETS', right - 30, 32, { align: 'right' })
+
+  // quiz title, plus the one instruction that matters (dropped if it crowds)
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12.5); pdf.setTextColor('#1c2438')
+  const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
+  pdf.text(title, SHEET.M, 74)
+  const hint = 'Shade ONE circle per row, and your student number, fully.'
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5)
+  const room = SHEET.W - SHEET.M * 2 - pdf.getTextWidth(title) - 20
+  if (room > pdf.getTextWidth(hint)) {
+    pdf.setTextColor('#6b7280')
+    pdf.text(hint, right, 74, { align: 'right' })
+  }
+}
+
 // Builds the bubble-sheet document (preview renders this; export saves it).
 export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ unit: 'pt', format: PAPER[size] || PAPER.letter })
+  const count = quiz.items.length
 
   for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
     if (copy > 0) pdf.addPage()
 
-    headerBlock(pdf, quiz, 'Shade ONE answer circle per row + your student number, fully.')
+    sheetHeader(pdf, quiz)
 
-    // frame + corner markers (geometry from sheet-spec.js)
-    const f = frameRect(quiz.items.length)
-    pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.6)
+    const f = frameRect(count)
+    pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.8)
     pdf.rect(f.x, f.y, f.w, f.h, 'S')
+
+    // alignment squares, parked in the page margins so the box stays clean
     pdf.setFillColor('#0b0820')
-    const mk = SHEET.marker, inset = SHEET.markerInset
-    for (const [cx, cy] of [[f.x + inset, f.y + inset], [f.x + f.w - inset - mk, f.y + inset], [f.x + inset, f.y + f.h - inset - mk], [f.x + f.w - inset - mk, f.y + f.h - inset - mk]]) {
-      pdf.rect(cx, cy, mk, mk, 'F')
-    }
+    for (const m of markerRects(count)) pdf.rect(m.x, m.y, SHEET.marker, SHEET.marker, 'F')
 
     // QR (identifies the quiz/key at scan time)
-    const qr = qrRect(quiz.items.length)
+    const qr = qrRect(count)
     bubbleQr(pdf, `QZ1:${quiz.id}`, qr.x, qr.y, qr.size)
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor('#6b7280')
-    pdf.text('Do not write inside the QR code', qr.x, qr.y + qr.size + 10)
 
-    // bubble grid
-    const layout = bubbleSheetLayout(quiz.items.length)
-    const gridTop = f.y + SHEET.gridDy
+    // bubble grid: small grey numerals right-aligned against four circles
+    const layout = bubbleSheetLayout(count)
     let idx = 0
     layout.columns.forEach((col, ci) => {
       for (let r = 0; r < col.count; r++) {
-        const item = quiz.items[idx]
-        const qy = gridTop + r * rowPitch(quiz.items.length)
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#374151')
-        pdf.text(String(col.start + r), columnX(quiz.items.length, ci), qy + 4)
-        for (let b = 0; b < 4; b++) {
-          const bx = columnX(quiz.items.length, ci) + SHEET.rowLabelPad + b * (SHEET.circleR * 2 + SHEET.bubbleGap) + SHEET.circleR
-          pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1)
-          pdf.circle(bx, qy, SHEET.circleR, 'S')
-          pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
-          pdf.text(SHEET.letters[b], bx, qy + 2, { align: 'center', baseline: 'middle' })
+        const qy = bubbleCenter(count, idx, 0).y
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor('#6b7280')
+        pdf.text(String(col.start + r), rowLabelRight(count, ci), qy + 2.6, { align: 'right' })
+        pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.1)
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6.5); pdf.setTextColor('#6b7280')
+        for (let b = 0; b < SHEET.letters.length; b++) {
+          const bc = bubbleCenter(count, idx, b)
+          pdf.circle(bc.x, bc.y, SHEET.circleR, 'S')
+          // letter centred on the cap height so it reads as part of the bubble
+          pdf.text(SHEET.letters[b], bc.x, bc.y + SHEET.letterCap / 2, { align: 'center' })
         }
         idx++
       }
@@ -211,33 +278,29 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
     // student-number strip: two rows of digit bubbles (tens / ones, 0–9).
     // The scanner reads these first, so a shuffled pile still identifies
     // whose sheet it is — numbers belong to students, not to seats.
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6); pdf.setTextColor('#374151')
-    pdf.text('STUDENT NO.', f.x + 8, f.y + f.h - 29)
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
+    pdf.text('S T U D E N T   N O .', f.x + 14, f.y + f.h - SHEET.idLabelDy)
     for (let row = 0; row < 2; row++) {
       for (let d = 0; d <= 9; d++) {
-        const c = idDigitCenter(quiz.items.length, row, d)
-        pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.9)
+        const c = idDigitCenter(count, row, d)
+        pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.8)
         pdf.circle(c.x, c.y, SHEET.idBubbleR, 'S')
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(4.5); pdf.setTextColor('#9ca3af')
         pdf.text(String(d), c.x, c.y + 1.4, { align: 'center', baseline: 'middle' })
       }
     }
 
-    // write-in fields below the frame
-    const by = f.y + f.h + 34
-    pdf.setFontSize(10); pdf.setTextColor('#1c2438')
-    pdf.setFont('helvetica', 'bold')
-    pdf.text('Student Name:', SHEET.M, by)
-    pdf.setFont('helvetica', 'normal')
-    pdf.line(SHEET.M + 78, by + 2, SHEET.W / 2 - 14, by + 2)
-    pdf.setFont('helvetica', 'bold')
-    pdf.text('Date:', SHEET.W / 2, by)
-    pdf.setFont('helvetica', 'normal')
-    pdf.line(SHEET.W / 2 + 30, by + 2, SHEET.W / 2 + 130, by + 2)
-    pdf.setFont('helvetica', 'bold')
-    pdf.text('Grade & Section:', SHEET.M, by + 24)
-    pdf.setFont('helvetica', 'normal')
-    pdf.line(SHEET.M + 90, by + 26, SHEET.W / 2 + 60, by + 26)
+    // write-in rules below the frame
+    const rule = (label, x, w, y) => {
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
+      pdf.text(label, x, y)
+      pdf.setDrawColor('#9ca3af'); pdf.setLineWidth(0.7)
+      pdf.line(x + pdf.getTextWidth(label) + 6, y + 2.5, x + w, y + 2.5)
+    }
+    const by = f.y + f.h + 32
+    rule('Student Name:', SHEET.M, SHEET.W - SHEET.M, by)
+    rule('Date:', SHEET.M, 220, by + 24)
+    rule('Grade & Section:', 330, SHEET.W - SHEET.M, by + 24)
   }
 
   return pdf

@@ -91,7 +91,6 @@ export function findMarkerQuads(binary, width, height, itemCount) {
       && b.bw / b.bh > 0.45 && b.bw / b.bh < 2.2 && b.fill >= fillMin
   }
   let cand = all.filter(b => passes(b, 0.85))
-  console.log('DBG cand:', JSON.stringify(all.filter(b => passes(b, 0.6)).map(b => ({ x: Math.round(b.cx), y: Math.round(b.cy), side: Math.round((b.bw + b.bh) / 2), fill: +b.fill.toFixed(2) }))))
   if (cand.length < 4) cand = all.filter(b => passes(b, 0.6))
   if (cand.length > 60) cand = [...cand].sort((a, b) => b.fill - a.fill).slice(0, 60)
   if (cand.length < 4) return null
@@ -242,7 +241,7 @@ export function readSheet(image, itemCount) {
   const pdfSpan = Math.hypot(pdfMarkers[1].x - pdfMarkers[0].x, pdfMarkers[1].y - pdfMarkers[0].y)
   const pxSpan = Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y)
   const scale = pxSpan / pdfSpan
-  const rPx = Math.max(3, Math.round(6.5 * scale * 0.85))
+  const rPx = Math.max(3, Math.round(SHEET.circleR * SHEET.scanRadiusFrac * scale))
 
   const answers = []
   const flags = []

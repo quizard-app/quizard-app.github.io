@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { readSheet, scoreSheet, FLAG, toGray, threshold, homography, applyH } from '../src/app/core/engine/omr.js'
-import { SHEET, frameRect, markerCenters, bubbleCenter, bubbleSheetLayout, idDigitCenter } from '../src/app/core/engine/sheet-spec.js'
+import { SHEET, frameRect, markerRects, markerCenters, bubbleCenter, bubbleSheetLayout, idDigitCenter } from '../src/app/core/engine/sheet-spec.js'
+
+// These render millions of pixels and then run the whole CV pipeline, so a
+// single case can exceed the 5s default once the workers compete for CPU.
+vi.setConfig({ testTimeout: 30000 })
 
 // Synthetic sheet renderer: draws the exact sheet-spec geometry into a raw
 // RGBA pixel buffer — the same thing the PDF printer puts on paper, so the
@@ -41,22 +45,27 @@ function renderSheet({ count = 10, answers = [], marks = {}, scale = 2.2, rotate
   rect(f.x - s / 2, f.y, s, f.h, 0)
   rect(f.x + f.w - s / 2, f.y, s, f.h, 0)
   const centers = markerCenters(count)
-  for (const c of centers) rect(c.x - 5, c.y - 5, 10, 10, 0)
+  for (const m of markerRects(count)) rect(m.x, m.y, SHEET.marker, SHEET.marker, 0)
 
-  // bubbles: outline every row, fill the shaded ones
+  // bubbles: outline every row, print the A–D label inside, fill the shaded ones.
+  // The label patch matters — real sheets print a letter at the exact point the
+  // scanner samples, so every bubble carries the same extra ink floor.
   for (let i = 0; i < count; i++) {
     for (let b = 0; b < 4; b++) {
       const c = bubbleCenter(count, i, b)
       ring(c.x, c.y, SHEET.circleR, 0)
+      disk(c.x, c.y, SHEET.letterR, 0)
       if (answers[i] === b) disk(c.x, c.y, SHEET.circleR * 0.8, 0, !!marks.soft)
     }
   }
 
-  // student-number strip: ring all 20 digit bubbles, shade the number
+  // student-number strip: ring all 20 digit bubbles, print the digit, shade the
+  // number. The printed digits add the same constant floor to all ten bubbles.
   if (marks.studentNo != null) {
     for (let row = 0; row < 2; row++) for (let d = 0; d <= 9; d++) {
       const c = idDigitCenter(count, row, d)
       ring(c.x, c.y, SHEET.idBubbleR, 0)
+      disk(c.x, c.y, SHEET.idBubbleR * 0.28, 0)
     }
     const digits = [Math.floor(marks.studentNo / 10), marks.studentNo % 10]
     digits.forEach((d, row) => {

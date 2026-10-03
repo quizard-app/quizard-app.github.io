@@ -8,6 +8,21 @@ import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ByokService } from '../../core/services/byok.service';
 
+/**
+ * A roster student resolved for one sheet. `grade` / `section` fall back to the
+ * class-level values when the student row leaves them blank, so every result
+ * carries a section even for a class with one section for all.
+ */
+interface MatchedStudent {
+  id: string;
+  no?: number;
+  name: string;
+  grade: string;
+  section: string;
+  classId: string;
+  className: string;
+}
+
 @Component({
   selector: 'app-checking',
   imports: [IonContent, IcoPipe],
@@ -35,7 +50,8 @@ export class CheckingPage {
   flags = signal<string[]>([]);
   photo = signal<string>('');
   studentName = signal('');
-  autoStudent = signal<{ name: string; classId: string; className: string } | null>(null);
+  autoStudent = signal<MatchedStudent | null>(null);
+  pickedStudentId = signal<string | null>(null);
 
   cameraActive = signal(false);
   private stream: MediaStream | null = null;
@@ -48,6 +64,38 @@ export class CheckingPage {
     return scoreSheet(this.answers(), quiz.items);
   });
   readonly letters = ['A', 'B', 'C', 'D'];
+
+  // Every student across every class, in the shape a result needs. Building the
+  // option list from the same entries the auto-match uses means the manual
+  // fallback attaches the same identity data as a numbered scan.
+  readonly roster = computed<MatchedStudent[]>(() =>
+    this.classes().flatMap(cls => (cls.students || []).map((st: any) => this.rosterEntry(cls, st))));
+
+  private rosterEntry(cls: any, st: any): MatchedStudent {
+    return {
+      id: st.id,
+      no: st.no,
+      name: st.name,
+      grade: st.grade || cls.grade || '',
+      section: st.section || cls.section || '',
+      classId: cls.id,
+      className: cls.name,
+    };
+  }
+
+  // The shaded student number identifies whose sheet this is — seating,
+  // shuffling and photocopies don't matter; the lookup is by number.
+  private matchRosterByNumber(no: number | null): MatchedStudent | null {
+    if (no == null) return null;
+    return this.roster().find(r => r.no === no) || null;
+  }
+
+  selectStudent(id: string) {
+    const st = this.roster().find(r => r.id === id) || null;
+    this.pickedStudentId.set(st?.id ?? null);
+    this.autoStudent.set(st);
+    this.studentName.set(st?.name ?? '');
+  }
 
   async ionViewWillEnter() {
     this.classes.set(await listClasses());
@@ -141,15 +189,7 @@ export class CheckingPage {
       return;
     }
     const answers = result.answers, flags = result.flags;
-    // the shaded student number identifies whose sheet this is — seating,
-    // shuffling and photocopies don't matter; the roster lookup is by number
-    let auto: { name: string; classId: string; className: string } | null = null;
-    if (result.studentNumber != null) {
-      for (const cls of this.classes()) {
-        const st = (cls.students || []).find((x: any) => x.no === result.studentNumber);
-        if (st) { auto = { name: st.name, classId: cls.id, className: cls.name }; break; }
-      }
-    }
+    const auto = this.matchRosterByNumber(result.studentNumber);
     this.zone.run(() => {
       this.qrHit.set(result.qr);
       this.detectedQuiz.set(quiz);
@@ -157,6 +197,7 @@ export class CheckingPage {
       this.flags.set(flags);
       this.photo.set(dataToJpeg(data));
       this.autoStudent.set(auto);
+      this.pickedStudentId.set(auto?.id ?? null);
       this.studentName.set(auto?.name || '');
       this.stage.set('result');
       this.processing.set(false);
@@ -190,7 +231,11 @@ export class CheckingPage {
     if (!quiz || !cls || !s || !this.studentName().trim()) return;
     await saveSheet({
       classId: cls.id, className: cls.name, quizId: quiz.id,
+      // identity comes from the roster entry, never from the handwriting
+      studentNo: auto?.no ?? null,
       studentName: this.studentName().trim(),
+      grade: auto?.grade ?? '',
+      section: auto?.section ?? '',
       answers: this.answers(), flags: this.flags(),
       correct: s.correct, total: s.total, percent: s.percent,
       photo: this.photo() || undefined,

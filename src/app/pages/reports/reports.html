@@ -75,6 +75,17 @@
         }
       }
 
+      @if (sections().length) {
+        <div class="section-title">By section</div>
+        @for (s of sections(); track s.section) {
+          <div class="weak-row">
+            <span class="qnum">{{ s.count }}</span>
+            <span class="weak-q">{{ s.section }} — {{ s.count }} checked</span>
+            <span class="weak-rate {{ s.avg >= 80 ? 'dim' : s.avg >= 50 ? 'warn' : 'bad' }}">{{ s.avg }}%</span>
+          </div>
+        }
+      }
+
       <div class="section-title">Scores</div>
       <div class="doc-list">
         @for (s of classSheets(); track s.id) {
@@ -83,7 +94,9 @@
             <div class="doc-info">
               <div class="doc-name">{{ s.studentName }}</div>
               <div class="doc-meta">
-                <span>{{ s.correct }}/{{ s.total }} correct</span>·<span>{{ dateOf(s.createdAt) }}</span>
+                <span>{{ s.correct }}/{{ s.total }} correct</span>·
+                @if (s.grade || s.section) {<span>{{ s.grade }}{{ s.grade && s.section ? ' — ' : '' }}{{ s.section }}</span>·}
+                <span>{{ dateOf(s.createdAt) }}</span>
               </div>
             </div>
             <div class="doc-actions">

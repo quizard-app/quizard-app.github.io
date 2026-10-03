@@ -3,6 +3,10 @@
     <div class="brand">
       @if (stage() === 'review') {
         <button class="icon-btn" (click)="backToSetup()" aria-label="Back to setup" [innerHTML]="'chevronLeft' | ico"></button>
+      } @else if (stage() === 'export') {
+        <button class="icon-btn" (click)="backHome()" aria-label="Back to quizzes" [innerHTML]="'chevronLeft' | ico"></button>
+      } @else if (stage() === 'setup') {
+        <button class="icon-btn" (click)="backHome()" aria-label="Back to quizzes" [innerHTML]="'chevronLeft' | ico"></button>
       }
       <span class="mark" [innerHTML]="'logo' | ico"></span>Create
     </div>
@@ -12,6 +16,40 @@
       <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
     </div>
   </header>
+
+  @if (stage() === 'home') {
+    <div class="screen lib-screen" [class.screen-center]="!homeQuizzes().length">
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'sparkles' | ico"></div>
+        <div>
+          <h1>Create</h1>
+          <p>Every quiz is saved on this device — export the papers any time.</p>
+        </div>
+      </div>
+
+      @if (homeQuizzes().length) {
+        <div class="section-title">Saved quizzes</div>
+        <div class="doc-list">
+          @for (q of homeQuizzes(); track q.id) {
+            <div class="doc-card" (click)="openSaved(q.id)" data-tooltip="Export this quiz">
+              <div class="doc-icon folder" [innerHTML]="'fileText' | ico"></div>
+              <div class="doc-info">
+                <div class="doc-name">{{ q.subject }}@if (q.title) { <span class="faint"> — {{ q.title }}</span> }</div>
+                <div class="doc-meta">
+                  <span>{{ q.items.length }} item{{ q.items.length === 1 ? '' : 's' }}</span>·
+                  @if (q.source === 'ai') { <span>AI generated</span>· } @else { <span>from your key</span>· }
+                  <span>{{ dateOf(q.createdAt) }}</span>
+                </div>
+              </div>
+              <div class="doc-actions"><span class="chev" [innerHTML]="'chevronRight' | ico"></span></div>
+            </div>
+          }
+        </div>
+      }
+
+      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="startNewQuiz()"><span [innerHTML]="'plus' | ico"></span> New quiz</button>
+    </div>
+  }
 
   @if (stage() === 'setup') {
     <div class="screen lib-screen">
@@ -93,7 +131,7 @@
       </button>
       <p class="faint center" style="font-size:11.5px;padding-bottom:12px">Generation is the only step that uses the internet.</p>
     </div>
-  } @else {
+  } @else if (stage() === 'review') {
     <div class="screen lib-screen">
       <div class="hero lib-hero">
         <div class="hero-ico" [innerHTML]="'edit' | ico"></div>
@@ -129,7 +167,8 @@
       </button>
 
       @if (quizId()) {
-        <div class="export-grid">
+        <button class="btn btn-secondary" style="max-width:230px;margin:10px auto 0" (click)="backHome()"><span [innerHTML]="'check' | ico"></span> Done — back to quizzes</button>
+        <div class="export-grid" style="margin-top:12px">
           <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
           <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
           <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
@@ -168,6 +207,47 @@
           </div>
         }
       </div>
+    </div>
+  }
+  @if (stage() === 'export') {
+    <div class="screen lib-screen">
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'fileText' | ico"></div>
+        <div>
+          <h1>{{ selectedQuiz()?.subject }}@if (selectedQuiz()?.title) { — {{ selectedQuiz()?.title }} }</h1>
+          <p>Saved on this device — export the papers whenever you need them.</p>
+        </div>
+      </div>
+
+      <div class="export-grid" style="margin-top:6px">
+        <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
+        <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+        <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
+      </div>
+      <div class="copies-row">
+        <span class="faint">Sheets to print:</span>
+        <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
+        <span class="faint">Paper:</span>
+        <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
+          <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
+          <option value="a4" [selected]="paper() === 'a4'">A4</option>
+          <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
+        </select>
+      </div>
+
+      @if (selectedQuiz(); as q) {
+        <div class="section-title">Questions (read-only)</div>
+        <div class="doc-list">
+          @for (it of q.items; track $index) {
+            <div class="weak-row">
+              <span class="qnum">{{ $index + 1 }}</span>
+              <span class="weak-q">{{ it.question }}</span>
+              <span class="weak-rate dim">{{ letters[it.answerIndex] }}</span>
+            </div>
+          }
+        </div>
+        <p class="faint center" style="font-size:11.5px;padding:12px 0">Saved quizzes are permanent — export them any time, even offline.</p>
+      }
     </div>
   }
 </ion-content>
