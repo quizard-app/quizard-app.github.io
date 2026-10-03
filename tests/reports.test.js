@@ -107,3 +107,52 @@ describe('sectionBreakdown', () => {
     expect(rows[0]).toMatchObject({ count: 2, avg: 50, lowest: 0 })
   })
 })
+
+// ── Data-injection: sectionBreakdown + heavy/edge datasets ──
+import { sectionBreakdown } from '../src/app/core/engine/reports.js'
+
+describe('sectionBreakdown — injected data', () => {
+  it('groups sheets by section with averages', () => {
+    const sheets = [
+      { studentName: 'A', section: 'Sampaguita', percent: 100, correct: 4, total: 4 },
+      { studentName: 'B', section: 'Sampaguita', percent: 50, correct: 2, total: 4 },
+      { studentName: 'C', section: 'Molave', percent: 80, correct: 4, total: 5 },
+    ]
+    const rows = sectionBreakdown(sheets)
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+    const samp = rows.find(r => (r.section || r.name || '').includes('Sampaguita'))
+    expect(samp).toBeTruthy()
+    expect(samp.avg ?? samp.percent ?? samp.average).toBe(75)
+  })
+
+  it('handles sheets with a missing section without crashing', () => {
+    const rows = sectionBreakdown([{ studentName: 'X', percent: 60, correct: 3, total: 5 }])
+    expect(rows.length).toBeGreaterThanOrEqual(0) // must not throw
+  })
+
+  it('handles an empty sheet set', () => {
+    expect(sectionBreakdown([])).toEqual([])
+  })
+
+  it('survives a 500-sheet injection with 99 students', () => {
+    const sheets = Array.from({ length: 500 }, (_, i) => ({
+      studentName: `Student ${(i % 99) + 1}`,
+      section: `Section ${(i % 5) + 1}`,
+      percent: (i * 7) % 101,
+      correct: (i * 7) % 101,
+      total: 100,
+    }))
+    const rows = sectionBreakdown(sheets)
+    expect(rows.length).toBeLessThanOrEqual(5)
+  })
+})
+
+describe('resultsCsv — heavy injection', () => {
+  it('does not emit broken rows for names with newlines and quotes', () => {
+    const csv = resultsCsv([
+      { studentName: 'Line1\nLine2 "quoted"', className: 'C', percent: 50, correct: 1, total: 2, createdAt: 0, answers: [0] },
+    ], [{ answerIndex: 0 }])
+    const lines = csv.split('\r\n')
+    expect(lines.length).toBe(2) // header + one (escaped) row
+  })
+})

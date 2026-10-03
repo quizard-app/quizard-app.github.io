@@ -113,7 +113,13 @@
           <span [innerHTML]="'check' | ico"></span> Identified by student number: <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
         </p>
       } @else if (qrHit()) {
-        <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR — student number missing or unclear, pick below.</p>
+        @if (numberAmbiguous()) {
+          <p class="gen-error" style="margin-bottom:10px"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> Student number {{ readNumber() }} exists in more than one class — pick the student below.</p>
+        } @else if (readNumber() != null) {
+          <p class="parse-note" style="margin-bottom:10px">Read student number {{ readNumber() }}, but it isn't on any roster — pick the student below.</p>
+        } @else {
+          <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR — student number missing or unclear, pick below.</p>
+        }
       } @else {
         <p class="parse-note" style="margin-bottom:10px">Quiz came from your manual pick — student number missing or unclear, pick below.</p>
       }

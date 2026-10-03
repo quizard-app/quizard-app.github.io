@@ -14,9 +14,9 @@ export function parseRoster(text) {
     // a first line that names the columns is a header, not a student
     if (i === 0 && /^(student\s*)?name\b/i.test(line) && /(grade|section|,|\t|;)/i.test(line)) continue
     const parts = line.split(/[\t,;]+/).map(p => p.trim())
-    const name = parts.shift() || ''
+    const name = (parts.shift() || '').replace(/\s+/g, ' ').trim()
     if (!name) { skipped++; continue }
-    const rest = parts.filter(Boolean)
+    const rest = parts.filter(Boolean).map(p => p.replace(/\s+/g, ' ').trim())
     let grade = '', section = ''
     if (rest.length) {
       const first = rest.shift()

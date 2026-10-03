@@ -84,11 +84,24 @@ export class CheckingPage {
   }
 
   // The shaded student number identifies whose sheet this is — seating,
-  // shuffling and photocopies don't matter; the lookup is by number.
-  private matchRosterByNumber(no: number | null): MatchedStudent | null {
-    if (no == null) return null;
-    return this.roster().find(r => r.no === no) || null;
+  // shuffling and photocopies don't matter; the lookup is by number. A picked
+  // class narrows the search; otherwise the number must be unique across ALL
+  // classes, because two classes can both have a student #2.
+  // null + ambiguous=true means the number is shaded but exists in several
+  // classes (only possible when no class was picked); null + ambiguous=false
+  // means the number isn't in the roster at all.
+  private matchRosterByNumber(no: number | null): { student: MatchedStudent | null; ambiguous: boolean } {
+    if (no == null) return { student: null, ambiguous: false };
+    const scope = this.classId()
+      ? this.roster().filter(r => r.classId === this.classId())
+      : this.roster();
+    const hits = scope.filter(r => r.no === no);
+    return { student: hits.length === 1 ? hits[0] : null, ambiguous: hits.length > 1 };
   }
+
+  numberAmbiguous = signal(false);
+  numberUnknown = signal(false);
+  readNumber = signal<number | null>(null);
 
   selectStudent(id: string) {
     const st = this.roster().find(r => r.id === id) || null;
@@ -189,7 +202,8 @@ export class CheckingPage {
       return;
     }
     const answers = result.answers, flags = result.flags;
-    const auto = this.matchRosterByNumber(result.studentNumber);
+    const match = this.matchRosterByNumber(result.studentNumber);
+    const auto = match.student;
     this.zone.run(() => {
       this.qrHit.set(result.qr);
       this.detectedQuiz.set(quiz);
@@ -199,6 +213,9 @@ export class CheckingPage {
       this.autoStudent.set(auto);
       this.pickedStudentId.set(auto?.id ?? null);
       this.studentName.set(auto?.name || '');
+      this.numberAmbiguous.set(match.ambiguous);
+      this.numberUnknown.set(!match.ambiguous && result.studentNumber == null);
+      this.readNumber.set(result.studentNumber);
       this.stage.set('result');
       this.processing.set(false);
     });
