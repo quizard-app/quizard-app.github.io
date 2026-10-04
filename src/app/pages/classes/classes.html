@@ -23,6 +23,7 @@
             <div class="doc-info">
               <div class="doc-name">{{ cls.name }}</div>
               <div class="doc-meta">
+                @if (cls.subject) { <span>{{ cls.subject }}</span>· }
                 @if (cls.grade || cls.section) { <span>{{ cls.grade }}{{ cls.grade && cls.section ? ' · ' : '' }}{{ cls.section }} · </span> }
                 <span>{{ cls.students.length }} student{{ cls.students.length === 1 ? '' : 's' }}</span>
               </div>
@@ -52,6 +53,7 @@
             <input class="text-input" placeholder="Grade (optional)" [attr.aria-label]="'Grade'" maxlength="20" [value]="grade()" (input)="grade.set($any($event.target).value)" />
             <input class="text-input" placeholder="Section (optional)" [attr.aria-label]="'Section'" maxlength="30" [value]="section()" (input)="section.set($any($event.target).value)" />
           </div>
+          <input class="text-input" placeholder="Subject (optional — e.g. Science)" [attr.aria-label]="'Class subject'" maxlength="40" [value]="subject()" (input)="subject.set($any($event.target).value)" />
           <textarea class="text-input roster-paste" rows="7" placeholder="Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
           <label class="btn btn-secondary file-btn">
             <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
@@ -71,7 +73,7 @@
           }
           <div class="org-sheet-actions">
             <button class="btn btn-secondary" (click)="closeSheet()">Cancel</button>
-            <button class="btn btn-primary" [disabled]="!name().trim() || !previewCount()" (click)="saveSheet()">{{ editingId() ? 'Save class' : 'Save class' }}</button>
+            <button class="btn btn-primary" [disabled]="!name().trim() || (!editingId() && !previewCount())" (click)="saveSheet()">Save class</button>
           </div>
         </div>
       </div>

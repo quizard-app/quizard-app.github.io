@@ -30,9 +30,12 @@ export class ClassesPage {
   name = signal('');
   grade = signal('');
   section = signal('');
+  subject = signal('');
   paste = signal('');
 
   readonly previewCount = computed(() => parseRoster(this.paste()).students.length);
+  readonly classSubjects = computed(() =>
+    [...new Set(this.classes().map(x => x.subject).filter(Boolean))]);
   readonly editingRoster = computed(() => {
     const cls = this.classes().find(c => c.id === this.editingId());
     return (cls?.students || []).slice().sort((a: any, b: any) => (a.no || 0) - (b.no || 0));
@@ -59,6 +62,7 @@ export class ClassesPage {
     this.name.set(cls?.name || '');
     this.grade.set(cls?.grade || '');
     this.section.set(cls?.section || '');
+    this.subject.set(cls?.subject || '');
     this.paste.set('');
     this.sheetOpen.set(true);
   }
@@ -80,8 +84,20 @@ export class ClassesPage {
   async saveSheet() {
     const name = this.name().trim();
     if (!name) return;
-    const parsed = parseRoster(this.paste());
-    if (!parsed.students.length) {
+    const prev = this.classes().find(c => c.id === this.editingId());
+    // editing an existing class without re-pasting keeps its roster — only a
+    // fresh paste replaces the students
+    const parsed = this.paste().trim() ? parseRoster(this.paste()) : null;
+    let students: any[];
+    if (parsed?.students.length) {
+      students = parsed.students.map((s: any) => ({
+        name: s.name,
+        grade: s.grade || this.grade().trim(),
+        section: s.section || this.section().trim(),
+      }));
+    } else if (prev?.students?.length) {
+      students = prev.students;
+    } else {
       this.toast.toast('Paste or upload at least one student name', true);
       return;
     }
@@ -90,15 +106,12 @@ export class ClassesPage {
       name,
       grade: this.grade().trim(),
       section: this.section().trim(),
-      students: parsed.students.map((s: any) => ({
-        name: s.name,
-        grade: s.grade || this.grade().trim(),
-        section: s.section || this.section().trim(),
-      })),
+      subject: this.subject().trim(),
+      students,
     });
     this.sheetOpen.set(false);
     await this.load();
-    this.toast.toast(`${parsed.students.length} students saved to “${name}”`);
+    this.toast.toast(`${students.length} student${students.length === 1 ? '' : 's'} saved to “${name}”`);
   }
 
   async remove(cls: any) {

@@ -108,6 +108,9 @@
         </div>
       </div>
 
+      @if (subjectMismatch()) {
+        <p class="gen-error" style="margin-bottom:10px"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> Heads up: this sheet is <b>{{ detectedQuiz()?.subject }}</b> but the class subject is <b>{{ pickedClass()?.subject }}</b> — double-check you're scanning the right pile.</p>
+      }
       @if (autoStudent(); as auto) {
         <p class="parse-note" style="margin-bottom:10px">
           <span [innerHTML]="'check' | ico"></span> Identified by student number: <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}

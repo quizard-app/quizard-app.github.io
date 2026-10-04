@@ -4,7 +4,7 @@ import { IonContent } from '@ionic/angular';
 import { extractText } from '../../core/engine/extract/index.js';
 import { parseKeyText } from '../../core/engine/answerkey.js';
 import { generateTeacherQuiz, clampCount, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
-import { listKeys, listQuizzes, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
+import { listClasses, listKeys, listQuizzes, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
 import { fmtDate } from '../../shared/helpers.js';
 import { buildTeacherQuizPdf, buildBubbleSheetsPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
@@ -83,9 +83,23 @@ export class CreatePage {
   readonly itemsValid = computed(() => this.items().length && this.items().every(it =>
     it.question.trim() && it.options.every((o: string) => o.trim()) && it.answerIndex >= 0));
 
+  classList = signal<any[]>([]);
+
+  // subjects the teacher actually uses on classes — quick-fill chips in setup
+  readonly knownSubjects = computed(() =>
+    [...new Set(this.classList().map(c => c.subject).filter(Boolean))]);
+
   async ionViewWillEnter() {
+    this.classList.set(await listClasses());
     if (this.stage() === 'home') this.homeQuizzes.set(await listQuizzes());
-    if (this.stage() === 'setup') this.savedKeys.set(await listKeys());
+    if (this.stage() === 'setup') {
+      this.savedKeys.set(await listKeys());
+      // prefill the subject from the classes when starting fresh
+      if (!this.subject().trim()) {
+        const first = this.classList().find(c => c.subject);
+        if (first) this.subject.set(first.subject);
+      }
+    }
   }
 
   setMode(id: any) { this.mode.set(id); }

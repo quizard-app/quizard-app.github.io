@@ -117,6 +117,13 @@
       </div>
 
       <div class="section-title">5 · Subject & title</div>
+      @if (knownSubjects().length) {
+        <div class="count-row" style="margin-bottom:8px">
+          @for (sub of knownSubjects(); track sub) {
+            <button class="count-chip" [class.on]="subject() === sub" (click)="subject.set(sub)">{{ sub }}</button>
+          }
+        </div>
+      }
       <div class="form-row">
         <input class="text-input" placeholder="Subject (e.g. Science)" [attr.aria-label]="'Subject'" maxlength="40" [value]="subject()" (input)="subject.set($any($event.target).value)" />
         <input class="text-input" placeholder="Quiz title (optional)" [attr.aria-label]="'Title'" maxlength="60" [value]="title()" (input)="title.set($any($event.target).value)" />

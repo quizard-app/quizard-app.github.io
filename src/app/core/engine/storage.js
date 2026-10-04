@@ -349,7 +349,7 @@ export async function listDocs() {
  */
 /**
  * @typedef {{ id: string, accountId: string, name: string, grade: string,
- *   section: string, students: RosterStudent[],
+ *   section: string, subject?: string, students: RosterStudent[],
  *   createdAt: number }} TeacherClass
  */
 /**
@@ -394,7 +394,7 @@ export async function saveClass(data) {
   const accountId = await requireAccount()
   const existing = data.id ? await db.get('classes', data.id) : null
   const record = {
-    id: existing?.id || data.id || uid(), accountId, name: '', grade: '', section: '',
+    id: existing?.id || data.id || uid(), accountId, name: '', grade: '', section: '', subject: '',
     students: [], createdAt: existing?.createdAt || Date.now(), ...data, accountId
   }
   if (!record.id) record.id = uid()

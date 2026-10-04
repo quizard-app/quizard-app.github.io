@@ -100,6 +100,7 @@ export class CheckingPage {
   }
 
   numberAmbiguous = signal(false);
+  subjectMismatch = signal(false);
   numberUnknown = signal(false);
   readNumber = signal<number | null>(null);
 
@@ -108,6 +109,12 @@ export class CheckingPage {
     this.pickedStudentId.set(st?.id ?? null);
     this.autoStudent.set(st);
     this.studentName.set(st?.name ?? '');
+    // the subject guard applies to manual picks too — a sheet from another
+    // subject's pile would otherwise land on the wrong class silently
+    const quiz = this.detectedQuiz();
+    const cls = st ? this.classes().find(c => c.id === st.classId) : null;
+    this.subjectMismatch.set(!!cls?.subject && !!quiz?.subject &&
+      cls.subject.toLowerCase() !== quiz.subject.toLowerCase());
   }
 
   async ionViewWillEnter() {
@@ -204,6 +211,11 @@ export class CheckingPage {
     const answers = result.answers, flags = result.flags;
     const match = this.matchRosterByNumber(result.studentNumber);
     const auto = match.student;
+    // wrong-pile guard: the sheet's quiz subject should match the class's
+    // subject when both are known (non-blocking — schools sometimes bend this)
+    const matchedClass = auto ? this.classes().find(c => c.id === auto.classId) : null;
+    const subjectMismatch = !!quiz?.subject && !!matchedClass?.subject &&
+      quiz.subject.toLowerCase() !== matchedClass.subject.toLowerCase();
     this.zone.run(() => {
       this.qrHit.set(result.qr);
       this.detectedQuiz.set(quiz);
@@ -216,6 +228,7 @@ export class CheckingPage {
       this.numberAmbiguous.set(match.ambiguous);
       this.numberUnknown.set(!match.ambiguous && result.studentNumber == null);
       this.readNumber.set(result.studentNumber);
+      this.subjectMismatch.set(subjectMismatch);
       this.stage.set('result');
       this.processing.set(false);
     });
