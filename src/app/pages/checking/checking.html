@@ -44,10 +44,9 @@
           }
         </select>
 
-        <button class="btn btn-primary gen-btn" (click)="startSession()">
+        <button class="btn btn-primary gen-btn" [disabled]="!classId()" (click)="startSession()">
           <span [innerHTML]="'scan' | ico"></span> Start checking
         </button>
-        <p class="faint center" style="font-size:11.5px">Sheets identify themselves by the shaded student number — picking the class here is optional.</p>
       } @else {
         <div class="empty-state">
           <div class="empty-ico" [innerHTML]="'users' | ico"></div>
@@ -116,15 +115,9 @@
           <span [innerHTML]="'check' | ico"></span> Identified by student number: <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
         </p>
       } @else if (qrHit()) {
-        @if (numberAmbiguous()) {
-          <p class="gen-error" style="margin-bottom:10px"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> Student number {{ readNumber() }} exists in more than one class — pick the student below.</p>
-        } @else if (readNumber() != null) {
-          <p class="parse-note" style="margin-bottom:10px">Read student number {{ readNumber() }}, but it isn't on any roster — pick the student below.</p>
-        } @else {
-          <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR — student number missing or unclear, pick below.</p>
-        }
+        <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR ✓ — now pick whose paper it is.</p>
       } @else {
-        <p class="parse-note" style="margin-bottom:10px">Quiz came from your manual pick — student number missing or unclear, pick below.</p>
+        <p class="parse-note" style="margin-bottom:10px">Quiz came from your manual pick ✓ — now pick whose paper it is.</p>
       }
 
       <div class="answer-grid">

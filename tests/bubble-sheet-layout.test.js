@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { bubbleSheetLayout } from '../src/app/core/engine/export.js'
-import { SHEET, frameRect, markerRects, markerCenters, bubbleCenter, qrRect, idDigitCenter, rowPitch, rowLabelRight } from '../src/app/core/engine/sheet-spec.js'
+import { SHEET, frameRect, markerRects, markerCenters, bubbleCenter, qrRect, rowPitch, rowLabelRight } from '../src/app/core/engine/sheet-spec.js'
 
 const COUNTS = [6, 8, 20, 21, 40, 50]
 const box = (c, r) => ({ x0: c.x - r, x1: c.x + r, y0: c.y - r, y1: c.y + r })
@@ -73,19 +73,6 @@ describe('bubble sheet geometry', () => {
     }
   })
 
-  it.each(COUNTS)('keeps the student-number strip below the grid and clear of the QR (%i items)', count => {
-    const f = frameRect(count)
-    const q = qrBox(qrRect(count))
-    const gridBottom = f.y + SHEET.gridDy + lastRow(count) * rowPitch(count) + SHEET.circleR
-    const stripTop = f.y + f.h - SHEET.idRowsDy[0] - SHEET.idBubbleR
-    expect(stripTop).toBeGreaterThan(gridBottom)
-    expect(f.y + f.h - SHEET.idLabelDy).toBeGreaterThan(gridBottom)
-    for (let row = 0; row < 2; row++) {
-      for (let d = 0; d <= 9; d++) {
-        expect(hits(box(idDigitCenter(count, row, d), SHEET.idBubbleR), q)).toBe(false)
-      }
-    }
-  })
 
   it.each(COUNTS)('leaves room under the frame for the write-in rules and a printer margin (%i items)', count => {
     const f = frameRect(count)

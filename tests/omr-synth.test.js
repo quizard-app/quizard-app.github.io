@@ -59,21 +59,6 @@ function renderSheet({ count = 10, answers = [], marks = {}, scale = 2.2, rotate
     }
   }
 
-  // student-number strip: ring all 20 digit bubbles, print the digit, shade the
-  // number. The printed digits add the same constant floor to all ten bubbles.
-  if (marks.studentNo != null) {
-    for (let row = 0; row < 2; row++) for (let d = 0; d <= 9; d++) {
-      const c = idDigitCenter(count, row, d)
-      ring(c.x, c.y, SHEET.idBubbleR, 0)
-      disk(c.x, c.y, SHEET.idBubbleR * 0.28, 0)
-    }
-    const digits = [Math.floor(marks.studentNo / 10), marks.studentNo % 10]
-    digits.forEach((d, row) => {
-      const c = idDigitCenter(count, row, d)
-      disk(c.x, c.y, SHEET.idBubbleR * 0.85, 0)
-    })
-  }
-
   // optional extra marks (double shading)
   if (marks.multi) for (const [i, b] of marks.multi) {
     const c = bubbleCenter(count, i, b)
@@ -168,20 +153,6 @@ describe('readSheet — synthetic sheets', () => {
     expect(res.answers).toEqual(answers)
   })
 
-  it('reads the shaded student number for auto-assignment', () => {
-    const img = renderSheet({ count: 10, answers: [0, 2, 1, 3, 0, 2, 1, 3, 0, 2], marks: { studentNo: 7 } })
-    const res = readSheet(img, 10)
-    expect(res.ok).toBe(true)
-    expect(res.studentNumber).toBe(7)
-  })
-
-  it('returns no student number when the strip is blank', () => {
-    const img = renderSheet({ count: 10, answers: [0, 2, 1, 3, 0, 2, 1, 3, 0, 2] })
-    const res = readSheet(img, 10)
-    expect(res.ok).toBe(true)
-    expect(res.studentNumber).toBeNull()
-    expect(res.studentReason).toBe('blank')
-  })
 
   it('fails gracefully when the markers are missing', () => {
     const img = renderSheet({ count: 10, answers: [0, 1, 2, 3, 0, 1, 2, 3, 0, 1] })

@@ -1,5 +1,5 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, idDigitCenter, rowPitch } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, rowPitch } from './sheet-spec.js'
 import { sectionBreakdown } from './reports.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
@@ -223,7 +223,7 @@ function sheetHeader(pdf, quiz) {
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12.5); pdf.setTextColor('#1c2438')
   const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
   pdf.text(title, SHEET.M, 74)
-  const hint = 'Shade ONE circle per row, and your student number, fully.'
+  const hint = 'Shade ONE circle per row fully with pen or pencil.'
   pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5)
   const room = SHEET.W - SHEET.M * 2 - pdf.getTextWidth(title) - 20
   if (room > pdf.getTextWidth(hint)) {
@@ -274,21 +274,6 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
         idx++
       }
     })
-
-    // student-number strip: two rows of digit bubbles (tens / ones, 0–9).
-    // The scanner reads these first, so a shuffled pile still identifies
-    // whose sheet it is — numbers belong to students, not to seats.
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
-    pdf.text('S T U D E N T   N O .', f.x + 14, f.y + f.h - SHEET.idLabelDy)
-    for (let row = 0; row < 2; row++) {
-      for (let d = 0; d <= 9; d++) {
-        const c = idDigitCenter(count, row, d)
-        pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.8)
-        pdf.circle(c.x, c.y, SHEET.idBubbleR, 'S')
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(4.5); pdf.setTextColor('#9ca3af')
-        pdf.text(String(d), c.x, c.y + 1.4, { align: 'center', baseline: 'middle' })
-      }
-    }
 
     // write-in rules below the frame
     const rule = (label, x, w, y) => {

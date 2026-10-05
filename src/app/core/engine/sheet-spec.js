@@ -7,7 +7,7 @@ export const SHEET = {
   W: 612, H: 792, M: 44,
   frameW: 368,
   frameY: 96,    // frame top — below the printed header lockup
-  headerH: 26,   // frame height = rows * rowPitch(count) + headerH + idBand
+  headerH: 26,   // frame height = rows * rowPitch(count) + headerH
   gridDy: 20,    // grid top inside the frame
   circleR: 7,
   bubbleGap: 13, // gap between circles
@@ -32,19 +32,10 @@ export const SHEET = {
   marker: 10, markerGap: 24,
   // QR clearance: the code must never touch the bubble columns or the marker
   // squares, or thresholding merges them into one blob (scan bug). It lives in
-  // the frame's bottom band, under the right-hand column.
+  // the frame's bottom band, under the right-hand column — the band is
+  // reserved in frameRect so the columns always end above it.
   qrSize: 76, qrPadX: 28, qrPadY: 8,
-  // student-number strip (bottom-left inside the frame): two rows of digit
-  // bubbles 0–9 (tens / ones). Students shade their own class number, so the
-  // scanner knows whose sheet it is — seating, shuffling, photocopies and
-  // collection order all stop mattering. Numbers belong to students (stored
-  // per roster entry), not to seats or list positions.
-  idBand: 88,    // frame height also reserves this for the strip + QR
-  idBubbleR: 4.2,
-  idGap: 12.4,
-  idX: 22,            // first digit bubble center x, relative to frame left
-  idRowsDy: [30, 15], // tens / ones row centers above the frame bottom
-  idLabelDy: 46,      // "STUDENT NO." caption baseline above the frame bottom
+  qrBand: 94, // bottom band = QR + its caption + clearance
 }
 
 // The frame is centered on the page — balanced margins like a proper OMR form.
@@ -57,7 +48,7 @@ export function frameX() {
 export function rowPitch(count) {
   const rows = bubbleSheetLayout(count).rows
   const bottomReserve = 76 // write-in fields + printer margin
-  const avail = SHEET.H - bottomReserve - SHEET.frameY - SHEET.gridDy - SHEET.headerH - SHEET.idBand
+  const avail = SHEET.H - bottomReserve - SHEET.frameY - SHEET.gridDy - SHEET.headerH - SHEET.qrBand
   return Math.min(SHEET.pitch, Math.floor((avail / rows) * 10) / 10)
 }
 
@@ -79,17 +70,7 @@ export function bubbleSheetLayout(count) {
 
 export function frameRect(count) {
   const { rows } = bubbleSheetLayout(count)
-  return { x: frameX(), y: SHEET.frameY, w: SHEET.frameW, h: Math.round(rows * rowPitch(count) + SHEET.headerH + SHEET.idBand) }
-}
-
-// Centers of the ten digit bubbles in one student-number row.
-// row 0 = tens digit, row 1 = ones digit; digit 0..9.
-export function idDigitCenter(count, row, digit) {
-  const f = frameRect(count)
-  return {
-    x: f.x + SHEET.idX + digit * SHEET.idGap,
-    y: f.y + f.h - SHEET.idRowsDy[row],
-  }
+  return { x: frameX(), y: SHEET.frameY, w: SHEET.frameW, h: Math.round(rows * rowPitch(count) + SHEET.headerH + SHEET.qrBand) }
 }
 
 // Top-left corners of the four alignment squares, in reading order
