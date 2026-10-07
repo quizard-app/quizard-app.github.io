@@ -222,14 +222,25 @@ function sheetHeader(pdf, quiz) {
   // quiz title, plus the one instruction that matters (dropped if it crowds)
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12.5); pdf.setTextColor('#1c2438')
   const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
-  pdf.text(title, SHEET.M, 74)
+  pdf.text(title, SHEET.M, 66)
   const hint = 'Shade ONE circle per row fully with pen or pencil.'
   pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5)
   const room = SHEET.W - SHEET.M * 2 - pdf.getTextWidth(title) - 20
   if (room > pdf.getTextWidth(hint)) {
     pdf.setTextColor('#6b7280')
-    pdf.text(hint, right, 74, { align: 'right' })
+    pdf.text(hint, right, 66, { align: 'right' })
   }
+
+  // write-in fields at the top, under the title: who + when + where
+  const rule = (label, x, w, y) => {
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
+    pdf.text(label, x, y)
+    pdf.setDrawColor('#9ca3af'); pdf.setLineWidth(0.7)
+    pdf.line(x + pdf.getTextWidth(label) + 6, y + 2.5, x + w, y + 2.5)
+  }
+  rule('Student Name:', SHEET.M, 300, 92)
+  rule('Date:', 360, 110, 92)
+  rule('Grade & Section:', SHEET.M, 240, 114)
 }
 
 // Builds the bubble-sheet document (preview renders this; export saves it).
@@ -275,17 +286,6 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
       }
     })
 
-    // write-in rules below the frame
-    const rule = (label, x, w, y) => {
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
-      pdf.text(label, x, y)
-      pdf.setDrawColor('#9ca3af'); pdf.setLineWidth(0.7)
-      pdf.line(x + pdf.getTextWidth(label) + 6, y + 2.5, x + w, y + 2.5)
-    }
-    const by = f.y + f.h + 32
-    rule('Student Name:', SHEET.M, SHEET.W - SHEET.M, by)
-    rule('Date:', SHEET.M, 220, by + 24)
-    rule('Grade & Section:', 330, SHEET.W - SHEET.M, by + 24)
   }
 
   return pdf

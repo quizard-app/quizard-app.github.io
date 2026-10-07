@@ -6,7 +6,7 @@
 export const SHEET = {
   W: 612, H: 792, M: 44,
   frameW: 368,
-  frameY: 96,    // frame top — below the printed header lockup
+  frameY: 138,   // frame top — below the header + write-in fields
   headerH: 26,   // frame height = rows * rowPitch(count) + headerH
   gridDy: 20,    // grid top inside the frame
   circleR: 7,
@@ -46,7 +46,7 @@ export function frameX() {
 // The frame is a FIXED full-page box for every item count — unused rows stay
 // blank inside it, exactly like real OMR forms. The QR band at the frame's
 // bottom-right stays clear of the columns because the pitch shrinks first.
-export const FRAME_H = 620
+export const FRAME_H = 600
 
 // Row pitch shrinks for tall sheets so the columns never enter the QR band.
 export function rowPitch(count) {

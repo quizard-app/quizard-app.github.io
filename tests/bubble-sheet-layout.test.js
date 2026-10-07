@@ -74,10 +74,10 @@ describe('bubble sheet geometry', () => {
   })
 
 
-  it.each(COUNTS)('leaves room under the frame for the write-in rules and a printer margin (%i items)', count => {
-    const f = frameRect(count)
-    // footer sits at frame bottom + 32 and + 56
-    expect(f.y + f.h + 56).toBeLessThan(SHEET.H - 12)
+  it.each(COUNTS)('leaves a printer margin under the frame (%i items)', count => {
+    const f = frameRect()
+    // the frame is the last printed block — the write-ins live above it
+    expect(f.y + f.h).toBeLessThan(SHEET.H - 24)
   })
 
   it.each(COUNTS)('puts the row number immediately left of its first bubble (%i items)', count => {
