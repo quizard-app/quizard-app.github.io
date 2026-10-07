@@ -80,8 +80,14 @@ export class CreatePage {
     if (this.mode() === 'format') return this.mcqExamples().length > 0;
     return true;
   });
+  // letters-only key: every item is an empty scoring grid row (the teacher's
+  // own paper carries the questions) — review shows letter pickers and export
+  // skips the question paper entirely
+  readonly keyOnly = computed(() =>
+    this.items().length > 0 && this.items().every(it => !String(it.question || '').trim()));
+
   readonly itemsValid = computed(() => this.items().length && this.items().every(it =>
-    it.question.trim() && it.options.every((o: string) => o.trim()) && it.answerIndex >= 0));
+    it.answerIndex >= 0 && (this.keyOnly() || (it.question.trim() && it.options.every((o: string) => o.trim())))));
 
   classList = signal<any[]>([]);
 
@@ -184,6 +190,7 @@ export class CreatePage {
       subject: this.subject().trim(),
       title: this.title().trim(),
       source: this.mode(),
+      keyOnly: this.keyOnly(),
       items: this.items(),
     });
     this.quizId.set(quiz.id);

@@ -202,19 +202,28 @@ describe('generateTeacherQuiz — anchored to the teacher key', () => {
     expect(quiz[1].options[quiz[1].answerIndex]).toBe('Confidentiality')
   })
 
-  it('refuses a key of bare letters — nothing to write a question from', async () => {
+  it('turns a letters-only key into a scoring grid — no AI, no questions', async () => {
     const letters = [{ n: 1, question: '', answer: 'B' }, { n: 2, question: '', answer: 'C' }]
-    await expect(generateTeacherQuiz({ mode: 'key', keyItems: letters, count: 2 }))
-      .rejects.toThrow(/letters/i)
+    const quiz = await generateTeacherQuiz({ mode: 'key', keyItems: letters, count: 2 })
+    expect(quiz).toHaveLength(2)
+    expect(quiz.map(it => it.n)).toEqual([1, 2])
+    expect(quiz[0].question).toBe('')
+    expect(quiz[0].options.every(o => o === '')).toBe(true)
+    expect(quiz[0].answerIndex).toBe(1) // B
+    expect(quiz[1].answerIndex).toBe(2) // C
+    expect(quiz[0].keyAnswer).toBe('B')
     expect(chatJSON).not.toHaveBeenCalled()
   })
 
-  it('skips bare-letter entries when the key also has real answers', async () => {
+  it('keeps bare-letter entries as grid rows in a mixed key — nothing is dropped', async () => {
     answerEveryEntry()
     const mixed = [keyItems[0], { n: 2, question: '', answer: 'C' }]
     const quiz = await generateTeacherQuiz({ mode: 'key', keyItems: mixed, count: 2 })
-    expect(quiz).toHaveLength(1)
+    expect(quiz).toHaveLength(2)
+    expect(quiz.map(it => it.n)).toEqual([1, 2])
     expect(quiz[0].keyAnswer).toBe('Data Integrity')
+    expect(quiz[1].question).toBe('')
+    expect(quiz[1].answerIndex).toBe(2) // C
   })
 
   // the whole chain a teacher actually walks: paste "1. B. Data Integrity",

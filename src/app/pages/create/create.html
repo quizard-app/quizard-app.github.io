@@ -148,6 +148,29 @@
         </div>
       </div>
 
+      @if (keyOnly()) {
+        <p class="parse-note" style="margin-bottom:12px">
+          Letters-only key — your own paper carries the questions, so there is nothing to write.
+          Check the correct letter for each number, then save: only the bubble answer sheets will be exported.
+        </p>
+        <div class="doc-list">
+          @for (it of items(); track $index) {
+            <div class="qcard">
+              <div class="qhead">
+                <span class="qnum">{{ it.n }}</span>
+                <button class="icon-btn" (click)="removeItem($index)" [attr.aria-label]="'Remove entry ' + it.n" [innerHTML]="'trash' | ico"></button>
+              </div>
+              <div class="opt-row">
+                @for (o of it.options; track $index; let oi = $index) {
+                  <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer($index, oi)" [attr.aria-label]="'Mark ' + ('ABCD'[oi]) + ' correct for entry ' + it.n">
+                    @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
       <div class="doc-list">
         @for (it of items(); track $index) {
           <div class="qcard">
@@ -168,6 +191,7 @@
         }
       </div>
       <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
+      }
 
       <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
         <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
@@ -176,8 +200,10 @@
       @if (quizId()) {
         <button class="btn btn-secondary" style="max-width:230px;margin:10px auto 0" (click)="backHome()"><span [innerHTML]="'check' | ico"></span> Done — back to quizzes</button>
         <div class="export-grid" style="margin-top:12px">
-          <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
-          <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+          @if (!keyOnly()) {
+            <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
+            <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+          }
           <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
         </div>
         <div class="copies-row">
@@ -227,10 +253,17 @@
       </div>
 
       <div class="export-grid" style="margin-top:6px">
-        <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
-        <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+        @if (!selectedQuiz()?.keyOnly) {
+          <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
+          <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+        }
         <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
       </div>
+      @if (selectedQuiz()?.keyOnly) {
+        <p class="parse-note" style="margin:10px 0 0">
+          Letters-only key — students answer on your own question paper. The scanner scores these bubble sheets against your key.
+        </p>
+      }
       <div class="copies-row">
         <span class="faint">Sheets to print:</span>
         <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
@@ -243,16 +276,20 @@
       </div>
 
       @if (selectedQuiz(); as q) {
-        <div class="section-title">Questions (read-only)</div>
-        <div class="doc-list">
-          @for (it of q.items; track $index) {
-            <div class="weak-row">
-              <span class="qnum">{{ $index + 1 }}</span>
-              <span class="weak-q">{{ it.question }}</span>
-              <span class="weak-rate dim">{{ letters[it.answerIndex] }}</span>
-            </div>
-          }
-        </div>
+        @if (!q.keyOnly) {
+          <div class="section-title">Questions (read-only)</div>
+          <div class="doc-list">
+            @for (it of q.items; track $index) {
+              <div class="weak-row">
+                <span class="qnum">{{ $index + 1 }}</span>
+                <span class="weak-q">{{ it.question }}</span>
+                <span class="weak-rate dim">{{ letters[it.answerIndex] }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="faint center" style="font-size:11.5px;padding:12px 0 0">{{ q.items.length }} entry answer grid — the questions live on your own paper.</p>
+        }
         <p class="faint center" style="font-size:11.5px;padding:12px 0">Saved quizzes are permanent — export them any time, even offline.</p>
       }
     </div>

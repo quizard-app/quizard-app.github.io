@@ -126,18 +126,29 @@ async function generateFromKey(opts, count) {
   const isComplete = it => it.options?.length >= 2 && it.answerIndex >= 0
   const verbatim = []
   const open = []
+  const bare = []
   entries.forEach((it, keyIndex) => {
     if (isComplete(it)) verbatim.push({ it, keyIndex, keyAnswer: String(it.answer ?? ''), origin: 'teacher', mismatch: false })
-    else if (!isBareLetter(it.answer)) open.push({ entry: it, keyIndex })
+    else if (isBareLetter(it.answer)) bare.push({ entry: it, keyIndex })
+    else open.push({ entry: it, keyIndex })
   })
 
+  // Letters-only entries ("1-B 2-D…" / BCADBACD): the teacher's own paper
+  // carries the questions, so the quiz only needs the scoring grid — an empty
+  // row per number whose answerIndex is the letter's position. Bubble sheets
+  // print from these and the scanner scores against them; no AI call, ever.
+  const bareRows = bare.map(({ entry, keyIndex }) => ({
+    it: { question: '', options: ['', '', '', ''], answerIndex: 'ABCD'.indexOf(String(entry.answer).trim().toUpperCase()) },
+    keyIndex,
+    keyAnswer: String(entry.answer).trim().toUpperCase(),
+    origin: 'teacher',
+    mismatch: false,
+  }))
+
   if (!open.length) {
-    if (!verbatim.length) {
-      const err = new Error('This key is only letters (like BCADBACD) — it says which option was correct but not what the questions were, so there is nothing to write questions from. Paste the answers as words, or paste the questions with their answers.')
-      err.code = 'bare_letters'
-      throw err
-    }
-    return finalizeKeyed(verbatim, entries.length)
+    const rows = [...verbatim, ...bareRows]
+    if (!rows.length) throw emptyResponse()
+    return finalizeKeyed(rows, entries.length)
   }
 
   let pending = open.map(({ entry, keyIndex }, i) => ({ entry, keyIndex, no: i + 1, tries: 0, last: null }))
@@ -170,7 +181,7 @@ async function generateFromKey(opts, count) {
     .filter(job => job.last)
     .map(job => ({ it: spread(job.last), keyIndex: job.keyIndex, keyAnswer: String(job.entry.answer ?? ''), origin: 'ai', mismatch: true }))
 
-  const items = [...verbatim, ...accepted, ...flagged]
+  const items = [...verbatim, ...bareRows, ...accepted, ...flagged]
   if (!items.length) throw emptyResponse()
   return finalizeKeyed(items, entries.length)
 }
