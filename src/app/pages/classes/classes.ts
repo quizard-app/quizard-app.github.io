@@ -26,7 +26,6 @@ export class ClassesPage {
   classes = signal<any[]>([]);
   sheetOpen = signal(false);
   editingId = signal<string | null>(null);
-  rosterOpen = signal(false);
   rosterClass = signal<any>(null);
 
   name = signal('');
@@ -41,9 +40,8 @@ export class ClassesPage {
 
   openRoster(cls: any) {
     this.rosterClass.set(cls);
-    this.rosterOpen.set(true);
   }
-  closeRoster() { this.rosterOpen.set(false); }
+  closeRoster() { this.rosterClass.set(null); }
   readonly classSubjects = computed(() =>
     [...new Set(this.classes().map(x => x.subject).filter(Boolean))]);
   readonly editingRoster = computed(() => {
