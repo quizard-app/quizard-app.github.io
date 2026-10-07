@@ -18,6 +18,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'classes' },
       { path: 'classes', loadComponent: () => import('./pages/classes/classes').then(m => m.ClassesPage) },
+      { path: 'classes/:id', loadComponent: () => import('./pages/class-roster/class-roster').then(m => m.ClassRosterPage) },
       { path: 'keys', loadComponent: () => import('./pages/keys/keys').then(m => m.KeysPage) },
       { path: 'create', loadComponent: () => import('./pages/create/create').then(m => m.CreatePage) },
       { path: 'checking', loadComponent: () => import('./pages/checking/checking').then(m => m.CheckingPage) },

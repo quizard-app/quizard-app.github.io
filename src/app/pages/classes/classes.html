@@ -29,7 +29,7 @@
               </div>
             </div>
             <div class="doc-actions">
-              <button class="icon-btn" (click)="openRoster(cls); $event.stopPropagation()" [attr.aria-label]="'View students of ' + cls.name" data-tooltip="View students" [innerHTML]="'listChecks' | ico"></button>
+              <button class="icon-btn" (click)="viewRoster(cls); $event.stopPropagation()" [attr.aria-label]="'View students of ' + cls.name" data-tooltip="View students" [innerHTML]="'listChecks' | ico"></button>
               <button class="icon-btn doc-delete-btn" (click)="remove(cls); $event.stopPropagation()" [attr.aria-label]="'Delete ' + cls.name" data-tooltip="Delete class" [innerHTML]="'trash' | ico"></button>
             </div>
           </div>
@@ -42,29 +42,6 @@
         <h3>No classes yet</h3>
         <p>Upload your student roster — paste names or a .txt/.csv file, one student per line. Everything stays on this device.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add class</button>
-      </div>
-    }
-
-    @if (rosterClass(); as rc) {
-      <div class="org-overlay" (click)="closeRoster()">
-        <div class="org-sheet roster-sheet" (click)="$event.stopPropagation()">
-          <h3>{{ rc.name }}</h3>
-          <p class="faint" style="font-size:12px;margin:0 0 10px">
-            @if (rc.grade || rc.section) { {{ rc.grade }}{{ rc.grade && rc.section ? ' — ' : '' }}{{ rc.section }} · } {{ rc.students.length }} students
-          </p>
-          <div class="roster-list">
-            @for (st of rosterStudents(); track st.id) {
-              <div class="roster-row">
-                <span class="roster-no">{{ st.no }}</span>
-                <span class="roster-name">{{ st.name }}</span>
-              </div>
-            }
-          </div>
-          <div class="org-sheet-actions">
-            <button class="btn btn-secondary" (click)="closeRoster()">Close</button>
-            <button class="btn btn-primary" (click)="closeRoster(); openSheet(rc)">Edit roster</button>
-          </div>
-        </div>
       </div>
     }
 

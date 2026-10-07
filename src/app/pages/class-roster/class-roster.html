@@ -1,0 +1,38 @@
+<ion-content [fullscreen]="true">
+  <header class="back-header">
+    <button class="icon-btn" aria-label="Back to classes" (click)="router.navigateByUrl('/tabs/classes')" [innerHTML]="'chevronLeft' | ico"></button>
+    <h2>Class roster</h2>
+    <div class="spacer"></div>
+  </header>
+  <div class="screen">
+    @if (cls(); as c) {
+      <div class="hero lib-hero">
+        <div class="hero-ico" [innerHTML]="'users' | ico"></div>
+        <div>
+          <h1>{{ c.name }}</h1>
+          <p>
+            @if (c.subject) { {{ c.subject }} · }
+            @if (c.grade || c.section) { {{ c.grade }}{{ c.grade && c.section ? ' — ' : '' }}{{ c.section }} · }
+            {{ c.students.length }} student{{ c.students.length === 1 ? '' : 's' }}
+          </p>
+        </div>
+      </div>
+      <div class="roster-page-list">
+        @for (st of students(); track st.id) {
+          <div class="roster-row">
+            <span class="roster-no">{{ st.no }}</span>
+            <span class="roster-name">{{ st.name }}</span>
+          </div>
+        }
+      </div>
+      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="edit()"><span [innerHTML]="'pencil' | ico"></span> Edit roster</button>
+    } @else if (missing()) {
+      <div class="empty-state">
+        <div class="empty-ico" [innerHTML]="'users' | ico"></div>
+        <h3>Class not found</h3>
+        <p>This class may have been deleted on this device.</p>
+        <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="router.navigateByUrl('/tabs/classes')">Back to classes</button>
+      </div>
+    }
+  </div>
+</ion-content>

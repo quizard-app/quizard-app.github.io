@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { listClasses, saveClass, deleteClass, getActiveAccountId, getAccount } from '../../core/engine/storage.js';
 import { parseRoster } from '../../core/engine/roster.js';
@@ -17,6 +17,7 @@ import { ByokService } from '../../core/services/byok.service';
 })
 export class ClassesPage {
   router = inject(Router);
+  private route = inject(ActivatedRoute);
   ui = inject(UiStateService);
   readonly byok = inject(ByokService);
   private toast = inject(ToastService);
@@ -26,7 +27,6 @@ export class ClassesPage {
   classes = signal<any[]>([]);
   sheetOpen = signal(false);
   editingId = signal<string | null>(null);
-  rosterClass = signal<any>(null);
 
   name = signal('');
   grade = signal('');
@@ -35,13 +35,6 @@ export class ClassesPage {
   paste = signal('');
 
   readonly previewCount = computed(() => parseRoster(this.paste()).students.length);
-  readonly rosterStudents = computed(() =>
-    (this.rosterClass()?.students || []).slice().sort((a: any, b: any) => (a.no || 0) - (b.no || 0)));
-
-  openRoster(cls: any) {
-    this.rosterClass.set(cls);
-  }
-  closeRoster() { this.rosterClass.set(null); }
   readonly classSubjects = computed(() =>
     [...new Set(this.classes().map(x => x.subject).filter(Boolean))]);
   readonly editingRoster = computed(() => {
@@ -57,6 +50,12 @@ export class ClassesPage {
       if (id) this.ui.account.set(await getAccount(id) || null);
     }
     await this.load();
+    // Hand-off from the roster page: /tabs/classes?edit=<id> opens the sheet
+    const editId = this.route.snapshot.queryParamMap.get('edit');
+    if (editId) {
+      const cls = this.classes().find(c => c.id === editId);
+      if (cls) this.openSheet(cls);
+    }
   }
 
   ngOnInit() { this.ionViewWillEnter(); }
@@ -76,6 +75,10 @@ export class ClassesPage {
   }
 
   closeSheet() { this.sheetOpen.set(false); }
+
+  viewRoster(cls: any) {
+    this.router.navigateByUrl('/tabs/classes/' + cls.id);
+  }
 
   setPaste(value: string) { this.paste.set(value); }
 

@@ -63,6 +63,10 @@ html[data-theme='light'] {
    transparent and the glows sit under cards on every screen. ── */
 body { background: var(--bg); }
 ion-content { --background: transparent; }
+/* Ionic's page-slide transitions momentarily park the entering page off the
+   right edge; without this Chrome scrolls the body sideways to keep the
+   tapped element visible and never scrolls back (page stuck half off-screen). */
+html, body { overflow-x: hidden; overflow-x: clip; }
 body::before,
 body::after {
   content: '';
