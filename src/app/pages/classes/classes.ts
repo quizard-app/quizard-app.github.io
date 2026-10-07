@@ -26,6 +26,8 @@ export class ClassesPage {
   classes = signal<any[]>([]);
   sheetOpen = signal(false);
   editingId = signal<string | null>(null);
+  rosterOpen = signal(false);
+  rosterClass = signal<any>(null);
 
   name = signal('');
   grade = signal('');
@@ -34,6 +36,14 @@ export class ClassesPage {
   paste = signal('');
 
   readonly previewCount = computed(() => parseRoster(this.paste()).students.length);
+  readonly rosterStudents = computed(() =>
+    (this.rosterClass()?.students || []).slice().sort((a: any, b: any) => (a.no || 0) - (b.no || 0)));
+
+  openRoster(cls: any) {
+    this.rosterClass.set(cls);
+    this.rosterOpen.set(true);
+  }
+  closeRoster() { this.rosterOpen.set(false); }
   readonly classSubjects = computed(() =>
     [...new Set(this.classes().map(x => x.subject).filter(Boolean))]);
   readonly editingRoster = computed(() => {

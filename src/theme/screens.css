@@ -2371,3 +2371,11 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .preview-sheet { width: min(92vw, 400px); max-height: 86vh; overflow: auto; }
 .preview-canvas-wrap { display: grid; place-items: center; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px; }
 .preview-canvas { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+
+/* ── Classes: numbered roster viewer ── */
+.roster-sheet { width: min(92vw, 400px); max-height: 86vh; overflow: auto; }
+.roster-list { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.roster-row { display: flex; gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.roster-row:last-child { border-bottom: none; }
+.roster-no { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-strong); width: 24px; flex: none; text-align: right; }
+.roster-name { font-size: 13px; font-weight: 600; }
