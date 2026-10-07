@@ -43,12 +43,15 @@ export function frameX() {
   return Math.round((SHEET.W - SHEET.frameW) / 2)
 }
 
-// Row pitch shrinks for tall sheets so the frame, the write-in fields and a
-// printable bottom margin always fit the page.
+// The frame is a FIXED full-page box for every item count — unused rows stay
+// blank inside it, exactly like real OMR forms. The QR band at the frame's
+// bottom-right stays clear of the columns because the pitch shrinks first.
+export const FRAME_H = 620
+
+// Row pitch shrinks for tall sheets so the columns never enter the QR band.
 export function rowPitch(count) {
   const rows = bubbleSheetLayout(count).rows
-  const bottomReserve = 76 // write-in fields + printer margin
-  const avail = SHEET.H - bottomReserve - SHEET.frameY - SHEET.gridDy - SHEET.headerH - SHEET.qrBand
+  const avail = FRAME_H - SHEET.gridDy - SHEET.qrBand - 10
   return Math.min(SHEET.pitch, Math.floor((avail / rows) * 10) / 10)
 }
 
@@ -68,15 +71,14 @@ export function bubbleSheetLayout(count) {
   }
 }
 
-export function frameRect(count) {
-  const { rows } = bubbleSheetLayout(count)
-  return { x: frameX(), y: SHEET.frameY, w: SHEET.frameW, h: Math.round(rows * rowPitch(count) + SHEET.headerH + SHEET.qrBand) }
+export function frameRect() {
+  return { x: frameX(), y: SHEET.frameY, w: SHEET.frameW, h: FRAME_H }
 }
 
 // Top-left corners of the four alignment squares, in reading order
 // TL, TR, BR, BL. They sit in the page margins, clear of the frame.
 export function markerRects(count) {
-  const f = frameRect(count)
+  const f = frameRect()
   const m = SHEET.marker, g = SHEET.markerGap
   return [
     { x: f.x - g - m, y: f.y },
@@ -94,14 +96,14 @@ export function markerCenters(count) {
 }
 
 export function columnX(count, colIndex) {
-  const f = frameRect(count)
+  const f = frameRect()
   const { single } = bubbleSheetLayout(count)
   return f.x + SHEET.colPad + colIndex * ((f.w - SHEET.colPad * 2) / (single ? 1 : 2))
 }
 
 // Center of one answer bubble. item is 0-based, letter 0..3 (A–D).
 export function bubbleCenter(count, item, letter) {
-  const f = frameRect(count)
+  const f = frameRect()
   const layout = bubbleSheetLayout(count)
   let col = 0
   let row = item
@@ -118,7 +120,7 @@ export function rowLabelRight(count, colIndex) {
 }
 
 export function qrRect(count) {
-  const f = frameRect(count)
+  const f = frameRect()
   return {
     x: f.x + f.w - SHEET.qrPadX - SHEET.qrSize,
     y: f.y + f.h - SHEET.qrPadY - SHEET.qrSize,

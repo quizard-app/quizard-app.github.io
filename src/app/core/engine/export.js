@@ -243,7 +243,7 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
 
     sheetHeader(pdf, quiz)
 
-    const f = frameRect(count)
+    const f = frameRect()
     pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.8)
     pdf.rect(f.x, f.y, f.w, f.h, 'S')
 

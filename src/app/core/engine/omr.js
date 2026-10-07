@@ -264,7 +264,7 @@ export function readSheet(image, itemCount) {
 
 // Ink fraction along the printed frame's four edges (sampled via H).
 function frameInk(binary, width, height, H, itemCount) {
-  const f = frameRect(itemCount)
+  const f = frameRect()
   const pts = []
   const N = 24
   for (let i = 0; i <= N; i++) {
