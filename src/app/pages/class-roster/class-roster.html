@@ -14,14 +14,40 @@
             @if (c.subject) { {{ c.subject }} · }
             @if (c.grade || c.section) { {{ c.grade }}{{ c.grade && c.section ? ' — ' : '' }}{{ c.section }} · }
             {{ c.students.length }} student{{ c.students.length === 1 ? '' : 's' }}
+            @if (checkedCount()) { · {{ checkedCount() }} checked }
           </p>
         </div>
       </div>
       <div class="roster-page-list">
         @for (st of students(); track st.id) {
-          <div class="roster-row">
-            <span class="roster-no">{{ st.no }}</span>
-            <span class="roster-name">{{ st.name }}</span>
+          <div class="roster-item">
+            <button type="button" class="roster-row roster-row-btn" (click)="records(st).all.length ? toggle(st.id) : null">
+              <span class="roster-no">{{ st.no }}</span>
+              <span class="roster-main">
+                <span class="roster-name">{{ st.name }}</span>
+                <span class="roster-chips">
+                  @for (r of records(st).latest; track r.quizId) {
+                    <span class="score-pill {{ pill(r.percent) }}">{{ r.quiz }} {{ r.percent }}%</span>
+                  } @empty {
+                    <span class="roster-norec">no records yet</span>
+                  }
+                </span>
+              </span>
+              @if (records(st).all.length) {
+                <span class="roster-caret" [class.open]="expandedId() === st.id" [innerHTML]="'chevronRight' | ico"></span>
+              }
+            </button>
+            @if (expandedId() === st.id) {
+              <div class="roster-recs">
+                @for (r of records(st).all; track $index) {
+                  <div class="roster-rec">
+                    <span class="roster-rec-quiz">{{ r.quiz }}</span>
+                    <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
+                    <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
       </div>

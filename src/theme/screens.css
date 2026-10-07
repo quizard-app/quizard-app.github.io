@@ -2381,9 +2381,24 @@ button.roster-row { width: 100%; background: transparent; border: 0; border-bott
 button.roster-row.on { background: var(--accent-soft); }
 .roster-cls { margin-left: auto; font-size: 11.5px; color: var(--text-dim); text-align: right; }
 
-/* ── Classes: roster page (numbered student list) ── */
+/* ── Classes: roster page (numbered student list + per-student records) ── */
 .roster-page-list { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; max-width: 560px; margin: 0 auto; }
 .roster-row { display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); }
 .roster-row:last-child { border-bottom: none; }
+button.roster-row { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--border); font: inherit; color: var(--text); cursor: pointer; text-align: left; }
+button.roster-row.on { background: var(--accent-soft); }
+.roster-item { border-bottom: 1px solid var(--border); }
+.roster-item:last-child { border-bottom: none; }
+.roster-item > button.roster-row { border-bottom: none; }
+.roster-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.roster-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.roster-chips .score-pill { font-size: 10px; padding: 2px 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-norec { font-size: 10.5px; color: var(--text-faint); }
+.roster-caret { color: var(--text-faint); flex: none; display: flex; transition: transform .15s ease; }
+.roster-caret.open { transform: rotate(90deg); }
+.roster-recs { padding: 6px 14px 12px 52px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border-top: 1px solid var(--border); }
+.roster-rec { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.roster-rec-quiz { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-rec-date { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); }
 .roster-no { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-strong); width: 26px; flex: none; text-align: right; }
 .roster-name { font-size: 13.5px; font-weight: 600; }
