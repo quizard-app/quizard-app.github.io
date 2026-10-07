@@ -53,6 +53,10 @@ export class CheckingPage {
   autoStudent = signal<MatchedStudent | null>(null);
   pickedStudentId = signal<string | null>(null);
   studentPickOpen = signal(false);
+  // optional pick-first flow: choose the student on the scan screen, the next
+  // scan attaches to them, saving clears for the next paper
+  preStudent = signal<MatchedStudent | null>(null);
+  prePickOpen = signal(false);
 
   cameraActive = signal(false);
   private stream: MediaStream | null = null;
@@ -71,6 +75,21 @@ export class CheckingPage {
   // fallback attaches the same identity data as a numbered scan.
   readonly roster = computed<MatchedStudent[]>(() =>
     this.classes().flatMap(cls => (cls.students || []).map((st: any) => this.rosterEntry(cls, st))));
+
+  // The class being checked scopes both pickers — a session is per class, so a
+  // 200-student school never scrolls one giant list.
+  readonly classRoster = computed(() =>
+    this.roster().filter(r => r.classId === this.classId()));
+
+  // Already-done marks in the scan-screen picker: with a quiz override, anyone
+  // with a record for that quiz; in Auto mode, anyone recorded this session.
+  readonly doneIds = computed(() => {
+    const quizId = this.quizOverrideId();
+    const keys = this.session()
+      .filter(s => !quizId || s.quizId === quizId)
+      .map(s => s.studentNo ?? s.studentName);
+    return new Set(keys);
+  });
 
   private rosterEntry(cls: any, st: any): MatchedStudent {
     return {
@@ -108,6 +127,8 @@ export class CheckingPage {
   // ── setup ──
   async startSession() {
     if (!this.classId()) return;
+    this.preStudent.set(null);
+    this.prePickOpen.set(false);
     await this.refreshSession();
     this.stage.set('scan');
   }
@@ -197,9 +218,15 @@ export class CheckingPage {
       this.answers.set(answers);
       this.flags.set(flags);
       this.photo.set(dataToJpeg(data));
-      this.autoStudent.set(null);
-      this.pickedStudentId.set(null);
-      this.studentName.set('');
+      // a pre-picked student attaches automatically; otherwise the teacher
+      // decides on the result screen
+      if (this.preStudent()) {
+        this.selectStudent(this.preStudent()!.id);
+      } else {
+        this.autoStudent.set(null);
+        this.pickedStudentId.set(null);
+        this.studentName.set('');
+      }
       this.stage.set('result');
       this.processing.set(false);
     });
@@ -243,6 +270,7 @@ export class CheckingPage {
     });
     await this.refreshSession();
     this.stage.set('scan');
+    this.preStudent.set(null);
     this.toast.toast(`Saved — ${this.studentName().trim()} scored ${s.percent}%`);
   }
 
@@ -261,6 +289,8 @@ export class CheckingPage {
     this.flags.set([]);
     this.photo.set('');
     this.autoStudent.set(null);
+    this.preStudent.set(null);
+    this.prePickOpen.set(false);
   }
 
   flagColor(f: string) {

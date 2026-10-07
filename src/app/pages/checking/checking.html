@@ -84,6 +84,43 @@
         </div>
       }
 
+      <div class="section-title" style="margin-top:4px">Who's next? <span class="faint" style="font-size:11px;font-weight:500">(optional — decide after scanning instead)</span></div>
+      <button type="button" class="text-input picker-btn" (click)="prePickOpen.set(true)">
+        @if (preStudent(); as st) {
+          {{ st.name }}{{ st.no ? ' · #' + st.no : '' }}
+        } @else {
+          <span class="picker-placeholder">Pick after scanning — attach on the result screen</span>
+        }
+      </button>
+
+      @if (prePickOpen()) {
+        <div class="org-overlay" (click)="prePickOpen.set(false)">
+          <div class="org-sheet picker-sheet" (click)="$event.stopPropagation()">
+            <h3>Who's next?</h3>
+            <p class="faint" style="font-size:11.5px;margin:0 0 10px">
+              {{ pickedClass()?.name }} · green = already recorded{{ quizOverrideId() ? ' for this quiz' : ' this session' }}
+            </p>
+            <div class="picker-list">
+              <button type="button" class="roster-row" [class.on]="!preStudent()" (click)="preStudent.set(null); prePickOpen.set(false)">
+                <span class="roster-name">Decide after scanning</span>
+              </button>
+              @for (st of classRoster(); track st.id) {
+                <button type="button" class="roster-row" [class.on]="preStudent()?.id === st.id" (click)="preStudent.set(st); prePickOpen.set(false)">
+                  <span class="roster-no">{{ st.no }}</span>
+                  <span class="roster-name">{{ st.name }}</span>
+                  @if (doneIds().has(st.no ?? st.name)) {
+                    <span class="score-pill high" style="margin-left:auto">✓ done</span>
+                  }
+                </button>
+              }
+            </div>
+            <div class="org-sheet-actions">
+              <button type="button" class="btn btn-secondary" (click)="prePickOpen.set(false)">Cancel</button>
+            </div>
+          </div>
+        </div>
+      }
+
       @if (cameraActive()) {
         <video class="camera-view" autoplay playsinline muted></video>
         <button class="btn btn-primary gen-btn" (click)="captureFromCamera()"><span [innerHTML]="'camera' | ico"></span> Capture sheet</button>
@@ -118,7 +155,11 @@
       }
       @if (autoStudent(); as auto) {
         <p class="parse-note" style="margin-bottom:10px">
-          <span [innerHTML]="'check' | ico"></span> Identified by student number: <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
+          @if (preStudent()) {
+            Scanning for <b>{{ auto.name }}</b> ✓ — correct the answers if needed, then save.
+          } @else {
+            <span [innerHTML]="'check' | ico"></span> Attached to <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
+          }
         </p>
       } @else if (qrHit()) {
         <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR ✓ — now pick whose paper it is.</p>
@@ -150,11 +191,11 @@
           <div class="org-sheet picker-sheet" (click)="$event.stopPropagation()">
             <h3>Whose paper is this?</h3>
             <div class="picker-list">
-              @for (st of roster(); track st.id) {
-                <button type="button" class="roster-row" [class.on]="pickedStudentId() === st.id" (click)="selectStudent(st.id); studentPickOpen.set(false)">
+              @for (st of classRoster(); track st.id) {
+                <button type="button" class="roster-row" [class.on]="pickedStudentId() === st.id" (click)="selectStudent(st.id); preStudent.set(null); studentPickOpen.set(false)">
                   <span class="roster-no">{{ st.no }}</span>
                   <span class="roster-name">{{ st.name }}</span>
-                  <span class="roster-cls">{{ st.className }}{{ st.section ? ' · ' + st.section : '' }}</span>
+                  <span class="roster-cls">{{ st.section }}</span>
                 </button>
               }
             </div>
