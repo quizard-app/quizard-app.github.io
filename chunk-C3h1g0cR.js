@@ -1,1 +1,0 @@
-function a(t){return new Date(t).toLocaleDateString(void 0,{month:`short`,day:`numeric`})}export{a as t};

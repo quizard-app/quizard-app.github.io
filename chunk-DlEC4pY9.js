@@ -1,0 +1,1 @@
+function a(t){return t>=80?`high`:t>=50?`mid`:`low`}function c(t){return new Date(t).toLocaleDateString(void 0,{month:`short`,day:`numeric`})}export{c as n,a as t};
