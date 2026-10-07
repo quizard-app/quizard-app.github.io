@@ -52,6 +52,7 @@ export class CheckingPage {
   studentName = signal('');
   autoStudent = signal<MatchedStudent | null>(null);
   pickedStudentId = signal<string | null>(null);
+  studentPickOpen = signal(false);
 
   cameraActive = signal(false);
   private stream: MediaStream | null = null;

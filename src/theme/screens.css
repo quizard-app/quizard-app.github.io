@@ -2372,6 +2372,15 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .preview-canvas-wrap { display: grid; place-items: center; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px; }
 .preview-canvas { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 
+/* ── Checking: in-app pickers (native <select> popups can't be styled) ── */
+button.text-input { font: inherit; text-align: left; cursor: pointer; }
+.picker-btn { display: block; width: 100%; }
+.picker-btn .picker-placeholder { color: var(--text-faint); }
+.picker-list { max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+button.roster-row { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--border); font: inherit; color: var(--text); cursor: pointer; text-align: left; }
+button.roster-row.on { background: var(--accent-soft); }
+.roster-cls { margin-left: auto; font-size: 11.5px; color: var(--text-dim); text-align: right; }
+
 /* ── Classes: roster page (numbered student list) ── */
 .roster-page-list { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; max-width: 560px; margin: 0 auto; }
 .roster-row { display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); }
