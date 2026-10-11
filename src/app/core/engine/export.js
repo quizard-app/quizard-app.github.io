@@ -1,5 +1,5 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, rowPitch } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, rowPitch, sheetQrPayload } from './sheet-spec.js'
 import { sectionBreakdown } from './reports.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
@@ -114,10 +114,10 @@ export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
 // Geometry lives in sheet-spec.js — the Phase 3 scanner samples the same
 // constants, so the printed sheet and the scanner agree by construction.
 
-function bubbleQr(pdf, text, x, y, size) {
+function bubbleQr(pdf, text, x, y, size, level = 'M') {
   // qrcode-generator is CJS; esbuild interop gives us the factory
   const qrFactory = qrModule.default || qrModule
-  const qr = qrFactory(0, 'M')
+  const qr = qrFactory(0, level)
   qr.addData(text)
   qr.make()
   const cells = qr.getModuleCount()
@@ -191,18 +191,7 @@ export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
  */
 const PAPER = { letter: [612, 792], a4: [595, 842], long: [612, 936] }
 
-// A 24x19 vector printer — the standard PDF fonts have no glyph for one.
-function printerGlyph(pdf, x, y) {
-  pdf.setDrawColor('#0b0820'); pdf.setLineWidth(0.8)
-  pdf.setFillColor('#ffffff')
-  pdf.rect(x + 6, y, 12, 6, 'FD')      // paper feeding in
-  pdf.setFillColor('#e9e6f7')
-  pdf.rect(x, y + 5, 24, 9, 'FD')      // body
-  pdf.setFillColor('#ffffff')
-  pdf.rect(x + 5, y + 12, 14, 7, 'FD') // sheet coming out
-}
-
-function sheetHeader(pdf, quiz) {
+function sheetHeader(pdf, quiz, student) {
   const right = SHEET.W - SHEET.M
 
   // left lockup: purple roundel + wordmark + tagline
@@ -213,11 +202,6 @@ function sheetHeader(pdf, quiz) {
   pdf.text('Q U I Z A R D', SHEET.M + 30, 34)
   pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6); pdf.setTextColor('#9ca3af')
   pdf.text('P R I N T A B L E   A N S W E R   S H E E T S', SHEET.M + 31, 44)
-
-  // right: printer glyph + PRINT SHEETS
-  printerGlyph(pdf, right - 24, 18)
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
-  pdf.text('PRINT SHEETS', right - 30, 32, { align: 'right' })
 
   // quiz title, plus the one instruction that matters (dropped if it crowds)
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12.5); pdf.setTextColor('#1c2438')
@@ -239,20 +223,39 @@ function sheetHeader(pdf, quiz) {
     pdf.line(x + pdf.getTextWidth(label) + 6, y + 2.5, x + w, y + 2.5)
   }
   rule('Student Name:', SHEET.M, 300, 92)
+  if (student?.name) {
+    // roster sheets print the name on the rule, so the stack can be verified
+    // by eye before any scanning happens
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor('#1c2438')
+    const nameX = SHEET.M + pdf.getTextWidth('Student Name:') + 12
+    const cap = 300 - (nameX - SHEET.M) - 4
+    let nm = String(student.name)
+    if (pdf.getTextWidth(nm) > cap) {
+      while (nm.length > 4 && pdf.getTextWidth(nm + '…') > cap) nm = nm.slice(0, -1)
+      nm += '…'
+    }
+    pdf.text(nm, nameX, 92)
+  }
   rule('Date:', 360, 110, 92)
   rule('Grade & Section:', SHEET.M, 240, 114)
 }
 
 // Builds the bubble-sheet document (preview renders this; export saves it).
-export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
+// Sheets are printed per roster student — exactly one page per student on the
+// class, never blanks — because the QR on each sheet is what tells the scanner
+// whose paper it is.
+export async function buildBubbleSheetsPdf(quiz, students, size = 'letter') {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ unit: 'pt', format: PAPER[size] || PAPER.letter })
   const count = quiz.items.length
+  const roster = Array.isArray(students) ? students : []
+  const pages = Math.max(1, roster.length)
 
-  for (let copy = 0; copy < Math.max(1, Math.min(60, copies)); copy++) {
+  for (let copy = 0; copy < pages; copy++) {
     if (copy > 0) pdf.addPage()
+    const student = roster[copy] || null
 
-    sheetHeader(pdf, quiz)
+    sheetHeader(pdf, quiz, student)
 
     const f = frameRect()
     pdf.setDrawColor('#0b0820'); pdf.setLineWidth(1.8)
@@ -262,9 +265,11 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
     pdf.setFillColor('#0b0820')
     for (const m of markerRects(count)) pdf.rect(m.x, m.y, SHEET.marker, SHEET.marker, 'F')
 
-    // QR (identifies the quiz/key at scan time)
+    // QR: identifies the quiz, and the student when printed for a roster. A
+    // name makes the payload long, so roster sheets drop to level L — fewer
+    // modules keeps the cell size large enough to scan from a phone photo.
     const qr = qrRect(count)
-    bubbleQr(pdf, `QZ1:${quiz.id}`, qr.x, qr.y, qr.size)
+    bubbleQr(pdf, sheetQrPayload(quiz.id, student), qr.x, qr.y, qr.size, student ? 'L' : 'M')
 
     // bubble grid: small grey numerals right-aligned against four circles
     const layout = bubbleSheetLayout(count)
@@ -291,7 +296,7 @@ export async function buildBubbleSheetsPdf(quiz, copies = 1, size = 'letter') {
   return pdf
 }
 
-export async function exportBubbleSheets(quiz, copies = 1, size = 'letter') {
-  const pdf = await buildBubbleSheetsPdf(quiz, copies, size)
+export async function exportBubbleSheets(quiz, students, size = 'letter') {
+  const pdf = await buildBubbleSheetsPdf(quiz, students, size)
   pdf.save(`quizard-bubble-sheets-${slug(quiz.subject || quiz.title)}.pdf`)
 }

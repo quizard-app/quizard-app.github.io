@@ -127,3 +127,60 @@ export function qrRect(count) {
     size: SHEET.qrSize,
   }
 }
+
+// ── Sheet QR payload (shared by the printer and the scanner) ──
+// A blank sheet carries only the quiz id (QZ1). A sheet printed for a roster
+// student carries the student id and name too (QZ2), so scanning attaches the
+// student instead of the teacher picking from a list. The scanner resolves by
+// id first and name second, so a QZ1 sheet keeps working exactly as before.
+export function sheetQrPayload(quizId, student) {
+  if (!student) return `QZ1:${quizId}`
+  const name = String(student.name || '').replace(/\|/g, '/').slice(0, 40)
+  return `QZ2:${quizId}|${student.id}|${name}`
+}
+
+/**
+ * @param {string | null} text raw QR contents
+ * @returns {{ quizId: string, studentId: string | null, studentName: string | null } | null}
+ *   null for anything that isn't a Quizard sheet code
+ */
+export function parseSheetQr(text) {
+  if (typeof text !== 'string' || !text) return null
+  if (text.startsWith('QZ2:')) {
+    const first = text.indexOf('|')
+    const second = first < 0 ? -1 : text.indexOf('|', first + 1)
+    if (first < 0 || second < 0) return null
+    const quizId = text.slice(4, first)
+    const studentId = text.slice(first + 1, second)
+    if (!quizId || !studentId) return null
+    return { quizId, studentId, studentName: text.slice(second + 1) || null }
+  }
+  if (text.startsWith('QZ1:')) return { quizId: text.slice(4), studentId: null, studentName: null }
+  return null
+}
+
+/**
+ * Resolve a roster-printed sheet's student claim against the device roster.
+ * The id is the authoritative match. The name is the fallback for a roster
+ * re-created on this device (restore or re-import, so the ids differ): a name
+ * unique school-wide resolves on its own, a name shared across classes only
+ * resolves inside the class being checked, and an ambiguous name otherwise
+ * stays unmatched rather than score the wrong student's paper.
+ *
+ * @template {{ id: string, name: string, classId: string }} T
+ * @param {T[]} roster every known student
+ * @param {{ studentId: string | null, studentName: string | null } | null} claim parsed QR claim
+ * @param {string | null} [sessionClassId] class being checked
+ * @returns {T | null}
+ */
+export function resolveSheetStudent(roster, claim, sessionClassId = null) {
+  if (!claim?.studentId || !Array.isArray(roster)) return null
+  const byId = roster.find(r => r.id === claim.studentId)
+  if (byId) return byId
+  const want = claim.studentName?.trim().toLowerCase()
+  if (!want) return null
+  const same = roster.filter(r => r.name.trim().toLowerCase() === want)
+  if (!same.length) return null
+  if (same.length === 1) return same[0]
+  return same.find(r => r.classId === sessionClassId) || null
+}

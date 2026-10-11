@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { listClasses, listQuizzes, saveSheet, listSheets, deleteSheet, getQuiz } from '../../core/engine/storage.js';
 import { readSheet, scoreSheet, decodeQr, FLAG } from '../../core/engine/omr.js';
+import { parseSheetQr, resolveSheetStudent } from '../../core/engine/sheet-spec.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -51,6 +52,12 @@ export class CheckingPage {
   photo = signal<string>('');
   studentName = signal('');
   autoStudent = signal<MatchedStudent | null>(null);
+  // how the sheet got its student: the sheet's own QR, a pre-pick on the scan
+  // screen, or the result-screen picker
+  studentSource = signal<'qr' | 'pre' | 'manual' | null>(null);
+  // a QR named a student this device's roster doesn't have — the teacher still
+  // picks manually, but knows the sheet's claim
+  qrUnknownName = signal<string | null>(null);
   pickedStudentId = signal<string | null>(null);
   studentPickOpen = signal(false);
   // optional pick-first flow: choose the student on the scan screen, the next
@@ -108,15 +115,31 @@ export class CheckingPage {
 
   selectStudent(id: string) {
     const st = this.roster().find(r => r.id === id) || null;
+    this.attachStudent(st, 'manual');
+    this.qrUnknownName.set(null);
+  }
+
+  // One place that binds a roster student to the sheet being checked, so the
+  // QR path and the manual picker carry identical identity data.
+  private attachStudent(st: MatchedStudent | null, source: 'qr' | 'pre' | 'manual' | null) {
     this.pickedStudentId.set(st?.id ?? null);
     this.autoStudent.set(st);
     this.studentName.set(st?.name ?? '');
+    this.studentSource.set(source);
     // the subject guard applies to manual picks too — a sheet from another
     // subject's pile would otherwise land on the wrong class silently
     const quiz = this.detectedQuiz();
     const cls = st ? this.classes().find(c => c.id === st.classId) : null;
     this.subjectMismatch.set(!!cls?.subject && !!quiz?.subject &&
       cls.subject.toLowerCase() !== quiz.subject.toLowerCase());
+  }
+
+  // A roster-printed sheet's QR carries the student id and name: id first
+  // (stable across roster edits), then the name as the fallback for a roster
+  // that was re-created on this device. The rule lives in sheet-spec.js so it
+  // is covered by the same tests as the parser.
+  private matchRosterStudent(parsed: { studentId: string | null; studentName: string | null } | null) {
+    return resolveSheetStudent(this.roster(), parsed, this.classId());
   }
 
   async ionViewWillEnter() {
@@ -194,10 +217,10 @@ export class CheckingPage {
     // let the spinner paint before the synchronous CV work blocks the frame
     await new Promise(r => setTimeout(r, 60));
 
-    // the QR identifies the quiz before any geometry work — one CV pass total
-    const qr = decodeQr(data.data, data.width, data.height);
-    const qrId = qr?.startsWith('QZ1:') ? qr.slice(4) : null;
-    const quizId = qrId || this.quizOverrideId();
+    // the QR identifies the quiz — and, on roster-printed sheets, the student
+    // — before any geometry work: one CV pass total
+    const parsed = parseSheetQr(decodeQr(data.data, data.width, data.height));
+    const quizId = parsed?.quizId || this.quizOverrideId();
     const quiz = quizId ? await getQuiz(quizId) : null;
     if (!quiz) {
       this.processing.set(false);
@@ -218,14 +241,20 @@ export class CheckingPage {
       this.answers.set(answers);
       this.flags.set(flags);
       this.photo.set(dataToJpeg(data));
-      // a pre-picked student attaches automatically; otherwise the teacher
-      // decides on the result screen
-      if (this.preStudent()) {
-        this.selectStudent(this.preStudent()!.id);
+      // the sheet's own QR student wins over anything pre-picked — the printed
+      // code cannot be wrong about whose paper this is. Without one, a
+      // pre-picked student attaches automatically; otherwise the teacher
+      // decides on the result screen.
+      const qrStudent = this.matchRosterStudent(parsed);
+      if (qrStudent) {
+        this.qrUnknownName.set(null);
+        this.attachStudent(qrStudent, 'qr');
+      } else if (this.preStudent()) {
+        this.qrUnknownName.set(null);
+        this.attachStudent(this.preStudent()!, 'pre');
       } else {
-        this.autoStudent.set(null);
-        this.pickedStudentId.set(null);
-        this.studentName.set('');
+        this.attachStudent(null, null);
+        this.qrUnknownName.set(parsed?.studentName || null);
       }
       this.stage.set('result');
       this.processing.set(false);
@@ -289,6 +318,8 @@ export class CheckingPage {
     this.flags.set([]);
     this.photo.set('');
     this.autoStudent.set(null);
+    this.studentSource.set(null);
+    this.qrUnknownName.set(null);
     this.preStudent.set(null);
     this.prePickOpen.set(false);
   }

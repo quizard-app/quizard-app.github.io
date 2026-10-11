@@ -2372,6 +2372,14 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .preview-canvas-wrap { display: grid; place-items: center; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px; }
 .preview-canvas { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 
+/* Sheet pager — a roster preview is one page per student, so the teacher
+   pages through to verify every printed name before running 40 pages. */
+.preview-pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 10px 0 4px; }
+.preview-pager .icon-btn:disabled { opacity: .38; cursor: default; }
+.preview-pager .icon-btn svg { width: 15px; height: 15px; }
+.preview-pager-label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-align: center; }
+.preview-pager-label .faint { font-weight: 500; }
+
 /* ── Checking: in-app pickers (native <select> popups can't be styled) ── */
 button.text-input { font: inherit; text-align: left; cursor: pointer; }
 .picker-btn { display: block; width: 100%; }

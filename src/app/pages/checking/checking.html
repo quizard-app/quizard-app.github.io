@@ -40,7 +40,7 @@
         <div class="doc-list quiz-pick">
           <button type="button" class="mode-card" [class.on]="!quizOverrideId()" (click)="quizOverrideId.set(null)">
             <span class="mode-title">Auto — from the QR code</span>
-            <span class="mode-hint">Each sheet's QR identifies its own quiz</span>
+            <span class="mode-hint">Each sheet's QR identifies its quiz — and its student, on roster-printed sheets</span>
           </button>
           @for (q of quizzes(); track q.id) {
             <button type="button" class="mode-card" [class.on]="quizOverrideId() === q.id" (click)="quizOverrideId.set(q.id)">
@@ -155,12 +155,16 @@
       }
       @if (autoStudent(); as auto) {
         <p class="parse-note" style="margin-bottom:10px">
-          @if (preStudent()) {
+          @if (studentSource() === 'qr') {
+            <span [innerHTML]="'check' | ico"></span> The sheet's QR identified <b>{{ auto.name }}</b> — attached automatically ✓
+          } @else if (studentSource() === 'pre') {
             Scanning for <b>{{ auto.name }}</b> ✓ — correct the answers if needed, then save.
           } @else {
-            <span [innerHTML]="'check' | ico"></span> Attached to <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
+            Attached to <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
           }
         </p>
+      } @else if (qrUnknownName()) {
+        <p class="parse-note" style="margin-bottom:10px">The sheet's QR says <b>{{ qrUnknownName() }}</b>, but that name can't be matched to one student on this device — pick the right one below.</p>
       } @else if (qrHit()) {
         <p class="parse-note" style="margin-bottom:10px">Sheet identified by QR ✓ — now pick whose paper it is.</p>
       } @else {

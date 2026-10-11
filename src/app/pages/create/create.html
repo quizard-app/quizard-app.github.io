@@ -207,8 +207,20 @@
           <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
         </div>
         <div class="copies-row">
-          <span class="faint">Sheets to print:</span>
-          <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
+          <span class="faint">Print for:</span>
+          <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Print sheets for'" (change)="setSheetClassId($any($event.target).value)">
+            <option value="" [selected]="!sheetClassId()" disabled>— pick a class —</option>
+            @for (c of classList(); track c.id) {
+              <option [value]="c.id" [selected]="sheetClassId() === c.id">{{ c.name }} · {{ c.students.length }} students</option>
+            }
+          </select>
+        </div>
+        <div class="copies-row">
+          @if (sheetClass(); as c) {
+            <span class="faint">{{ c.students.length }} sheets · one per student, no extras</span>
+          } @else {
+            <span class="faint">Pick a class — prints only its students</span>
+          }
           <span class="faint">Paper:</span>
           <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
             <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
@@ -216,6 +228,13 @@
             <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
           </select>
         </div>
+        @if (sheetClass()) {
+          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Exactly {{ sheetClass()!.students.length }} sheet{{ sheetClass()!.students.length === 1 ? '' : 's' }} — one per student in {{ sheetClass()!.name }}, each QR carrying that student's name so scanning attaches them automatically.</p>
+        } @else if (classList().length) {
+          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Pick a class to print its roster. Sheets are never printed blank — every sheet belongs to a student.</p>
+        } @else {
+          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Add a class on the Classes tab first — sheets print exactly that class's students.</p>
+        }
         <p class="faint center" style="font-size:11.5px;padding-bottom:12px">PDFs download to your device — print them anywhere, no internet needed.</p>
       }
     </div>
@@ -229,11 +248,22 @@
           <p class="parse-note">Building the preview…</p>
         } @else {
           <p class="faint" style="font-size:11.5px;text-align:center;margin:0 0 10px">
-            Page 1 of {{ previewPages() }}{{ previewPages() > 1 ? ' — one page per sheet' : '' }}
+            @if (previewPages() > 1) {
+              Page {{ previewPage() }} of {{ previewPages() }} — one page per sheet
+            } @else {
+              Page 1 of 1
+            }
           </p>
           <div class="preview-canvas-wrap">
             <canvas class="preview-canvas"></canvas>
           </div>
+          @if (previewPages() > 1) {
+            <div class="preview-pager">
+              <button class="icon-btn" [disabled]="previewPage() <= 1" (click)="previewPrev()" aria-label="Previous sheet" [innerHTML]="'chevronLeft' | ico"></button>
+              <span class="preview-pager-label">Sheet {{ previewPage() }} of {{ previewPages() }}<span class="faint"> · each one carries its student in the QR</span></span>
+              <button class="icon-btn" [disabled]="previewPage() >= previewPages()" (click)="previewNext()" aria-label="Next sheet" [innerHTML]="'chevronRight' | ico"></button>
+            </div>
+          }
           <div class="org-sheet-actions">
             <button class="btn btn-secondary" (click)="closePreview()">Close</button>
             <button class="btn btn-primary" (click)="downloadPreview()"><span [innerHTML]="'download' | ico"></span> Download PDF</button>
@@ -265,8 +295,20 @@
         </p>
       }
       <div class="copies-row">
-        <span class="faint">Sheets to print:</span>
-        <input class="text-input count-input" type="number" min="1" max="60" [value]="copies()" (input)="copies.set($any($event.target).value)" [attr.aria-label]="'Number of bubble sheets'" />
+        <span class="faint">Print for:</span>
+        <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Print sheets for'" (change)="setSheetClassId($any($event.target).value)">
+          <option value="" [selected]="!sheetClassId()" disabled>— pick a class —</option>
+          @for (c of classList(); track c.id) {
+            <option [value]="c.id" [selected]="sheetClassId() === c.id">{{ c.name }} · {{ c.students.length }} students</option>
+          }
+        </select>
+      </div>
+      <div class="copies-row">
+        @if (sheetClass(); as c) {
+          <span class="faint">{{ c.students.length }} sheets · one per student, no extras</span>
+        } @else {
+          <span class="faint">Pick a class — prints only its students</span>
+        }
         <span class="faint">Paper:</span>
         <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
           <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
@@ -274,6 +316,13 @@
           <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
         </select>
       </div>
+      @if (sheetClass()) {
+        <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Exactly {{ sheetClass()!.students.length }} sheet{{ sheetClass()!.students.length === 1 ? '' : 's' }} — one per student in {{ sheetClass()!.name }}, each QR carrying that student's name so scanning attaches them automatically.</p>
+      } @else if (classList().length) {
+        <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Pick a class to print its roster. Sheets are never printed blank — every sheet belongs to a student.</p>
+      } @else {
+        <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Add a class on the Classes tab first — sheets print exactly that class's students.</p>
+      }
 
       @if (selectedQuiz(); as q) {
         @if (!q.keyOnly) {

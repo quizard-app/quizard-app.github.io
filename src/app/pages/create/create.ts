@@ -52,7 +52,6 @@ export class CreatePage {
 
   items = signal<any[]>([]);
   quizId = signal<string | null>(null);
-  copies = signal(1);
 
   readonly keyPreview = computed(() => this.keyPaste().trim() ? parseKeyText(this.keyPaste()) : null);
   readonly keyStats = computed(() => {
@@ -256,10 +255,23 @@ export class CreatePage {
         this.previewFilename = `quizard-key-${slugify(quiz.subject || quiz.title)}`;
         this.previewLabel.set('Teacher’s answer key');
       } else {
-        this.previewDoc = await buildBubbleSheetsPdf(quiz, this.copies(), this.paper());
-        this.previewFilename = `quizard-bubble-sheets-${slugify(quiz.subject || quiz.title)}`;
-        this.previewLabel.set(`Bubble answer sheets (${this.paper()})`);
+        // Sheets print exactly the chosen class's roster — one page per student,
+        // nothing blank and nothing spare. A class is required because the QR on
+        // each sheet is what tells the scanner whose paper it is.
+        const cls = this.sheetClass();
+        if (!cls?.students?.length) {
+          this.toast.toast('Pick a class first — sheets print only that class’s students.');
+          this.previewBusy.set(false);
+          return;
+        }
+        this.previewDoc = await buildBubbleSheetsPdf(quiz, cls.students, this.paper());
+        this.previewFilename = `quizard-bubble-sheets-${slugify(quiz.subject || quiz.title)}-${slugify(cls.name)}`;
+        this.previewLabel.set(`Bubble answer sheets — ${cls.name} (${cls.students.length}, one per student)`);
       }
+      // a new document always starts at sheet 1, and the cached pdfjs doc
+      // belongs to the old one
+      this.previewPdfDoc = null;
+      this.previewPage.set(1);
       this.previewOpen.set(true);
       this.previewBusy.set(false); // the canvas mounts in the non-busy branch
       await this.renderPreview();
@@ -284,9 +296,13 @@ export class CreatePage {
       // worker can serve the precached file offline
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.mjs', document.baseURI).href;
       const buf = this.previewDoc.output('arraybuffer');
-      const pdf = await pdfjs.getDocument({ data: buf, isEvalSupported: false }).promise;
+      // the parsed document is kept across page turns: a 40-student roster
+      // shouldn't re-parse the whole PDF every time the teacher pages through
+      this.previewPdfDoc = this.previewPdfDoc || await pdfjs.getDocument({ data: buf, isEvalSupported: false }).promise;
+      const pdf = this.previewPdfDoc;
       this.previewPages.set(pdf.numPages);
-      const pdfPage = await pdf.getPage(1);
+      const page = Math.min(Math.max(1, this.previewPage()), pdf.numPages);
+      const pdfPage = await pdf.getPage(page);
       const scale = 340 / pdfPage.getViewport({ scale: 1 }).width;
       const vp = pdfPage.getViewport({ scale });
       canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
@@ -294,6 +310,23 @@ export class CreatePage {
     } catch (e: any) {
       this.toast.toast('Preview failed — you can still download the PDF', true);
     }
+  }
+
+  // Roster previews hold one sheet per student, so the pager is how the
+  // teacher verifies every name before printing 40 pages.
+  previewPage = signal(1);
+  private previewPdfDoc: any = null;
+
+  async previewPrev() {
+    if (this.previewPage() <= 1 || !this.previewDoc) return;
+    this.previewPage.set(this.previewPage() - 1);
+    await this.renderPreview();
+  }
+
+  async previewNext() {
+    if (!this.previewDoc || this.previewPage() >= this.previewPages()) return;
+    this.previewPage.set(this.previewPage() + 1);
+    await this.renderPreview();
   }
 
   downloadPreview() {
@@ -304,10 +337,19 @@ export class CreatePage {
   closePreview() {
     this.previewOpen.set(false);
     this.previewDoc = null;
+    this.previewPdfDoc = null;
+    this.previewPage.set(1);
   }
 
   paper = signal<'letter' | 'a4' | 'long'>('letter');
   setPaper(p: any) { this.paper.set(p); }
+
+  // Sheets print for exactly one class: one page per student on its roster,
+  // each with that student's name in the QR and on the header.
+  sheetClassId = signal<string | null>(null);
+  setSheetClassId(id: any) { this.sheetClassId.set(id || null); }
+  readonly sheetClass = computed(() =>
+    this.classList().find(c => c.id === this.sheetClassId()) || null);
 
   backToSetup() {
     this.stage.set('setup');
