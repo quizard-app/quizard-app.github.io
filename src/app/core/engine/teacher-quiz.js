@@ -115,11 +115,24 @@ function isBareLetter(answer) {
   return /^[A-Da-d]$/.test(String(answer ?? '').trim())
 }
 
+// "E" or "z" as a whole answer is a typo, not a word — bubble sheets have no
+// option E, so it can never become a correct answer. Sent to the AI it would
+// come back as a question whose correct option "contains E" — junk. Refuse it.
+function isOutOfRangeLetter(answer) {
+  return /^[A-Za-z]$/.test(String(answer ?? '').trim()) && !isBareLetter(answer)
+}
+
 async function generateFromKey(opts, count) {
   const entries = (opts.keyItems || []).slice(0, count)
   if (!entries.length) {
     const err = new Error('Paste your answer key first.')
     err.code = 'no_key'
+    throw err
+  }
+  const typo = entries.find(it => isOutOfRangeLetter(it.answer))
+  if (typo) {
+    const err = new Error(`Entry ${typo.n ?? '?'} has the answer “${String(typo.answer).trim().toUpperCase()}” — bubble sheets only have options A–D. Fix that entry in your key.`)
+    err.code = 'letter_out_of_range'
     throw err
   }
 

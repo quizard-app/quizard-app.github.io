@@ -117,6 +117,13 @@ export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
 function bubbleQr(pdf, text, x, y, size, level = 'M') {
   // qrcode-generator is CJS; esbuild interop gives us the factory
   const qrFactory = qrModule.default || qrModule
+  // Student names are user text (José, Ñoño, emoji). The default encoder is
+  // latin-1 (charCode & 0xff), which produces bytes that are invalid UTF-8 —
+  // and the scanner's jsQR decodes byte mode as UTF-8, so those QRs silently
+  // fail to decode at scan time. Encode as real UTF-8 instead.
+  if (qrFactory.stringToBytesFuncs && qrFactory.stringToBytesFuncs['UTF-8']) {
+    qrFactory.stringToBytes = qrFactory.stringToBytesFuncs['UTF-8']
+  }
   const qr = qrFactory(0, level)
   qr.addData(text)
   qr.make()

@@ -202,6 +202,13 @@ describe('generateTeacherQuiz — anchored to the teacher key', () => {
     expect(quiz[1].options[quiz[1].answerIndex]).toBe('Confidentiality')
   })
 
+  it('refuses a letter outside A–D with a clear error instead of AI junk', async () => {
+    const typo = [{ n: 1, question: '', answer: 'E' }, { n: 2, question: '', answer: 'B' }]
+    await expect(generateTeacherQuiz({ mode: 'key', keyItems: typo, count: 2 }))
+      .rejects.toThrow(/A–D/)
+    expect(chatJSON).not.toHaveBeenCalled()
+  })
+
   it('turns a letters-only key into a scoring grid — no AI, no questions', async () => {
     const letters = [{ n: 1, question: '', answer: 'B' }, { n: 2, question: '', answer: 'C' }]
     const quiz = await generateTeacherQuiz({ mode: 'key', keyItems: letters, count: 2 })
