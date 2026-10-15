@@ -16,26 +16,41 @@
           <p>{{ classes().length }} class{{ classes().length === 1 ? '' : 'es' }} · {{ totalStudents() }} students</p>
         </div>
       </div>
-      <div class="doc-list">
+      <div class="doc-list class-grid">
         @for (cls of classes(); track cls.id) {
-          <div class="doc-card" (click)="openSheet(cls)" data-tooltip="Edit roster">
-            <div class="doc-icon folder" [innerHTML]="'users' | ico"></div>
-            <div class="doc-info">
-              <div class="doc-name">{{ cls.name }}</div>
-              <div class="doc-meta">
-                @if (cls.subject) { <span>{{ cls.subject }}</span>· }
-                @if (cls.grade || cls.section) { <span>{{ cls.grade }}{{ cls.grade && cls.section ? ' · ' : '' }}{{ cls.section }} · </span> }
-                <span>{{ cls.students.length }} student{{ cls.students.length === 1 ? '' : 's' }}</span>
-              </div>
+          <div class="doc-card cls-card" (click)="viewRoster(cls)" data-tooltip="View students">
+            <div class="cls-banner {{ themeOf(cls) }}">
+              <div class="cls-title">{{ cls.name }}</div>
+              @if (metaOf(cls)) {
+                <div class="cls-sub">{{ metaOf(cls) }}</div>
+              }
+              <div class="cls-avatar" aria-hidden="true">{{ avatarOf(cls) }}</div>
             </div>
-            <div class="doc-actions">
-              <button class="icon-btn" (click)="viewRoster(cls); $event.stopPropagation()" [attr.aria-label]="'View students of ' + cls.name" data-tooltip="View students" [innerHTML]="'listChecks' | ico"></button>
-              <button class="icon-btn doc-delete-btn" (click)="remove(cls); $event.stopPropagation()" [attr.aria-label]="'Delete ' + cls.name" data-tooltip="Delete class" [innerHTML]="'trash' | ico"></button>
+            <div class="cls-body">
+              <div class="cls-stats">
+                <b>{{ cls.students.length }}</b>
+                <span>student{{ cls.students.length === 1 ? '' : 's' }}</span>
+              </div>
+              @if (cls.students.length) {
+                <div class="cls-preview">
+                  @for (s of studentsOf(cls); track $index) {
+                    <span class="key-chip" [title]="s.full">{{ s.short }}</span>
+                  }
+                  @if (studentsOverflowOf(cls)) {
+                    <span class="key-chip more">+{{ studentsOverflowOf(cls) }}</span>
+                  }
+                </div>
+              }
+              <div class="doc-actions">
+                <button class="btn btn-secondary" (click)="viewRoster(cls); $event.stopPropagation()">View students <span [innerHTML]="'chevronRight' | ico"></span></button>
+                <button class="icon-btn" (click)="openSheet(cls); $event.stopPropagation()" [attr.aria-label]="'Edit ' + cls.name" data-tooltip="Edit class" [innerHTML]="'pencil' | ico"></button>
+                <button class="icon-btn doc-delete-btn" (click)="remove(cls); $event.stopPropagation()" [attr.aria-label]="'Delete ' + cls.name" data-tooltip="Delete class" [innerHTML]="'trash' | ico"></button>
+              </div>
             </div>
           </div>
         }
       </div>
-      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add class</button>
+      <button class="btn btn-primary" style="display:flex;max-width:230px;margin:18px auto 0" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add class</button>
     } @else {
       <div class="empty-state">
         <div class="empty-ico" [innerHTML]="'users' | ico"></div>

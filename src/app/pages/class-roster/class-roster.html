@@ -4,60 +4,121 @@
     <h2>Class roster</h2>
     <div class="spacer"></div>
   </header>
-  <div class="screen">
+  <div class="screen lib-screen">
     @if (cls(); as c) {
-      <div class="hero lib-hero">
-        <div class="hero-ico" [innerHTML]="'users' | ico"></div>
-        <div>
-          <h1>{{ c.name }}</h1>
-          <p>
-            @if (c.subject) { {{ c.subject }} · }
-            @if (c.grade || c.section) { {{ c.grade }}{{ c.grade && c.section ? ' — ' : '' }}{{ c.section }} · }
-            {{ c.students.length }} student{{ c.students.length === 1 ? '' : 's' }}
-            @if (checkedCount()) { · {{ checkedCount() }} checked }
-          </p>
-        </div>
+      <div class="cls-banner roster-banner {{ bannerTheme(c) }}">
+        <div class="cls-title">{{ c.name }}</div>
+        <div class="cls-sub">{{ metaOf(c) }}</div>
+        <div class="cls-avatar" aria-hidden="true">{{ bannerAvatar(c) }}</div>
+        <button class="roster-edit" (click)="openRoster()"><span [innerHTML]="'pencil' | ico"></span> Edit roster</button>
       </div>
-      <div class="roster-page-list">
-        @for (st of students(); track st.id) {
-          <div class="roster-item">
-            <button type="button" class="roster-row roster-row-btn" (click)="records(st).all.length ? toggle(st.id) : null">
-              <span class="roster-no">{{ st.no }}</span>
-              <span class="roster-main">
-                <span class="roster-name">{{ st.name }}</span>
-                <span class="roster-chips">
-                  @for (r of records(st).latest; track r.quizId) {
-                    <span class="score-pill {{ pill(r.percent) }}">{{ r.quiz }} {{ r.percent }}%</span>
-                  } @empty {
-                    <span class="roster-norec">no records yet</span>
-                  }
-                </span>
-              </span>
-              @if (records(st).all.length) {
-                <span class="roster-caret" [class.open]="expandedId() === st.id" [innerHTML]="'chevronRight' | ico"></span>
-              }
-            </button>
-            @if (expandedId() === st.id) {
-              <div class="roster-recs">
-                @for (r of records(st).all; track $index) {
-                  <div class="roster-rec">
-                    <span class="roster-rec-quiz">{{ r.quiz }}</span>
-                    <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
-                    <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
-                  </div>
+      @if (book().columns.length) {
+        <div class="gb-wrap">
+          <table class="gb-table">
+            <thead>
+              <tr>
+                <th class="gb-who" scope="col">Student</th>
+                @for (c of book().columns; track c.quizId) {
+                  <th class="gb-quiz" scope="col" [title]="c.full || c.label" [attr.aria-label]="c.full || c.label">{{ c.label }}</th>
                 }
+              </tr>
+            </thead>
+            <tbody>
+              @for (st of book().rows; track st.id) {
+                <tr class="gb-row">
+                  <th class="gb-who" scope="row">
+                    <button type="button" class="gb-who-btn" (click)="records(st).length ? toggle(st.id) : null" [attr.aria-expanded]="expandedId() === st.id">
+                      <span class="roster-no">{{ st.no }}</span>
+                      <span class="gb-name">{{ st.name }}</span>
+                      @if (records(st).length) {
+                        <span class="roster-caret" [class.open]="expandedId() === st.id" [innerHTML]="'chevronRight' | ico"></span>
+                      }
+                    </button>
+                  </th>
+                  @for (cell of st.cells; track cell.quizId) {
+                    <td class="gb-cell">
+                      @if (cell.scored) {
+                        <span class="score-pill {{ pill(cell.percent) }}" [title]="(cell.full || cell.label) + ' · ' + cell.correct + '/' + cell.total">{{ cell.percent }}%</span>
+                      } @else {
+                        <span class="gb-none">—</span>
+                      }
+                    </td>
+                  }
+                </tr>
+                @if (expandedId() === st.id) {
+                  <tr>
+                    <td class="gb-detail" [attr.colspan]="book().columns.length + 1">
+                      <div class="roster-recs">
+                        @for (r of records(st); track r.quizId) {
+                          <div class="roster-rec">
+                            <span class="roster-rec-quiz">{{ r.quiz }}</span>
+                            <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
+                            <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
+                            <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r); $event.stopPropagation()" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
+                            @if (answersOf(r).length) {
+                              <div class="ans-strip">
+                                @for (a of answersOf(r); track $index) {
+                                  <span class="ans-cell" [class.ok]="a.right" [class.bad]="!a.right && !a.blank" [class.blank]="a.blank" [title]="a.right ? 'Correct' : (a.blank ? 'Left blank' : 'Key: ' + a.key)">
+                                    <i>{{ a.n }}</i>{{ a.pick || '—' }}@if (a.key) { <em>→ {{ a.key }}</em> }
+                                  </span>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="roster-page-list">
+          @for (st of students(); track st.id) {
+            <div class="roster-item">
+              <div class="roster-row">
+                <span class="roster-no">{{ st.no }}</span>
+                <span class="roster-name">{{ st.name }}</span>
+                <span class="roster-norec" style="margin-left:auto">no records yet</span>
               </div>
-            }
-          </div>
-        }
-      </div>
-      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="edit()"><span [innerHTML]="'pencil' | ico"></span> Edit roster</button>
+            </div>
+          }
+        </div>
+      }
     } @else if (missing()) {
       <div class="empty-state">
         <div class="empty-ico" [innerHTML]="'users' | ico"></div>
         <h3>Class not found</h3>
         <p>This class may have been deleted on this device.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="router.navigateByUrl('/tabs/classes')">Back to classes</button>
+      </div>
+    }
+
+    @if (rosterOpen() && cls()) {
+      <div class="org-overlay" (click)="closeRoster()">
+        <div class="org-sheet" (click)="$event.stopPropagation()">
+          <h3>Edit roster — {{ cls().name }}</h3>
+          <textarea class="text-input roster-paste" rows="7" placeholder="Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+          <label class="btn btn-secondary file-btn">
+            <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
+            <input type="file" accept=".txt,.csv,text/plain,text/csv" (change)="onFile($event)" hidden />
+          </label>
+          @if (paste().trim()) {
+            <p class="parse-note">
+              {{ previewCount() }} student{{ previewCount() === 1 ? '' : 's' }} detected
+              @if (previewSkipped()) { · {{ previewSkipped() }} line{{ previewSkipped() === 1 ? '' : 's' }} skipped }
+            </p>
+          }
+          <p class="faint" style="font-size:11.5px;margin:10px 0 0;text-align:center">
+            Sheet numbers stay with students already on the roster, even ones you remove.
+          </p>
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="closeRoster()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!previewCount()" (click)="saveRoster()">Save roster</button>
+          </div>
+        </div>
       </div>
     }
   </div>

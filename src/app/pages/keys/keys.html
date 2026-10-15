@@ -13,34 +13,73 @@
         <div class="hero-ico" [innerHTML]="'listChecks' | ico"></div>
         <div>
           <h1>Answer keys</h1>
-          <p>{{ keys().length }} key{{ keys().length === 1 ? '' : 's' }} ready for checking papers</p>
+          <p>{{ keys().length }} key{{ keys().length === 1 ? '' : 's' }} ready to turn into a quiz</p>
         </div>
       </div>
-      <div class="doc-list">
+      <div class="doc-list key-grid">
         @for (key of keys(); track key.id) {
-          <div class="doc-card" (click)="openSheet(key)" data-tooltip="View key">
-            <div class="doc-icon folder" [innerHTML]="'listChecks' | ico"></div>
-            <div class="doc-info">
-              <div class="doc-name">{{ key.subject }}@if (key.title) { <span class="faint"> — {{ key.title }}</span> }</div>
-              <div class="doc-meta">
-                <span>{{ key.items.length }} item{{ key.items.length === 1 ? '' : 's' }} · </span>
-                @if (key.format === 'qa') { <span>with questions · </span> } @else if (key.format === 'letters') { <span>letter key · </span> }
-                <span>{{ dateOf(key.createdAt) }}</span>
-              </div>
+          <div class="doc-card key-card" (click)="openView(key)" data-tooltip="View key">
+            <div class="key-card-head">
+              <div class="key-name">{{ key.subject }}@if (key.title) { <span class="faint"> — {{ key.title }}</span> }</div>
+              <div class="key-kit">{{ key.items.length }} item{{ key.items.length === 1 ? '' : 's' }} · {{ formatLabel(key) }}</div>
             </div>
-            <div class="doc-actions">
-              <button class="icon-btn doc-delete-btn" (click)="remove(key); $event.stopPropagation()" [attr.aria-label]="'Delete ' + key.subject + ' key'" data-tooltip="Delete key" [innerHTML]="'trash' | ico"></button>
+            <button class="key-strip" type="button" (click)="openView(key)" [attr.aria-label]="'View all ' + key.items.length + ' answers'" data-tooltip="View all answers">
+              @for (c of stripOf(key); track c.n) {
+                <span class="ks-cell" [title]="c.n + ' · ' + c.full"><i>{{ c.n }}</i><b>{{ c.tag }}</b></span>
+              }
+              @if (overflowOf(key)) {
+                <span class="ks-cell more">+{{ overflowOf(key) }}</span>
+              }
+            </button>
+            <div class="key-foot">
+              <span class="key-when">{{ dateOf(key.createdAt) }}</span>
+              <div class="doc-actions">
+                <button class="btn btn-secondary" (click)="buildQuiz(key); $event.stopPropagation()">Build a quiz</button>
+                <button class="icon-btn doc-delete-btn" (click)="remove(key); $event.stopPropagation()" [attr.aria-label]="'Delete ' + key.subject + ' key'" data-tooltip="Delete key" [innerHTML]="'trash' | ico"></button>
+              </div>
             </div>
           </div>
         }
       </div>
       <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add key</button>
+      <ol class="key-steps">
+        <li><span class="ks-n">1</span><span><b>Paste your key</b> — answers on their own, questions with answers, or a letter string like BCADB.</span></li>
+        <li><span class="ks-n">2</span><span><b>Build the quiz</b> — the Create tab writes the questions around the answers you gave it.</span></li>
+        <li><span class="ks-n">3</span><span><b>Check the papers</b> — the Scan tab scores every sheet against that quiz.</span></li>
+      </ol>
     } @else {
       <div class="empty-state">
         <div class="empty-ico" [innerHTML]="'listChecks' | ico"></div>
         <h3>No answer keys yet</h3>
-        <p>Paste your key — answers only, questions with answers, or a compact letter key like BCADB. The scanner scores against this.</p>
+        <p>Paste a key and Quizard writes the quiz from it — answers only, questions with answers, or a compact letter key like BCADB. The scanner scores against the key inside each quiz, not this one.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="openSheet()"><span [innerHTML]="'plus' | ico"></span> Add key</button>
+        <button class="btn btn-secondary" style="max-width:230px;margin:10px auto 0" (click)="router.navigateByUrl('/tabs/create')">Create a quiz from a key</button>
+      </div>
+    }
+
+    @if (viewOpen()) {
+      <div class="org-overlay" (click)="closeView()">
+        <div class="org-sheet" (click)="$event.stopPropagation()">
+          <h3>{{ viewKey()?.subject }}@if (viewKey()?.title) { <span class="faint"> — {{ viewKey()?.title }}</span> }</h3>
+          <p class="faint key-view-sub">{{ viewKey()?.items.length }} item{{ viewKey()?.items.length === 1 ? '' : 's' }} · {{ formatLabel(viewKey()) }}</p>
+          <div class="key-view-list" role="list">
+            @for (it of viewKey()?.items || []; track $index) {
+              <div class="key-view-row" role="listitem">
+                <span class="key-view-n">{{ $index + 1 }}</span>
+                @if (it.question) {
+                  <span class="key-view-main"><b>{{ it.question }}</b> → {{ answerOf(it) }}</span>
+                } @else {
+                  <span class="key-view-main">{{ answerOf(it) }}</span>
+                }
+              </div>
+            }
+          </div>
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="closeView()">Close</button>
+            <button class="btn btn-secondary" (click)="editFromView()">Edit</button>
+            <button class="btn btn-primary" (click)="buildQuiz(viewKey())">Build a quiz</button>
+          </div>
+        </div>
       </div>
     }
 

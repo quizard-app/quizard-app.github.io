@@ -10,6 +10,15 @@ import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ByokService } from '../../core/services/byok.service';
 
+// The label a key card prints for each of the parser's five shapes.
+const FORMAT_LABELS: Record<string, string> = {
+  qa: 'questions + answers',
+  answers: 'answers only',
+  letters: 'letter key',
+  keyed: 'answers with letters',
+  mcq: 'example questions',
+};
+
 @Component({
   selector: 'app-keys',
   imports: [IonContent, IcoPipe],
@@ -35,6 +44,61 @@ export class KeysPage {
   readonly previewWithQuestions = computed(() => this.preview().items.filter(i => i.question).length);
   readonly dateOf = fmtDate;
 
+  // The parser emits five shapes, so the card names all of them instead of
+  // leaving 'keyed' and 'mcq' keys with a meta line and no format.
+  readonly formatLabel = (key: any): string =>
+    FORMAT_LABELS[key?.format] || 'answer key';
+
+  // The card's hero is the key itself, rendered as a mini answer sheet: one
+  // numbered tile per item, the way the printed key row reads. Letter answers
+  // stay square; word answers get a wider tile that truncates. Twenty tiles
+  // cap the strip — anything longer shows a +N tail instead of growing forever.
+  readonly stripCap = 20;
+  readonly stripOf = (key: any): { n: number; tag: string; full: string }[] =>
+    (key?.items || []).slice(0, this.stripCap).map((it: any, i: number) => {
+      const full = this.answerOf(it);
+      return { n: i + 1, tag: full.length > 6 ? full.slice(0, 5) + '…' : full, full };
+    });
+
+  // The answer an item carries, whichever field the parser chose.
+  readonly answerOf = (it: any): string =>
+    String(it?.answer || it?.answerLetter || 'ABCD'[it?.answerIndex] || '—');
+
+  // ── View sheet: read the whole key without touching the edit form ──
+  viewOpen = signal(false);
+  viewKey = signal<any>(null);
+
+  openView(key: any) { this.viewKey.set(key); this.viewOpen.set(true); }
+  closeView() { this.viewOpen.set(false); }
+  editFromView() {
+    const k = this.viewKey();
+    this.closeView();
+    if (k) this.openSheet(k);
+  }
+
+  // Rebuild editable text from a saved key so the edit sheet shows what is in
+  // it instead of an empty box: one `n. Q → A` line per item, or the letter
+  // string when every item is a plain letter.
+  readonly keyToText = (key: any): string => {
+    const items = key?.items || [];
+    if (key?.format === 'letters') {
+      const letters = items.map((it: any) => this.answerOf(it)).join('');
+      if (/^[A-Da-d]+$/.test(letters)) return letters;
+    }
+    return items.map((it: any, i: number) => {
+      const ans = this.answerOf(it);
+      return it.question ? `${i + 1}. ${it.question} → ${ans}` : `${i + 1}. ${ans}`;
+    }).join('\n');
+  };
+
+  readonly overflowOf = (key: any): number =>
+    Math.max(0, (key?.items?.length || 0) - this.stripCap);
+
+  // Straight into the Create tab with this key already picked.
+  buildQuiz(key: any) {
+    this.router.navigateByUrl(`/tabs/create?key=${encodeURIComponent(key.id)}`);
+  }
+
   async ionViewWillEnter() { await this.load(); }
   ngOnInit() { this.ionViewWillEnter(); }
 
@@ -46,7 +110,9 @@ export class KeysPage {
     this.editingId.set(key?.id || null);
     this.subject.set(key?.subject || '');
     this.title.set(key?.title || '');
-    this.paste.set('');
+    // Editing now starts from the key's own text, not a blank box — a title
+    // tweak no longer demands re-pasting everything, and Save stays enabled.
+    this.paste.set(key ? this.keyToText(key) : '');
     this.sheetOpen.set(true);
   }
 

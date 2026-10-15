@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { listClasses, saveClass, deleteClass, getActiveAccountId, getAccount } from '../../core/engine/storage.js';
 import { parseRoster } from '../../core/engine/roster.js';
+import { bannerTheme, bannerAvatar } from '../../shared/helpers.js';
 import { icon } from '../../shared/icons.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -43,6 +44,31 @@ export class ClassesPage {
   });
   readonly previewSkipped = computed(() => parseRoster(this.paste()).skipped);
   readonly totalStudents = computed(() => this.classes().reduce((s, c) => s + (c.students?.length || 0), 0));
+
+  // One clean meta line per tile: "Biology · 7 — A". Built in TS so the
+  // template never has to manage separators around missing fields.
+  readonly metaOf = (cls: any): string => {
+    const parts: string[] = [];
+    if (cls?.subject) parts.push(cls.subject);
+    const gs = [cls?.grade, cls?.section].filter(Boolean).join(' — ');
+    if (gs) parts.push(gs);
+    return parts.join(' · ');
+  };
+
+  // The roster at a glance: first names on the tile, the rest counted.
+  readonly studentsOf = (cls: any): { short: string; full: string }[] =>
+    (cls?.students || []).slice(0, 5).map((s: any) => {
+      const full = String(s.name || '');
+      const short = full.split(' ')[0] || full;
+      return { short, full };
+    });
+
+  readonly studentsOverflowOf = (cls: any): number => Math.max(0, (cls?.students?.length || 0) - 5);
+
+  // One shared implementation (helpers.js) so a class wears the same gradient
+  // on the Classes cards and the roster banner.
+  readonly themeOf = (cls: any): string => bannerTheme(cls);
+  readonly avatarOf = (cls: any): string => bannerAvatar(cls);
 
   async ionViewWillEnter() {
     if (!this.ui.account()) {
