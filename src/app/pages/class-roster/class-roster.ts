@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { getClass, listSheets, listQuizzes, saveClass } from '../../core/engine/storage.js';
 import { buildGradebook, isStudentSheet } from '../../core/engine/gradebook.js';
-import { parseRoster } from '../../core/engine/roster.js';
+import { diffRoster, parseRoster } from '../../core/engine/roster.js';
 import { fmtDate, scorePill, bannerTheme, bannerAvatar } from '../../shared/helpers.js';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
@@ -44,6 +44,9 @@ export class ClassRosterPage {
   missing = signal(false);
   expandedId = signal<string | null>(null);
   rosterOpen = signal(false);
+  // Replace rewrites the whole list (box prefilled); Add appends just the new
+  // names a teacher pastes or uploads — real classes arrive in batches.
+  rosterMode = signal<'replace' | 'add'>('replace');
   paste = signal('');
   private sheets = signal<any[]>([]);
   private quizzes = signal<any[]>([]);
@@ -174,13 +177,28 @@ export class ClassRosterPage {
   openRoster() {
     const cls = this.cls();
     if (!cls) return;
-    // Prefill with the current list so an edit is a tweak, not a re-entry.
-    this.paste.set((cls.students || []).map((s: any) => s.name).join('\n'));
+    this.setMode('replace');
     this.rosterOpen.set(true);
+  }
+
+  setMode(mode: 'replace' | 'add') {
+    this.rosterMode.set(mode);
+    // Replace starts from the current list so an edit is a tweak; Add starts
+    // from an empty box because only the new names go in it.
+    this.paste.set(mode === 'replace'
+      ? (this.cls()?.students || []).map((s: any) => s.name).join('\n')
+      : '');
   }
 
   closeRoster() { this.rosterOpen.set(false); }
   setPaste(value: string) { this.paste.set(value); }
+
+  // In Add mode the parse splits into genuinely new names and ones already on
+  // the roster (or repeated within the same paste) — the dupes are kept, never
+  // re-added, so a careless double paste can't create twin students.
+  readonly addPreview = computed(() => this.rosterMode() === 'add'
+    ? diffRoster(parseRoster(this.paste()).students, (this.cls()?.students || []).map((s: any) => s.name))
+    : { fresh: [], dupes: 0 });
 
   async onFile(ev: Event) {
     const input = ev.target as HTMLInputElement;
@@ -196,6 +214,34 @@ export class ClassRosterPage {
     const cls = this.cls();
     if (!cls) return;
     const parsed = parseRoster(this.paste());
+    if (this.rosterMode() === 'add') {
+      // Append only the names the roster doesn't have yet — existing students
+      // are untouched, so their sheet numbers and scan history stay put.
+      const { fresh, dupes } = this.addPreview();
+      if (!fresh.length) {
+        this.toast.toast(parsed.students.length ? 'Everyone listed is already on the roster' : 'Paste or upload at least one student name', true);
+        return;
+      }
+      const record = await saveClass({
+        id: cls.id,
+        name: cls.name,
+        grade: cls.grade,
+        section: cls.section,
+        subject: cls.subject,
+        students: [
+          ...(cls.students || []),
+          ...fresh.map((s: any) => ({
+            name: s.name,
+            grade: s.grade || cls.grade || '',
+            section: s.section || cls.section || '',
+          })),
+        ],
+      });
+      this.cls.set(record);
+      this.rosterOpen.set(false);
+      this.toast.toast(`${fresh.length} student${fresh.length === 1 ? '' : 's'} added to “${cls.name}”${dupes ? ` · ${dupes} already on the roster` : ''}`);
+      return;
+    }
     if (!parsed.students.length) {
       this.toast.toast('Paste or upload at least one student name', true);
       return;

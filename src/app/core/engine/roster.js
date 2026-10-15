@@ -28,6 +28,25 @@ export function parseRoster(text) {
   return { students, skipped }
 }
 
+const nameKey = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase()
+
+// Split a freshly parsed roster against names already on a class: `fresh` are
+// the genuinely new students (in order, with in-paste repeats collapsed so a
+// double paste can't create twin students), `dupes` counts every skipped
+// repeat — already on the roster, or listed twice in the same text.
+export function diffRoster(students, existingNames) {
+  const seen = new Set((existingNames || []).map(nameKey))
+  const fresh = []
+  let dupes = 0
+  for (const s of students || []) {
+    const key = nameKey(s?.name)
+    if (seen.has(key)) { dupes++; continue }
+    seen.add(key)
+    fresh.push(s)
+  }
+  return { fresh, dupes }
+}
+
 function isGrade(s) {
   return /^(g(rade)?\s*\.?\s*)?\d{1,2}$/i.test(s)
 }

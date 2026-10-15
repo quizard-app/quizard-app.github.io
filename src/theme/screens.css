@@ -2778,6 +2778,21 @@ button.roster-row.on { background: var(--accent-soft); }
 }
 .roster-edit:hover { background: rgba(255, 255, 255, 0.24); }
 .roster-edit svg { width: 15px; height: 15px; }
+
+/* Replace / Add segmented control in the edit-roster sheet */
+.roster-mode {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2);
+}
+.roster-mode button {
+  flex: 1; padding: 8px 10px; border: 0; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--text-faint);
+  font: inherit; font-size: 13px; font-weight: 700;
+}
+.roster-mode button.on {
+  background: var(--accent, #6c5ce7); color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
 @media (max-width: 560px) {
   .roster-banner { padding-right: 84px; }
   .roster-edit { right: 84px; padding: 6px 11px; font-size: 13px; }

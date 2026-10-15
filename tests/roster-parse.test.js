@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRoster } from '../src/app/core/engine/roster.js'
+import { parseRoster, diffRoster } from '../src/app/core/engine/roster.js'
 
 describe('parseRoster', () => {
   it('parses one name per line', () => {
@@ -47,5 +47,35 @@ describe('parseRoster', () => {
   it('handles empty input', () => {
     const { students } = parseRoster('')
     expect(students).toEqual([])
+  })
+})
+
+describe('diffRoster (Add-names mode)', () => {
+  it('keeps only names the roster does not have', () => {
+    const parsed = parseRoster('Ana Reyes\nNew Kid\nBen Cruz').students
+    const { fresh, dupes } = diffRoster(parsed, ['Ana Reyes', 'Ben Cruz', 'Cara Diaz'])
+    expect(fresh.map(s => s.name)).toEqual(['New Kid'])
+    expect(dupes).toBe(2)
+  })
+
+  it('collapses repeats inside the paste itself', () => {
+    const parsed = parseRoster('New Kid\nnew  kid\nNew Kid').students
+    const { fresh, dupes } = diffRoster(parsed, [])
+    expect(fresh).toHaveLength(1)
+    expect(dupes).toBe(2)
+  })
+
+  it('ignores case and extra spaces when matching', () => {
+    const parsed = parseRoster('  ANA   REYES ').students
+    const { fresh, dupes } = diffRoster(parsed, ['Ana Reyes'])
+    expect(fresh).toHaveLength(0)
+    expect(dupes).toBe(1)
+  })
+
+  it('passes everything through for an empty roster', () => {
+    const parsed = parseRoster('Juan\nMaria').students
+    const { fresh, dupes } = diffRoster(parsed, [])
+    expect(fresh).toEqual(parsed)
+    expect(dupes).toBe(0)
   })
 })

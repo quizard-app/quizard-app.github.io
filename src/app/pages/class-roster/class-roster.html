@@ -99,24 +99,41 @@
     @if (rosterOpen() && cls()) {
       <div class="org-overlay" (click)="closeRoster()">
         <div class="org-sheet" (click)="$event.stopPropagation()">
-          <h3>Edit roster — {{ cls().name }}</h3>
-          <textarea class="text-input roster-paste" rows="7" placeholder="Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+          <h3>{{ rosterMode() === 'add' ? 'Add students —' : 'Edit roster —' }} {{ cls().name }}</h3>
+          <div class="roster-mode" role="tablist">
+            <button type="button" [class.on]="rosterMode() === 'replace'" (click)="setMode('replace')" role="tab" [attr.aria-selected]="rosterMode() === 'replace'">Replace list</button>
+            <button type="button" [class.on]="rosterMode() === 'add'" (click)="setMode('add')" role="tab" [attr.aria-selected]="rosterMode() === 'add'">Add names</button>
+          </div>
+          <textarea class="text-input roster-paste" rows="7" [placeholder]="rosterMode() === 'add' ? 'One name per line — only new names are added.&#10;Juan Dela Cruz&#10;Maria Santos' : 'Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita'" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
           <label class="btn btn-secondary file-btn">
             <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
             <input type="file" accept=".txt,.csv,text/plain,text/csv" (change)="onFile($event)" hidden />
           </label>
-          @if (paste().trim()) {
-            <p class="parse-note">
-              {{ previewCount() }} student{{ previewCount() === 1 ? '' : 's' }} detected
-              @if (previewSkipped()) { · {{ previewSkipped() }} line{{ previewSkipped() === 1 ? '' : 's' }} skipped }
-            </p>
+          @if (rosterMode() === 'replace') {
+            @if (paste().trim()) {
+              <p class="parse-note">
+                {{ previewCount() }} student{{ previewCount() === 1 ? '' : 's' }} detected
+                @if (previewSkipped()) { · {{ previewSkipped() }} line{{ previewSkipped() === 1 ? '' : 's' }} skipped }
+              </p>
+            }
+          } @else {
+            @if (addPreview().fresh.length || addPreview().dupes) {
+              <p class="parse-note">
+                +{{ addPreview().fresh.length }} new student{{ addPreview().fresh.length === 1 ? '' : 's' }}
+                @if (addPreview().dupes) { · {{ addPreview().dupes }} already on the roster (skipped) }
+              </p>
+            }
           }
           <p class="faint" style="font-size:11.5px;margin:10px 0 0;text-align:center">
             Sheet numbers stay with students already on the roster, even ones you remove.
           </p>
           <div class="org-sheet-actions">
             <button class="btn btn-secondary" (click)="closeRoster()">Cancel</button>
-            <button class="btn btn-primary" [disabled]="!previewCount()" (click)="saveRoster()">Save roster</button>
+            @if (rosterMode() === 'replace') {
+              <button class="btn btn-primary" [disabled]="!previewCount()" (click)="saveRoster()">Save roster</button>
+            } @else {
+              <button class="btn btn-primary" [disabled]="!addPreview().fresh.length" (click)="saveRoster()">Add {{ addPreview().fresh.length }}</button>
+            }
           </div>
         </div>
       </div>
