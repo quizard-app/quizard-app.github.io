@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { mergeActivity } from '../src/app/shared/helpers.js'
 
-const now = Date.now()
+// Pinned to local noon so the day-grouping fixtures hold at any run time —
+// offsets from Date.now() cross midnight when tests run right after 00:00.
+const now = (() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d.getTime() })()
 const H = 3600000
 // newest-first, like listAttempts returns
 const attempts = [

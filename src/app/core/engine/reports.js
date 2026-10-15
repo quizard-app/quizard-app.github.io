@@ -47,6 +47,30 @@ const CSV_ESC = (v) => {
 }
 
 /**
+ * Score distribution across one class's checked sheets, in five fixed bands
+ * so the histogram never changes shape with the data.
+ * @param {{ percent?: number }[]} sheets
+ * @returns {{ letter: string, label: string, min: number, count: number }[]}
+ *   always 5 rows, A→F.
+ */
+export const DIST_BANDS = [
+  { letter: 'A', label: '90–100', min: 90 },
+  { letter: 'B', label: '80–89', min: 80 },
+  { letter: 'C', label: '70–79', min: 70 },
+  { letter: 'D', label: '60–69', min: 60 },
+  { letter: 'F', label: 'Below 60', min: 0 },
+]
+
+export function scoreDistribution(sheets) {
+  const rows = DIST_BANDS.map(b => ({ ...b, count: 0 }))
+  for (const s of sheets) {
+    const pct = Number(s.percent) || 0
+    rows.find(r => pct >= r.min).count++
+  }
+  return rows
+}
+
+/**
  * Per-section rollup of one class's checked sheets. Sheets with no section —
  * results saved before sections were recorded, or students the roster leaves
  * blank — are left out rather than bucketed under an empty heading.

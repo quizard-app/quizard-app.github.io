@@ -33,9 +33,11 @@ export const SHEET = {
   // QR clearance: the code must never touch the bubble columns or the marker
   // squares, or thresholding merges them into one blob (scan bug). It lives in
   // the frame's bottom band, under the right-hand column — the band is
-  // reserved in frameRect so the columns always end above it.
-  qrSize: 76, qrPadX: 28, qrPadY: 8,
-  qrBand: 94, // bottom band = QR + its caption + clearance
+  // reserved in frameRect so the columns always end above it. qrPadY holds the
+  // code clear of the frame's bottom edge so the student's name fits under it
+  // (qrCaption) while the code keeps its own 8pt quiet zone.
+  qrSize: 76, qrPadX: 28, qrPadY: 20,
+  qrBand: 106, // bottom band = QR + its caption line + clearance
 }
 
 // The frame is centered on the page — balanced margins like a proper OMR form.
@@ -125,6 +127,20 @@ export function qrRect(count) {
     x: f.x + f.w - SHEET.qrPadX - SHEET.qrSize,
     y: f.y + f.h - SHEET.qrPadY - SHEET.qrSize,
     size: SHEET.qrSize,
+  }
+}
+
+// The student's roster number and name, printed small in the band under the QR.
+// Same fact the code carries, in plain sight: a printed stack can be sorted and
+// handed out from the bottom of the page alone, without unfolding the header.
+// Right-aligned flush with the code so the two read as one block.
+export function qrCaption(count) {
+  const f = frameRect()
+  const q = qrRect(count)
+  return {
+    right: q.x + q.size,
+    baseline: f.y + f.h - SHEET.letterCap - 2.5,
+    maxWidth: q.x + q.size - (f.x + 6),
   }
 }
 
