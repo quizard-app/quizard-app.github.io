@@ -19,6 +19,24 @@ export function fmtDate(ts) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+// Classroom-style banner identity, shared by the Classes cards and the roster
+// banner so a class wears the same gradient everywhere it appears. The theme
+// is hashed from the id — deterministic, never changes. The avatar shows the
+// section ("A"), the mark teachers scan for, falling back to the name initial
+// when a class has no section yet.
+export function bannerTheme(cls) {
+  const id = String(cls?.id || cls?.name || '')
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return 'th-' + (h % 6)
+}
+
+export function bannerAvatar(cls) {
+  return (String(cls?.section || '').trim().charAt(0)
+    || String(cls?.name || '?').trim().charAt(0)
+    || '?').toUpperCase()
+}
+
 export function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }

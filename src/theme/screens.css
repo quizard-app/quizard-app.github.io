@@ -137,6 +137,123 @@
   .doc-actions { grid-column: 2; justify-content: flex-end; margin-top: 6px; }
 }
 
+/* ── Classes: banner cards, after Google Classroom ───────────────────────── */
+/* The reference: a 100px themed header carrying the name + section in white,
+   a circular initial overlapping the header's bottom edge, and a body with the
+   numbers and actions. Scoped with .class-grid so no other page moves. */
+.class-grid .doc-card { display: block; padding: 0; overflow: hidden; contain-intrinsic-size: auto 280px; }
+.cls-banner { position: relative; height: 100px; padding: 16px 96px 16px 18px; color: #fff; }
+.cls-banner.th-0, .scan-cls.th-0 { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+.cls-banner.th-1, .scan-cls.th-1 { background: linear-gradient(135deg, #0f766e, #115e59); }
+.cls-banner.th-2, .scan-cls.th-2 { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
+.cls-banner.th-3, .scan-cls.th-3 { background: linear-gradient(135deg, #be123c, #881337); }
+.cls-banner.th-4, .scan-cls.th-4 { background: linear-gradient(135deg, #b45309, #92400e); }
+.cls-banner.th-5, .scan-cls.th-5 { background: linear-gradient(135deg, #15803d, #166534); }
+.cls-title {
+  font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.cls-sub { font-size: 12.5px; font-weight: 500; margin-top: 4px; opacity: 0.9; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.cls-avatar {
+  position: absolute; right: 16px; top: 70px; width: 60px; height: 60px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #fff;
+  background: rgba(255, 255, 255, 0.22); border: 2px solid rgba(255, 255, 255, 0.9);
+}
+.cls-body { padding: 18px; }
+.cls-stats { display: flex; align-items: baseline; gap: 6px; }
+.cls-stats b { font-size: 22px; font-weight: 800; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.cls-stats span { font-size: 12px; font-weight: 600; color: var(--text-faint); }
+.cls-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.class-grid .doc-actions { margin-top: 14px; }
+.class-grid .doc-actions .btn-secondary { flex: 1; padding: 12px 14px; }
+
+@media (min-width: 900px) {
+  .class-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px; align-items: start;
+  }
+  .class-grid .doc-actions { justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+  .class-grid .doc-card { grid-template-columns: none; }
+  .class-grid .doc-actions { grid-column: auto; }
+}
+/* ── Answer keys: the card IS the key ────────────────────────────────────── */
+/* The card is a mini answer sheet: subject on top, then one numbered tile per
+   item laid out like the key row on a printed sheet — square for letters,
+   wider for word answers — and a footer with date + actions. Scoped with
+   .key-card so the other library pages keep their full-width rows. */
+.key-card { display: block; padding: 18px; }
+.key-name {
+  font-size: 16px; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.key-kit {
+  margin-top: 4px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint);
+}
+.key-strip {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; width: 100%;
+  cursor: pointer; text-align: left;
+  background: transparent; border: 0; padding: 0; font: inherit; color: inherit;
+}
+.key-strip:hover .ks-cell { border-color: var(--accent-border); }
+.ks-cell {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 34px; padding: 4px 7px 5px; border-radius: 8px;
+  background: var(--accent-soft); border: 1px solid var(--accent-border);
+}
+.ks-cell i {
+  font-style: normal; font-size: 8.5px; line-height: 1; opacity: 0.7;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.ks-cell b {
+  margin-top: 3px; font-family: var(--font-mono); font-size: 12px;
+  font-weight: 700; line-height: 1; color: var(--accent);
+}
+.ks-cell.more { background: transparent; border-style: dashed; color: var(--text-faint); }
+.ks-cell.more b { color: var(--text-faint); }
+.key-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.key-when {
+  flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.key-foot .doc-actions { margin: 0; }
+.key-foot .doc-actions .btn-secondary { flex: 1; }
+.key-chip {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; line-height: 1;
+  padding: 5px 8px; border-radius: var(--radius-pill); max-width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim);
+}
+.key-chip.more { background: transparent; border-style: dashed; color: var(--text-faint); }
+
+/* Three steps under the list, so a page holding one key explains itself instead
+   of leaving half the screen blank. */
+.key-steps {
+  list-style: none; margin: 26px 0 0; padding: 18px 20px; max-width: 720px;
+  display: grid; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.key-steps li {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; align-items: start;
+  font-size: 12.5px; line-height: 1.55; color: var(--text-dim);
+}
+.key-steps b { color: var(--text); font-weight: 700; }
+.ks-n {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent);
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 900px) {
+  .key-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px; align-items: start;
+  }
+}
+
 /* ── Import ── */
 .dropzone {
   border: 2px dashed var(--border-strong);
@@ -1023,24 +1140,23 @@ html[data-theme='dark'] .exam-card-lib .exam-card-cta { color: var(--accent); }
 .exam-entry:hover { background: var(--surface-hover); border-color: var(--accent-border); }
 .exam-entry:active { transform: scale(0.99); }
 
-/* Tab bar: gradient art tiles. Inactive tabs show the plain outline glyph;
-   the active tab raises a colorful tile with a solid glyph — the same
-   gradient language as the app's chips and headers. */
+/* Tab bar, per Material 3's navigation bar: the active tab raises an accent
+   pill behind its filled icon (expands from its centre when selected);
+   inactive tabs stay outline glyphs with quiet labels. */
+ion-tab-button { position: relative; }
 ion-tab-button .tab-tile {
-  display: none; width: 32px; height: 32px; border-radius: 11px;
-  align-items: center; justify-content: center; color: #fff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  display: none; place-items: center;
+  width: 60px; height: 30px; border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-strong);
+  margin-top: 2px;
 }
-ion-tab-button .tab-tile ion-icon { font-size: 18px; }
-.t-library { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
-.t-exams { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
-.t-add { background: linear-gradient(135deg, #6366f1, #06b6d4); }
-.t-progress { background: linear-gradient(135deg, #06b6d4, #10b981); }
-.t-settings { background: linear-gradient(135deg, #64748b, #334155); }
-ion-tab-button.tab-selected .tab-tile { display: flex; }
+ion-tab-button .tab-tile ion-icon { font-size: 19px; }
+ion-tab-button.tab-selected .tab-tile { display: grid; }
 ion-tab-button.tab-selected .tab-plain { display: none; }
-ion-tab-button .tab-plain { font-size: 23px; }
-/* six tabs: trim Ionic's native padding so every label fits on one line */
+ion-tab-button .tab-plain { font-size: 22px; }
+/* trim Ionic's native padding so every label fits on one line */
 ion-tab-button { --padding-start: 2px; --padding-end: 2px; min-width: 0 !important; }
 .exam-entry .exam-ico {
   width: 26px; height: 26px; border-radius: 8px;
@@ -1737,6 +1853,74 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .file-btn { position: relative; overflow: hidden; justify-content: center; margin-top: 10px; }
 .parse-note { font-size: 12.5px; color: var(--accent-strong); font-weight: 600; margin: 10px 0 0; text-align: center; }
 
+/* ── Create tab: guided wizard rail (Setup → Review → Save) ────────────────── */
+/* The GOV.UK/TurboTax step-tracker pattern: named steps instead of bare
+   numbers, completed steps check-marked and clickable, the current step filled.
+   One glance answers "where in the flow am I?" — the thing bare back buttons
+   can't say. */
+.wiz-rail { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 14px 20px 0; max-width: 1120px; margin-inline: auto; }
+.wstep { display: inline-flex; align-items: center; gap: 7px; padding: 4px 2px; border: none; background: none; color: var(--text-dim); font-size: 12.5px; font-weight: 600; border-radius: 8px; }
+.wstep-dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface-2); color: var(--text-dim); flex: none; }
+.wstep-dot svg { width: 12px; height: 12px; }
+.wstep.on { color: var(--accent-strong); }
+.wstep.on .wstep-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wstep.done { color: var(--text); }
+.wstep.done:not([disabled]) { cursor: pointer; }
+.wstep.done:not([disabled]):hover { color: var(--accent-strong); }
+.wstep.done .wstep-dot { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+.wstep-line { width: 26px; height: 2px; border-radius: 2px; background: var(--border); flex: none; }
+.wstep-line.done { background: var(--accent); }
+
+@media (min-width: 1100px) {
+  .wiz-rail { padding: 18px 0 0; }
+}
+
+/* ── Create home: a board — New-quiz tile first, saved quizzes as cards ── */
+/* Notion/Quizizz pattern: the CTA is the first tile of the grid, not a
+   floating button, so the page fills in as the library grows. Quiz cards
+   reuse .cls-banner gradients + .key-chip for the one-app look. */
+.create-grid { display: flex; flex-direction: column; gap: 10px; }
+.cq-new {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 22px 16px; border-radius: 14px; cursor: pointer;
+  border: 1.5px dashed var(--accent-border); background: transparent;
+  color: var(--accent-strong); transition: background 0.15s, border-color 0.15s;
+}
+.cq-new:hover, .cq-new:focus-visible { background: var(--accent-soft); border-color: var(--accent-strong); }
+.cq-new-ico {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.cq-new-ico svg { width: 19px; height: 19px; }
+.cq-new-title { font-size: 15px; font-weight: 700; }
+.cq-new-sub { font-size: 11.5px; font-weight: 500; color: var(--text-dim); }
+.cq-card { display: block; padding: 0; overflow: hidden; }
+.cq-banner { height: 62px; padding: 10px 16px; }
+.cq-banner .cls-title { font-size: 16.5px; }
+.cq-banner .cls-sub { margin-top: 2px; font-size: 12px; }
+.cq-body { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 11px 14px; }
+.cq-body .key-chip.src { color: var(--text-dim); }
+/* "N graded" — papers scanned against this quiz: green when it's live */
+.cq-body .key-chip.graded { color: #166534; background: rgba(22, 101, 52, .08); border-color: rgba(22, 101, 52, .25); }
+/* quiz detail page: back pill + read-only key strip (button-styled .key-strip without the pointer) */
+.qf-back {
+  display: inline-flex; align-items: center; gap: 2px; align-self: flex-start;
+  margin: 0 0 6px; padding: 5px 12px 5px 8px; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface-2); color: var(--text-faint);
+  font-size: 12.5px; font-family: inherit; cursor: pointer;
+}
+.qf-back:hover { color: var(--text); border-color: var(--accent-border); }
+.qf-back svg { width: 14px; height: 14px; }
+.qk-strip { cursor: default; }
+.cq-date { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-left: 2px; }
+.cq-body .chev { margin-left: auto; color: var(--text-faint); display: inline-flex; }
+.cq-body .chev svg { width: 16px; height: 16px; }
+
+@media (min-width: 900px) {
+  .create-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start; }
+  .cq-new { min-height: 168px; justify-content: center; }
+}
+
 /* ── Create tab: mode picker, review cards, exports ── */
 .mode-list { display: grid; gap: 8px; margin-bottom: 18px; }
 .mode-card {
@@ -1747,14 +1931,44 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 }
 .mode-card.on { border-color: var(--accent); background: var(--accent-soft); }
 .mode-title { font-weight: 700; font-size: 14px; }
+/* The input→output strip: what you paste → what the AI writes. The one-glance
+   difference between the two paste-based modes. */
+.mode-io {
+  align-self: flex-start; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-dim);
+}
+.mode-card.on .mode-io { border-color: var(--accent-border); color: var(--accent-strong); }
 .mode-hint { font-size: 12px; color: var(--text-dim); }
-.count-row { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+.count-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
 .count-chip {
   padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13px;
   background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
 }
 .count-chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
-.count-input { width: 76px; text-align: center; }
+/* One control, any number: −/+ steps of 5, or type 1–50 straight into the box.
+   The chip presets stay to the right as one-tap shortcuts. */
+.count-stepper {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); overflow: hidden;
+}
+.count-stepper .count-input {
+  width: 64px; border: 0; background: transparent; text-align: center;
+  font-weight: 700; -moz-appearance: textfield; appearance: textfield;
+}
+.count-stepper .count-input::-webkit-outer-spin-button,
+.count-stepper .count-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.count-step {
+  width: 40px; display: grid; place-items: center;
+  background: var(--surface-2); border: 0; color: var(--text);
+  font-size: 17px; line-height: 1; cursor: pointer;
+}
+.count-step:first-child { border-right: 1px solid var(--border); }
+.count-step:last-child { border-left: 1px solid var(--border); }
+.count-step:hover { background: var(--accent-soft); color: var(--accent-strong); }
+.count-hint { font-size: 11.5px; color: var(--text-faint); }
+.count-presets { display: inline-flex; gap: 6px; margin-left: auto; }
 .file-clear { display: block; margin: 4px auto 8px; font-size: 11.5px; color: var(--text-faint); background: none; border: none; cursor: pointer; text-decoration: underline; }
 .gen-btn { width: 100%; justify-content: center; margin: 14px 0 6px; padding: 13px; font-size: 14.5px; }
 .gen-btn:disabled { opacity: .55; }
@@ -1786,12 +2000,53 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .copies-row { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 12px; font-size: 12.5px; }
 
 /* ── Check papers: session bar, camera, answer grid ── */
+/* Setup: class cards wear the same banner themes as the Classes page, so a
+   pile is findable by color at a glance even with a screenful of classes. */
+.scan-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 900px) {
+  .scan-grid { grid-template-columns: repeat(2, 1fr); }
+}
+button.scan-cls {
+  position: relative; display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  padding: 14px 44px 14px 16px; border: 0; border-radius: 14px; cursor: pointer;
+  color: #fff; text-align: left; font: inherit;
+}
+.scan-cls-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.scan-cls-sub { font-size: 12px; font-weight: 500; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.scan-cls-badge {
+  position: absolute; right: 12px; top: 12px; padding: 3px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3);
+}
+button.scan-cls.on { outline: 3px solid var(--accent); outline-offset: 2px; }
+button.scan-cls:not(.on) { opacity: 0.92; }
+button.scan-cls:not(.on):hover { opacity: 1; }
+.picker-btn .quiz-auto { display: inline-flex; align-items: center; gap: 7px; color: var(--good, var(--accent-strong)); font-weight: 600; }
+.picker-btn .quiz-auto svg { width: 15px; height: 15px; }
+.picker-group {
+  padding: 10px 14px 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border);
+}
+.roster-name svg { width: 14px; height: 14px; vertical-align: -2px; }
+/* the dev-only scan tester: a dashed panel that only renders on localhost */
+.devscan { margin-top: 18px; padding: 13px 14px 14px; border: 1px dashed var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.devscan-head { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--text-dim); }
+.devscan-badge { padding: 2px 6px; border-radius: 5px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .06em; color: var(--warn); background: var(--warn-bg, var(--accent-soft)); }
+.devscan-hint { margin: 6px 0 12px; font-size: 11.5px; line-height: 1.45; color: var(--text-faint); }
+.devscan-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
+.devscan-label { font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
+.devscan-select { width: 100%; padding: 9px 10px; font-size: 13px; }
+.devscan-range { width: 100%; accent-color: var(--accent); }
+.devscan-actions { display: flex; gap: 8px; align-items: center; }
+.devscan-btn { flex: 1; justify-content: center; padding: 11px; font-size: 13px; }
+.devscan-btn:disabled { opacity: .55; }
 .session-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .session-bar .btn { padding: 7px 12px; font-size: 12px; }
-.session-list { margin-bottom: 14px; }
-.session-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px; border-bottom: 1px solid var(--border); }
-.session-row:last-child { border-bottom: none; }
-.session-name { font-size: 13px; font-weight: 600; }
+/* Score popup: the sheet's result, shown the moment the scan is read back. */
+.score-pop { text-align: center; }
+.score-pop-name { font-size: 14px; font-weight: 700; margin: 0; }
+.score-pop-pct { font-size: 46px; line-height: 1.1; margin: 6px 0 2px; }
+.score-pop-sub { font-size: 12.5px; color: var(--text-dim); margin: 0 0 16px; }
+.score-pop-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .camera-view { width: 100%; max-width: 420px; display: block; margin: 0 auto 12px; border-radius: var(--radius-md); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
 .scan-thumb { width: 72px; height: 96px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); flex: none; }
 .answer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; }
@@ -1816,8 +2071,72 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .weak-rate.bad { color: var(--bad, #b91c1c); }
 .weak-rate.warn { color: var(--warn, #b45309); }
 .weak-rate.dim { color: var(--text-faint); }
+
+/* Every question as a heat strip, not a list — one tile per item, colored by
+   how many students missed it, so the shape of a quiz reads at a glance. */
+.q-heat { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
+.q-heat-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 8px 4px 7px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.q-heat-cell.ok { border-color: rgba(21, 128, 61, 0.35); background: rgba(21, 128, 61, 0.10); }
+.q-heat-cell.ok .q-heat-pct { color: #15803d; }
+.q-heat-cell.warn { border-color: rgba(180, 83, 9, 0.4); background: rgba(180, 83, 9, 0.12); }
+.q-heat-cell.warn .q-heat-pct { color: var(--warn, #b45309); }
+.q-heat-cell.bad { border-color: rgba(190, 18, 60, 0.45); background: rgba(190, 18, 60, 0.13); }
+.q-heat-cell.bad .q-heat-pct { color: var(--bad, #be123c); }
+.q-heat-n { font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.q-heat-pct { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; }
+
+/* Quiz filter pills on the Results class view — one per quiz the class has
+   checked; the whole page's numbers scope to the selected pill. */
+.quiz-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+button.qf-pill {
+  padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px;
+  font-weight: 600; cursor: pointer; max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+button.qf-pill .faint { font-weight: 500; }
+button.qf-pill.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong, var(--accent)); }
+
+/* By section as labeled bars — one row per section, width = section average. */
+.sect-rows { display: flex; flex-direction: column; gap: 8px; }
+.sect-row { display: grid; grid-template-columns: 110px 1fr 44px; gap: 10px; align-items: center; }
+.sect-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sect-track { height: 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.sect-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-strong, var(--accent))); transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.sect-avg { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; text-align: right; }
+.sect-avg.bad { color: var(--bad, #b91c1c); }
+.sect-avg.warn { color: var(--warn, #b45309); }
+.sect-avg.dim { color: var(--text-faint); }
+@media (max-width: 480px) {
+  .sect-row { grid-template-columns: 84px 1fr 44px; }
+}
 .chev { color: var(--text-faint); display: inline-flex; }
 .chev svg { width: 16px; height: 16px; }
+
+/* Results tab: score-distribution histogram (A–F bands, fixed shape) */
+.dist-chart {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  padding: 16px 14px 12px; border: 1px solid var(--border);
+  border-radius: 14px; background: var(--surface-2, rgba(127,127,127,0.06));
+}
+.dist-col { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.dist-count {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text);
+  min-height: 15px; font-variant-numeric: tabular-nums;
+}
+.dist-track { height: 84px; width: 100%; max-width: 44px; display: flex; align-items: flex-end; }
+.dist-bar { width: 100%; min-height: 3px; border-radius: 6px 6px 2px 2px; transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.dist-bar.a { background: linear-gradient(180deg, #22c55e, #15803d); }
+.dist-bar.b { background: linear-gradient(180deg, #14b8a6, #0f766e); }
+.dist-bar.c { background: linear-gradient(180deg, #f59e0b, #b45309); }
+.dist-bar.d { background: linear-gradient(180deg, #f97316, #c2410c); }
+.dist-bar.f { background: linear-gradient(180deg, #ef4444, #b91c1c); }
+.dist-letter { font-size: 12px; font-weight: 800; color: var(--text); line-height: 1; }
+.dist-range { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-faint); white-space: nowrap; }
 @keyframes markIn {
   from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
   to { opacity: 1; transform: scale(1) rotate(0); }
@@ -2258,8 +2577,8 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
   .rev-screen, .res-screen, .hist-screen, .set-screen, .dd-screen,
   .ex-screen, .ec-screen, .setup-screen, .imp-screen { max-width: 880px; margin: 0 auto; }
   .lib-screen { max-width: none; }
-  /* the fixed docked nav becomes a floating pill on desktop */
-  .screen { padding-bottom: 112px; }
+  /* the floating-pill tab bar's bottom clearance lives in components.css beside
+     the base .screen rule — this file loads first, so it cannot override it */
 }
 
 /* ── Library bulk organize (select mode, folders) ── */
@@ -2343,6 +2662,22 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .org-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .org-row-count { font-size: 12px; color: var(--text-faint); font-weight: 600; font-variant-numeric: tabular-nums; }
 .org-divider { margin: 12px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); text-align: center; }
+/* ── View key sheet: the whole key, every answer, nothing truncated ── */
+.key-view-sub { font-size: 12.5px; margin: 2px 0 10px; }
+.key-view-list {
+  max-height: 44vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 6px; padding-right: 2px;
+}
+.key-view-row {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-2); font-size: 13.5px; line-height: 1.4; word-break: break-word;
+}
+.key-view-n { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-strong); min-width: 20px; text-align: right; flex: none; }
+.key-view-main { color: var(--text); }
+.key-view-main b { color: var(--text); }
+.org-sheet .org-sheet-actions { flex-wrap: wrap; }
+
 .org-sheet-actions { display: flex; gap: 8px; margin-top: 14px; }
 .org-sheet-actions .btn { flex: 1; }
 
@@ -2401,12 +2736,134 @@ button.roster-row.on { background: var(--accent-soft); }
 .roster-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .roster-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .roster-chips .score-pill { font-size: 10px; padding: 2px 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.roster-norec { font-size: 10.5px; color: var(--text-faint); }
+.roster-norec { font-size: 12px; color: var(--text-faint); }
 .roster-caret { color: var(--text-faint); flex: none; display: flex; transition: transform .15s ease; }
 .roster-caret.open { transform: rotate(90deg); }
 .roster-recs { padding: 6px 14px 12px 52px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border-top: 1px solid var(--border); }
-.roster-rec { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.roster-rec { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13.5px; }
 .roster-rec-quiz { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.roster-rec-date { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); }
-.roster-no { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-strong); width: 26px; flex: none; text-align: right; }
-.roster-name { font-size: 13.5px; font-weight: 600; }
+.roster-rec-date { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
+/* Per-number answer list inside the expanded attempt: green picked-right,
+   red picked-wrong with the keyed letter after the arrow, grey left blank. */
+.ans-strip { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 8px; }
+.ans-cell {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); font-size: 13px; font-weight: 700;
+}
+.ans-cell i { font-style: normal; font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-faint); }
+.ans-cell em { font-style: normal; font-size: 11px; font-weight: 600; color: #16a34a; }
+.ans-cell.ok { border-color: rgba(22, 163, 74, 0.4); color: #16a34a; background: rgba(22, 163, 74, 0.08); }
+.ans-cell.bad { border-color: rgba(185, 28, 28, 0.45); color: #dc2626; background: rgba(185, 28, 28, 0.08); }
+.ans-cell.blank { color: var(--text-faint); }
+.roster-no { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent-strong); width: 26px; flex: none; text-align: right; }
+.roster-name { font-size: 14.5px; font-weight: 600; }
+
+/* ── Gradebook: students down, quizzes across, latest score in each cell ── */
+/* ── Roster banner: same gradient the class wears on the Classes page ───── */
+/* .roster-banner extends the shared .cls-banner rules (gradients, geometry).
+   Page-wide banner, so the avatar sits fully inside the band instead of
+   straddling the edge into the gradebook, and Edit roster lives top-right
+   where Classroom keeps its banner actions. */
+.roster-banner { margin-bottom: 22px; border-radius: 16px; }
+.roster-banner .cls-avatar { top: 20px; }
+/* readability: banner sub + edit pill carry real information, keep them at body size */
+.roster-banner .cls-sub { font-size: 14px; }
+.roster-edit {
+  position: absolute; top: 14px; right: 90px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff; font: inherit; font-size: 13.5px; font-weight: 700;
+}
+.roster-edit:hover { background: rgba(255, 255, 255, 0.24); }
+.roster-edit svg { width: 15px; height: 15px; }
+@media (max-width: 560px) {
+  .roster-banner { padding-right: 84px; }
+  .roster-edit { right: 84px; padding: 6px 11px; font-size: 13px; }
+}
+
+.gb-wrap {
+  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); overflow-x: auto;
+  max-width: 720px; margin: 0 auto;
+  box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+.gb-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 14px; }
+.gb-table th, .gb-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.gb-table tbody tr:last-child > * { border-bottom: none; }
+/* the top row is its own band, rounded with the card it sits on */
+.gb-table thead th {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.gb-table thead th:first-child { border-top-left-radius: 16px; }
+.gb-table thead th:last-child { border-top-right-radius: 16px; }
+/* breathing room on hover, same surface language as every other card list */
+.gb-row { transition: background 0.15s ease; }
+.gb-row:hover .gb-who, .gb-row:hover .gb-cell { background: var(--surface-hover); }
+/* The student column stays put while the quiz columns scroll sideways, so it
+   owns the hard rule between the two kinds of column: names on the left, marks
+   to the right of it — and a soft shadow so marks tuck under it when scrolled. */
+.gb-who {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--surface); text-align: left; width: 172px; max-width: 250px;
+  border-right: 2px solid var(--border-strong);
+  box-shadow: 7px 0 9px -9px rgba(0, 0, 0, 0.45);
+}
+.gb-table thead .gb-who { color: var(--text); text-align: left; }
+.gb-who-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: transparent; border: 0; padding: 0; font: inherit; color: var(--text);
+  cursor: pointer; text-align: left;
+}
+.gb-name { font-size: 14.5px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* one lane per quiz, so a row of marks reads across as columns */
+.gb-quiz, .gb-cell { border-left: 1px solid var(--border); }
+.gb-who + .gb-quiz, .gb-who + .gb-cell { border-left: none; }
+.gb-quiz { font-size: 11.5px; font-weight: 700; color: var(--text-dim); cursor: help; }
+/* one lane per quiz and nothing else: with a single quiz that lane is wide,
+   with six they sit side by side — but a column only exists when a quiz does */
+.gb-cell { min-width: 92px; }
+/* inside the 1120px library column a 720px grid floats alone; stretch to the
+   app's wide reading column so the board reads like Classroom's grades view */
+@media (min-width: 1100px) {
+  .gb-wrap { max-width: 880px; }
+}
+.gb-cell .score-pill { font-size: 12px; padding: 3px 10px; }
+.gb-none { color: var(--text-faint); }
+.gb-detail { padding: 0; }
+.gb-detail .roster-recs { padding: 8px 12px; text-align: left; }
+/* the detail row is as wide as the whole grid now, so keep its one line compact
+   instead of flinging the score across the empty lanes */
+.gb-detail .roster-rec { max-width: 420px; }
+
+/* Phones: a 172px name column is over half of a 360px screen, and 36px rows are
+   under the touch-target floor. Narrow the pinned lane, tighten the padding and
+   raise the row height so more quizzes fit before the grid has to scroll. */
+@media (max-width: 560px) {
+  .gb-table { font-size: 13px; }
+  /* the tap target is the whole student cell, so the row height comes from the
+     button rather than from padding around it */
+  .gb-table th, .gb-table td { padding: 0 8px; }
+  .gb-table thead th { padding-top: 10px; padding-bottom: 10px; font-size: 10.5px; letter-spacing: 0.03em; }
+  .gb-who { width: 150px; max-width: 150px; }
+  .gb-who-btn { min-height: 46px; gap: 6px; }
+  .gb-name { font-size: 13.5px; }
+  .gb-cell { min-width: 76px; }
+  .gb-cell .score-pill { font-size: 11px; padding: 3px 8px; }
+  /* the whole width is precious here, so the detail line uses all of it */
+  .gb-detail .roster-rec { max-width: none; }
+  .gb-detail .roster-recs { padding: 8px 10px; }
+  .roster-no { width: 22px; }
+}
+
+/* Small phones: keep the name legible but hand the marks the room. */
+@media (max-width: 380px) {
+  .gb-who { width: 140px; max-width: 140px; }
+  .gb-cell { min-width: 68px; }
+  .gb-name { font-size: 13px; }
+}

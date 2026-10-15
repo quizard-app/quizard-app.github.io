@@ -1,14 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { Location } from '@angular/common';
 import { IonContent } from '@ionic/angular';
 import { listSheets, listClasses, listQuizzes, getQuiz, type SheetResult } from '../../core/engine/storage.js';
-import { itemAnalysis, weakestItems, resultsCsv, sectionBreakdown } from '../../core/engine/reports.js';
-import { exportClassReportPdf } from '../../core/engine/export.js';
+import { itemAnalysis, weakestItems, resultsCsv, sectionBreakdown, scoreDistribution } from '../../core/engine/reports.js';
+import { exportClassReportPdf, exportReviewPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
-import { fmtDate } from '../../shared/helpers.js';
+import { fmtDate, bannerTheme } from '../../shared/helpers.js';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
-import { ConfirmService } from '../../core/services/confirm.service';
 import { ByokService } from '../../core/services/byok.service';
 
 @Component({
@@ -21,14 +21,35 @@ export class ReportsPage {
   ui = inject(UiStateService);
   readonly byok = inject(ByokService);
   private toast = inject(ToastService);
-  private confirm = inject(ConfirmService);
+  private location = inject(Location);
+
+  // Results isn't a tab, so the overview needs its own way out — step back to
+  // wherever the teacher came from (create, a roster), or classes as a floor.
+  goBack() {
+    if (history.length > 1) this.location.back();
+    else this.router.navigateByUrl('/tabs/classes');
+  }
 
   sheets = signal<SheetResult[]>([]);
   classes = signal<any[]>([]);
+  quizzes = signal<any[]>([]);
   selectedClassId = signal<string | null>(null);
-  selectedQuizId = computed(() => this.classSheets()[0]?.quizId ?? null);
+  // A class view is scoped to ONE quiz — a pill row switches when a class has
+  // checked sheets from more than one quiz, so numbers never mix papers.
+  pickedQuizId = signal<string | null>(null);
 
   readonly dateOf = fmtDate;
+  // Class tiles on the overview wear the same hashed gradients as the
+  // Classes/Keys/Create boards — one visual language across the app.
+  readonly bannerTheme = bannerTheme;
+
+  readonly classSub = (cls: any): string => {
+    const parts: string[] = [];
+    if (cls?.subject) parts.push(cls.subject);
+    const gs = [cls?.grade, cls?.section].filter(Boolean).join(' — ');
+    if (gs) parts.push(gs);
+    return parts.join(' · ');
+  };
 
   classAvgOf(classId: string) {
     const list = this.sheets().filter(s => s.classId === classId);
@@ -37,54 +58,110 @@ export class ReportsPage {
 
   async ionViewWillEnter() {
     await this.refresh();
+    // Landing from a quiz's detail page (?quiz=): open that quiz's class view
+    // with its pill already selected.
+    const qm = /[?&]quiz=([A-Za-z0-9-]+)/.exec(this.router.url || '');
+    if (!qm) return;
+    const row = this.sheets().find(s => s.quizId === qm[1]);
+    if (!row) return;
+    if (this.selectedClassId() !== row.classId) await this.openClass(row.classId);
+    this.pickedQuizId.set(qm[1]);
+    void getQuiz(qm[1]).then(q => this.quiz.set(q));
   }
 
   async refresh() {
-    const [sheets, classes] = await Promise.all([listSheets(), listClasses()]);
+    const [sheets, classes, quizzes] = await Promise.all([listSheets(), listClasses(), listQuizzes()]);
     this.sheets.set(sheets);
+    this.quizzes.set(quizzes);
     // classes that have checked sheets, in check order
     const withSheets = classes.filter(c => sheets.some(s => s.classId === c.id));
     this.classes.set(withSheets);
     if (this.selectedClassId() && !withSheets.some(c => c.id === this.selectedClassId())) {
       this.selectedClassId.set(null);
+      this.pickedQuizId.set(null);
     }
+    // keep the quiz filter pointing at a quiz the class actually has
+    const selId = this.selectedClassId();
+    if (selId) {
+      const ids = this.quizIdsOf(selId);
+      if (!ids.includes(this.pickedQuizId() || '')) this.pickedQuizId.set(ids[0] || null);
+      this.quiz.set(this.pickedQuizId() ? await getQuiz(this.pickedQuizId()!) : null);
+    }
+  }
+
+  private quizIdsOf(classId: string): string[] {
+    return [...new Set(this.sheets().filter(s => s.classId === classId).map(s => s.quizId))];
+  }
+
+  // The quizzes a class has checked, as filter pills — every quizId present in
+  // its saved sheets, labeled from the quiz record.
+  readonly quizOptions = computed(() => {
+    const cid = this.selectedClassId();
+    if (!cid) return [];
+    return this.quizIdsOf(cid).map(id => {
+      const q = this.quizzes().find(x => x.id === id);
+      return {
+        id,
+        label: q ? `${q.subject || 'Quiz'}${q.title ? ' — ' + q.title : ''}` : 'Quiz',
+        items: q?.items?.length || 0,
+      };
+    });
+  });
+
+  setQuizFilter(id: string) {
+    this.pickedQuizId.set(id);
+    void getQuiz(id).then(q => this.quiz.set(q));
   }
 
   readonly selectedClass = computed(() => this.classes().find(c => c.id === this.selectedClassId()) || null);
   readonly classSheets = computed(() =>
     this.sheets().filter(s => s.classId === this.selectedClassId()));
+  // The one quiz the view is scoped to — every stat, chart, and export below
+  // reads this, so a second quiz's papers never blend into the numbers.
+  readonly activeSheets = computed(() =>
+    this.classSheets().filter(s => !this.pickedQuizId() || s.quizId === this.pickedQuizId()));
   readonly classAvg = computed(() => {
-    const s = this.classSheets();
+    const s = this.activeSheets();
     return s.length ? Math.round(s.reduce((sum, x) => sum + x.percent, 0) / s.length) : 0;
   });
-  readonly best = computed(() => this.classSheets().slice().sort((a, b) => b.percent - a.percent)[0] || null);
-  readonly hardest = computed(() => this.classSheets().slice().sort((a, b) => a.percent - b.percent)[0] || null);
+  readonly best = computed(() => this.activeSheets().slice().sort((a, b) => b.percent - a.percent)[0] || null);
+  readonly hardest = computed(() => this.activeSheets().slice().sort((a, b) => a.percent - b.percent)[0] || null);
 
   readonly quiz = signal<any>(null);
   readonly analysis = computed(() => {
     const q = this.quiz();
     if (!q) return [];
-    return itemAnalysis(this.classSheets(), q.items);
+    return itemAnalysis(this.activeSheets(), q.items);
   });
   readonly weak = computed(() => {
     const q = this.quiz();
     if (!q) return [];
-    return weakestItems(this.classSheets(), q.items, 5);
+    return weakestItems(this.activeSheets(), q.items, 5);
   });
-  readonly sections = computed(() => sectionBreakdown(this.classSheets()));
+  readonly sections = computed(() => sectionBreakdown(this.activeSheets()));
+  readonly distribution = computed(() => scoreDistribution(this.activeSheets()));
+
+  // Bar height for the distribution histogram, scaled to the busiest band so
+  // a small class stretches its chart the same way a big one does.
+  distHeight(d: { count: number }) {
+    const counts = this.distribution().map(x => x.count);
+    const max = Math.max(...counts, 1);
+    return d.count ? Math.max(10, Math.round((d.count / max) * 100)) : 0;
+  }
 
   async openClass(id: string) {
     this.selectedClassId.set(id);
-    const quizId = this.sheets().find(s => s.classId === id)?.quizId;
+    const quizId = this.sheets().find(s => s.classId === id)?.quizId || null;
+    this.pickedQuizId.set(quizId);
     this.quiz.set(quizId ? await getQuiz(quizId) : null);
   }
 
-  backToOverview() { this.selectedClassId.set(null); this.quiz.set(null); }
+  backToOverview() { this.selectedClassId.set(null); this.quiz.set(null); this.pickedQuizId.set(null); }
 
   async exportCsv() {
     const quiz = this.quiz();
     if (!quiz) return;
-    const csv = resultsCsv(this.classSheets(), quiz.items);
+    const csv = resultsCsv(this.activeSheets(), quiz.items);
     this.download(`quizard-results-${slug(this.selectedClass()?.name)}.csv`, csv, 'text/csv');
     this.toast.toast('CSV downloaded ✓');
   }
@@ -92,17 +169,16 @@ export class ReportsPage {
   async exportPdf() {
     const cls = this.selectedClass(), quiz = this.quiz();
     if (!cls || !quiz) return;
-    await exportClassReportPdf(cls, quiz, this.classSheets(), this.analysis());
+    await exportClassReportPdf(cls, quiz, this.activeSheets(), this.analysis());
     this.toast.toast('Report PDF downloaded ✓');
   }
 
-  async removeSheet(s: SheetResult) {
-    if (!await this.confirm.confirm(`Remove ${s.studentName}'s result?`, 'The sheet scan will be deleted.', 'Remove')) return;
-    const { deleteSheet } = await import('../../core/engine/storage.js');
-    await deleteSheet(s.id);
-    await this.refresh();
-    if (this.selectedClassId()) await this.openClass(this.selectedClassId()!);
-    this.toast.toast('Result removed');
+  // Per-student answer review: every option, the pick and the key, one page each.
+  async exportReview() {
+    const quiz = this.quiz();
+    if (!quiz) return;
+    await exportReviewPdf(quiz, this.activeSheets());
+    this.toast.toast('Answer review PDF downloaded ✓');
   }
 
   private download(filename: string, content: string, mime: string) {

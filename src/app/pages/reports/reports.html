@@ -1,6 +1,9 @@
 <ion-content [fullscreen]="true">
   <header class="app-header">
     <div class="brand">
+      @if (!selectedClass()) {
+        <button class="icon-btn" aria-label="Back" (click)="goBack()" [innerHTML]="'chevronLeft' | ico"></button>
+      }
       @if (selectedClass()) {
         <button class="icon-btn" (click)="backToOverview()" aria-label="Back to results" [innerHTML]="'chevronLeft' | ico"></button>
       }
@@ -30,18 +33,19 @@
           <p>{{ sheets().length }} paper{{ sheets().length === 1 ? '' : 's' }} checked across {{ classes().length }} class{{ classes().length === 1 ? '' : 'es' }}</p>
         </div>
       </div>
-      <div class="doc-list">
+      <div class="section-title">Pick a class</div>
+      <div class="create-grid">
         @for (cls of classes(); track cls.id) {
-          <div class="doc-card" (click)="openClass(cls.id)" data-tooltip="Open class results">
-            <div class="doc-icon folder" [innerHTML]="'users' | ico"></div>
-            <div class="doc-info">
-              <div class="doc-name">{{ cls.name }}</div>
-              <div class="doc-meta">
-                <span>{{ sheets().filter(s => s.classId === cls.id).length }} checked</span>·
-                <span>avg {{ classAvgOf(cls.id) }}%</span>
-              </div>
+          <div class="doc-card cq-card" (click)="openClass(cls.id)" data-tooltip="Open class results">
+            <div class="cls-banner cq-banner {{ bannerTheme(cls.id) }}">
+              <div class="cls-title">{{ cls.name }}</div>
+              @if (classSub(cls)) { <div class="cls-sub">{{ classSub(cls) }}</div> }
             </div>
-            <div class="doc-actions"><span class="chev" [innerHTML]="'chevronRight' | ico"></span></div>
+            <div class="cq-body">
+              <span class="key-chip">{{ sheets().filter(s => s.classId === cls.id).length }} checked</span>
+              <span class="key-chip src">avg {{ classAvgOf(cls.id) }}%</span>
+              <span class="chev" [innerHTML]="'chevronRight' | ico"></span>
+            </div>
           </div>
         }
       </div>
@@ -52,9 +56,19 @@
         <div class="hero-ico" [innerHTML]="'users' | ico"></div>
         <div>
           <h1>{{ selectedClass()?.name }}</h1>
-          <p>{{ classSheets().length }} checked · class average {{ classAvg() }}%</p>
+          <p>{{ activeSheets().length }} checked · average {{ classAvg() }}%{{ quizOptions().length > 1 ? ' · this quiz' : '' }}</p>
         </div>
       </div>
+
+      @if (quizOptions().length > 1) {
+        <div class="quiz-filter" role="tablist" aria-label="Choose which quiz's results to show">
+          @for (q of quizOptions(); track q.id) {
+            <button type="button" class="qf-pill" [class.on]="pickedQuizId() === q.id" [attr.aria-pressed]="pickedQuizId() === q.id" (click)="setQuizFilter(q.id)">
+              {{ q.label }} <span class="faint">· {{ q.items }}</span>
+            </button>
+          }
+        </div>
+      }
 
       <div class="stats-row">
         <div class="stat"><div class="num">{{ classAvg() }}%</div><div class="lbl">Average</div></div>
@@ -77,50 +91,48 @@
 
       @if (sections().length) {
         <div class="section-title">By section</div>
-        @for (s of sections(); track s.section) {
-          <div class="weak-row">
-            <span class="qnum">{{ s.count }}</span>
-            <span class="weak-q">{{ s.section }} — {{ s.count }} checked</span>
-            <span class="weak-rate {{ s.avg >= 80 ? 'dim' : s.avg >= 50 ? 'warn' : 'bad' }}">{{ s.avg }}%</span>
-          </div>
-        }
+        <div class="sect-rows">
+          @for (s of sections(); track s.section) {
+            <div class="sect-row">
+              <span class="sect-name">{{ s.section }}<span class="faint"> · {{ s.count }}</span></span>
+              <div class="sect-track"><div class="sect-fill" [style.width.%]="s.avg"></div></div>
+              <span class="sect-avg {{ s.avg >= 80 ? 'dim' : s.avg >= 50 ? 'warn' : 'bad' }}">{{ s.avg }}%</span>
+            </div>
+          }
+        </div>
       }
 
-      <div class="section-title">Scores</div>
-      <div class="doc-list">
-        @for (s of classSheets(); track s.id) {
-          <div class="doc-card">
-            <div class="doc-icon folder" [innerHTML]="'fileText' | ico"></div>
-            <div class="doc-info">
-              <div class="doc-name">{{ s.studentName }}</div>
-              <div class="doc-meta">
-                <span>{{ s.correct }}/{{ s.total }} correct</span>·
-                @if (s.grade || s.section) {<span>{{ s.grade }}{{ s.grade && s.section ? ' — ' : '' }}{{ s.section }}</span>·}
-                <span>{{ dateOf(s.createdAt) }}</span>
-              </div>
+      <div class="section-title">Score distribution</div>
+      <div class="dist-chart" role="img" [attr.aria-label]="'Score distribution: ' + distribution().map(d => d.count + ' ' + d.letter).join(', ')">
+        @for (d of distribution(); track d.letter) {
+          <div class="dist-col">
+            <span class="dist-count">{{ d.count || '' }}</span>
+            <div class="dist-track">
+              <div class="dist-bar {{ d.letter.toLowerCase() }}" [style.height.%]="distHeight(d)"></div>
             </div>
-            <div class="doc-actions">
-              <span class="score-pill {{ s.percent >= 80 ? 'high' : s.percent >= 50 ? 'mid' : 'low' }}">{{ s.percent }}%</span>
-              <button class="icon-btn doc-delete-btn" (click)="removeSheet(s); $event.stopPropagation()" [attr.aria-label]="'Remove ' + s.studentName" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
-            </div>
+            <span class="dist-letter">{{ d.letter }}</span>
+            <span class="dist-range">{{ d.label }}</span>
           </div>
         }
       </div>
 
       @if (analysis().length) {
-        <div class="section-title">Item analysis — every question</div>
-        @for (r of analysis(); track r.n) {
-          <div class="weak-row">
-            <span class="qnum">{{ r.n }}</span>
-            <span class="weak-q">{{ r.question || 'Question ' + r.n }}</span>
-            <span class="weak-rate {{ r.missRate >= 50 ? 'bad' : r.missRate >= 25 ? 'warn' : 'dim' }}">{{ r.missRate }}%</span>
-          </div>
-        }
+        <div class="section-title">Every question — miss rate</div>
+        <div class="q-heat" role="img" [attr.aria-label]="'Miss rate per question: ' + analysis().map(r => 'Q' + r.n + ' ' + r.missRate + '%').join(', ')">
+          @for (r of analysis(); track r.n) {
+            <div class="q-heat-cell {{ r.missRate >= 50 ? 'bad' : r.missRate >= 25 ? 'warn' : 'ok' }}" [title]="(r.question || 'Question ' + r.n) + ' — missed by ' + r.missRate + '% of the class'">
+              <span class="q-heat-n">{{ r.n }}</span>
+              <span class="q-heat-pct">{{ r.missRate }}%</span>
+            </div>
+          }
+        </div>
+        <p class="faint" style="font-size:11.5px;margin:8px 2px 0">Red — missed by half the class or more · amber 25–49%. The full per-question table is in the CSV and Report PDF.</p>
       }
 
       <div class="export-grid" style="margin-top:18px">
         <button class="btn btn-primary" (click)="exportCsv()"><span [innerHTML]="'download' | ico"></span> CSV</button>
         <button class="btn btn-primary" (click)="exportPdf()"><span [innerHTML]="'fileText' | ico"></span> Report PDF</button>
+        <button class="btn btn-primary" (click)="exportReview()"><span [innerHTML]="'users' | ico"></span> Answer review</button>
       </div>
       <p class="faint center" style="font-size:11.5px;padding-bottom:12px">Everything is generated on this device.</p>
     </div>

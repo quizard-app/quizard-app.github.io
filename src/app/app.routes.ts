@@ -16,7 +16,7 @@ export const routes: Routes = [
     path: 'tabs',
     loadComponent: () => import('./tabs/tabs').then(m => m.TabsPage),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'classes' },
+      { path: '', pathMatch: 'full', redirectTo: 'create' },
       { path: 'classes', loadComponent: () => import('./pages/classes/classes').then(m => m.ClassesPage) },
       { path: 'classes/:id', loadComponent: () => import('./pages/class-roster/class-roster').then(m => m.ClassRosterPage) },
       { path: 'keys', loadComponent: () => import('./pages/keys/keys').then(m => m.KeysPage) },

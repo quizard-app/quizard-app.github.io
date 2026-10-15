@@ -5,6 +5,14 @@
      screen and re-anchor position:fixed children to it instead of the viewport */
   animation: screenIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
+/* From this width up the tab bar leaves the layout flow and becomes a floating
+   pill (see the ion-tab-bar rule in styles.scss), so the last thing on a screen
+   would otherwise end up underneath it — reserve the pill's height plus a gap.
+   Declared here, next to the base rule, because an equal-specificity override
+   from screens.css loses: this file loads after it (angular.json). */
+@media (min-width: 768px) {
+  .screen { padding-bottom: calc(var(--nav-h) + 42px + env(safe-area-inset-bottom)); }
+}
 @keyframes screenIn {
   from { opacity: 0; transform: translateY(12px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -692,12 +700,12 @@ ion-refresher { color: var(--accent-strong); }
 .btn:active { transform: scale(0.97); }
 .doc-card:active, .exam-card:active, .exam-entry:active { transform: scale(0.985); }
 
-/* tab tile pop when it becomes the active tab */
+/* active-tab indicator: the M3 pill expands from its centre, one axis only */
 @keyframes tile-pop {
-  from { transform: scale(0.55); }
-  to { transform: scale(1); }
+  from { transform: scaleX(0.55); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
 }
-ion-tab-button.tab-selected .tab-tile { animation: tile-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+ion-tab-button.tab-selected .tab-tile { animation: tile-pop 0.28s cubic-bezier(0.34, 1.2, 0.64, 1); }
 
 /* the whole study calendar fades in once — animating all ~365 cells
    individually (each with its own stagger delay) queued hundreds of
