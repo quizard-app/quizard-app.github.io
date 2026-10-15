@@ -4,10 +4,13 @@ import { IonContent } from '@ionic/angular';
 import { listClasses, listQuizzes, saveSheet, listSheets, deleteSheet, getQuiz } from '../../core/engine/storage.js';
 import { readSheet, scoreSheet, decodeQr, FLAG } from '../../core/engine/omr.js';
 import { parseSheetQr, resolveSheetStudent } from '../../core/engine/sheet-spec.js';
+import { planSheet, renderSyntheticSheet, SCENARIOS, scenarioById } from '../../core/engine/sheet-synth.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ByokService } from '../../core/services/byok.service';
+import { isDevHost } from '../../core/dev-only';
+import { bannerTheme } from '../../shared/helpers.js';
 
 /**
  * A roster student resolved for one sheet. `grade` / `section` fall back to the
@@ -39,9 +42,15 @@ export class CheckingPage {
   stage = signal<'setup' | 'scan' | 'result'>('setup');
   classes = signal<any[]>([]);
   quizzes = signal<any[]>([]);
+  sheets = signal<any[]>([]);
   classId = signal<string | null>(null);
   quizOverrideId = signal<string | null>(null);
+  quizPickOpen = signal(false);
   session = signal<any[]>([]);
+
+  // Templates can't see bare imports, so the shared banner theme is exposed as
+  // a field — a class wears the same gradient here as on Classes and roster.
+  readonly bannerTheme = bannerTheme;
 
   processing = signal(false);
   scanError = signal('');
@@ -52,18 +61,19 @@ export class CheckingPage {
   photo = signal<string>('');
   studentName = signal('');
   autoStudent = signal<MatchedStudent | null>(null);
-  // how the sheet got its student: the sheet's own QR, a pre-pick on the scan
-  // screen, or the result-screen picker
-  studentSource = signal<'qr' | 'pre' | 'manual' | null>(null);
+  // how the sheet got its student: the sheet's own QR, or the result-screen
+  // picker when the QR named nobody
+  studentSource = signal<'qr' | 'manual' | null>(null);
   // a QR named a student this device's roster doesn't have — the teacher still
   // picks manually, but knows the sheet's claim
   qrUnknownName = signal<string | null>(null);
   pickedStudentId = signal<string | null>(null);
   studentPickOpen = signal(false);
-  // optional pick-first flow: choose the student on the scan screen, the next
-  // scan attaches to them, saving clears for the next paper
-  preStudent = signal<MatchedStudent | null>(null);
-  prePickOpen = signal(false);
+
+  // The score that pops up over the scanner the moment a sheet is read and
+  // recorded, so the teacher sees the result without tapping through a screen.
+  // Shaped by recordResult(); null means no popup.
+  scorePop = signal<{ id: string; name: string; section: string; percent: number; correct: number; total: number } | null>(null);
 
   cameraActive = signal(false);
   private stream: MediaStream | null = null;
@@ -88,16 +98,6 @@ export class CheckingPage {
   readonly classRoster = computed(() =>
     this.roster().filter(r => r.classId === this.classId()));
 
-  // Already-done marks in the scan-screen picker: with a quiz override, anyone
-  // with a record for that quiz; in Auto mode, anyone recorded this session.
-  readonly doneIds = computed(() => {
-    const quizId = this.quizOverrideId();
-    const keys = this.session()
-      .filter(s => !quizId || s.quizId === quizId)
-      .map(s => s.studentNo ?? s.studentName);
-    return new Set(keys);
-  });
-
   private rosterEntry(cls: any, st: any): MatchedStudent {
     return {
       id: st.id,
@@ -121,7 +121,7 @@ export class CheckingPage {
 
   // One place that binds a roster student to the sheet being checked, so the
   // QR path and the manual picker carry identical identity data.
-  private attachStudent(st: MatchedStudent | null, source: 'qr' | 'pre' | 'manual' | null) {
+  private attachStudent(st: MatchedStudent | null, source: 'qr' | 'manual' | null) {
     this.pickedStudentId.set(st?.id ?? null);
     this.autoStudent.set(st);
     this.studentName.set(st?.name ?? '');
@@ -143,15 +143,51 @@ export class CheckingPage {
   }
 
   async ionViewWillEnter() {
-    this.classes.set(await listClasses());
-    this.quizzes.set(await listQuizzes());
+    const [classes, quizzes, sheets] = await Promise.all([listClasses(), listQuizzes(), listSheets()]);
+    this.classes.set(classes);
+    this.quizzes.set(quizzes);
+    this.sheets.set(sheets);
+    // Landing from a quiz's detail page (?quiz=): that quiz is the session's
+    // target before any scanning starts.
+    const qm = /[?&]quiz=([A-Za-z0-9-]+)/.exec(this.router.url || '');
+    if (qm) this.quizOverrideId.set(qm[1]);
+  }
+
+  // Per-class scan totals, so a class card shows whether a pile was started —
+  // the same count the roster hero and Results use.
+  readonly checkedCount = (cls: any): number =>
+    this.sheets().filter(s => s.classId === cls.id).length;
+
+  // ── quiz picker (setup) ──
+  // A session's quiz comes off each sheet's QR in almost every scan, so the
+  // full quiz library never sits on the setup screen — the pill opens a sheet
+  // filtered to the picked class's subject first.
+  readonly classSubjectQuizzes = computed(() => {
+    const sub = (this.pickedClass()?.subject || '').trim().toLowerCase();
+    if (!sub) return [];
+    return this.quizzes().filter(q => (q.subject || '').trim().toLowerCase() === sub);
+  });
+  readonly otherQuizzes = computed(() => {
+    const own = new Set(this.classSubjectQuizzes().map(q => q.id));
+    return this.quizzes().filter(q => !own.has(q.id));
+  });
+  readonly othersLabel = computed(() =>
+    (this.pickedClass()?.subject || '').trim() ? 'Other subjects' : 'All quizzes');
+
+  quizLabel(id: string): string {
+    const q = this.quizzes().find(x => x.id === id);
+    if (!q) return 'Quiz';
+    return `${q.subject || 'Quiz'}${q.title ? ' — ' + q.title : ''} · ${q.items?.length || 0} items`;
+  }
+
+  setQuiz(id: string | null) {
+    this.quizOverrideId.set(id);
+    this.quizPickOpen.set(false);
   }
 
   // ── setup ──
   async startSession() {
     if (!this.classId()) return;
-    this.preStudent.set(null);
-    this.prePickOpen.set(false);
     await this.refreshSession();
     this.stage.set('scan');
   }
@@ -241,24 +277,101 @@ export class CheckingPage {
       this.answers.set(answers);
       this.flags.set(flags);
       this.photo.set(dataToJpeg(data));
-      // the sheet's own QR student wins over anything pre-picked — the printed
-      // code cannot be wrong about whose paper this is. Without one, a
-      // pre-picked student attaches automatically; otherwise the teacher
-      // decides on the result screen.
+      // Sheets are printed one per roster student, so the QR almost always
+      // names whose paper this is — it attaches with nothing to confirm. Only
+      // a sheet whose QR names nobody (or names a student this device doesn't
+      // have) waits for the teacher, and that pick happens on the result screen.
       const qrStudent = this.matchRosterStudent(parsed);
       if (qrStudent) {
         this.qrUnknownName.set(null);
         this.attachStudent(qrStudent, 'qr');
-      } else if (this.preStudent()) {
-        this.qrUnknownName.set(null);
-        this.attachStudent(this.preStudent()!, 'pre');
+        // Nothing left to confirm, so record it now and pop the score up over
+        // the scanner — the teacher never taps through a result screen.
+        this.stage.set('scan');
+        void this.recordResult().then(row => { if (row) this.scorePop.set(row); });
       } else {
         this.attachStudent(null, null);
         this.qrUnknownName.set(parsed?.studentName || null);
+        // Nobody in the QR: the result screen's picker decides whose paper it is
+        this.stage.set('result');
       }
-      this.stage.set('result');
       this.processing.set(false);
     });
+  }
+
+  // ── dev-only scan tester (localhost builds only — see dev-only.ts) ──
+  // Prints a fake filled sheet and feeds it to the very same processImage() a
+  // camera capture uses, so the whole path — QR decode, quiz lookup, roster
+  // match, OMR, scoring, save — is exercised without a printer or a camera.
+  readonly devTest = isDevHost();
+  readonly devScenarios = SCENARIOS;
+  /** Sentinel for the "print a student-less sheet" option. Not a real id. */
+  static readonly DEV_NO_STUDENT = '__none__';
+  devScenario = signal(SCENARIOS[0].id);
+  devAccuracy = signal(80);
+  devStudentId = signal<string | null>(null);
+  devSeed = signal(1);
+  devRunning = signal(false);
+
+  // Which student to print into the fake sheet's QR. null = untouched, so fall
+  // back to the first on the roster and the scan identifies them on its own,
+  // the way it does for a real roster-printed sheet. Picking the explicit
+  // sentinel instead exercises the blank-QZ1 path where nobody is known.
+  get devSheetStudent() {
+    const id = this.devStudentId();
+    if (id === CheckingPage.DEV_NO_STUDENT) return null;
+    return this.classRoster().find(s => s.id === id) || this.classRoster()[0] || null;
+  }
+
+  // What the picker shows. Mirrors devSheetStudent, so the highlighted name is
+  // always the one that will actually be printed into the fake QR.
+  get devStudentPickerValue() {
+    return this.devSheetStudent?.id ?? CheckingPage.DEV_NO_STUDENT;
+  }
+
+  async simulateScan() {
+    if (!this.pickedClass()) return;
+    const quiz = await this.devQuiz();
+    if (!quiz) return;
+    const key = (quiz.items || []).map((it: any) => it.answerIndex);
+    if (key.some((k: any) => typeof k !== 'number')) {
+      this.toast.toast('That quiz has no answer key — set one before simulating a scan', true);
+      return;
+    }
+    const scenario = scenarioById(this.devScenario());
+    const student = this.devSheetStudent;
+    const plan = planSheet({
+      itemCount: key.length, key,
+      accuracy: this.devAccuracy() / 100,
+      blanks: scenario.blanks, multis: scenario.multis,
+      seed: this.devSeed(),
+    });
+
+    this.devRunning.set(true);
+    // let the button paint before the synchronous canvas + CV work blocks the frame
+    await new Promise(r => setTimeout(r, 60));
+    try {
+      const image = renderSyntheticSheet({
+        itemCount: key.length, quizId: quiz.id, student, plan,
+        rotate: scenario.rotate, noise: scenario.noise,
+        pencil: scenario.pencil, dropMarker: !!scenario.dropMarker,
+        seed: this.devSeed(),
+      });
+      await this.processImage(image);
+    } finally {
+      this.devRunning.set(false);
+    }
+  }
+
+  // The sheet's QR has to name a quiz that exists on this device, or the scan
+  // fails at the first step — so fall back to whatever is on hand.
+  private async devQuiz() {
+    const id = this.quizOverrideId() || this.quizzes()[0]?.id;
+    if (!id) {
+      this.toast.toast('Create a quiz first — the simulated sheet’s QR has to name one', true);
+      return null;
+    }
+    return await getQuiz(id);
   }
 
   // ── result editor ──
@@ -280,17 +393,29 @@ export class CheckingPage {
     this.flags.set(flags);
   }
 
-  async saveResult() {
+  // Writes the sheet being checked to storage and hands back the row it made.
+  // Shared by the automatic scan path (which pops the score up straight away)
+  // and the result screen's Save button. Identity comes from the roster entry,
+  // never from the handwriting.
+  //
+  // Rescanning a paper is a correction, not a second sitting, so it replaces
+  // the score that student already has for this quiz rather than stacking
+  // another row — otherwise one sheet counts twice in the class average.
+  private async recordResult() {
     const quiz = this.detectedQuiz();
     const auto = this.autoStudent();
     const cls = auto ? this.classes().find(c => c.id === auto.classId) || this.pickedClass() : this.pickedClass();
     const s = this.scored();
-    if (!quiz || !cls || !s || !this.studentName().trim()) return;
-    await saveSheet({
+    const name = this.studentName().trim();
+    if (!quiz || !cls || !s || !name) return null;
+    const no = auto?.no ?? null;
+    const prior = (await listSheets({ classId: cls.id, quizId: quiz.id }))
+      .find(x => no != null ? x.studentNo === no : (!x.studentNo && x.studentName === name));
+    const saved = await saveSheet({
+      id: prior?.id,
       classId: cls.id, className: cls.name, quizId: quiz.id,
-      // identity comes from the roster entry, never from the handwriting
       studentNo: auto?.no ?? null,
-      studentName: this.studentName().trim(),
+      studentName: name,
       grade: auto?.grade ?? '',
       section: auto?.section ?? '',
       answers: this.answers(), flags: this.flags(),
@@ -298,9 +423,26 @@ export class CheckingPage {
       photo: this.photo() || undefined,
     });
     await this.refreshSession();
+    return { id: saved.id, name, section: saved.section || '', percent: s.percent, correct: s.correct, total: s.total };
+  }
+
+  async saveResult() {
+    const row = await this.recordResult();
+    if (!row) return;
     this.stage.set('scan');
-    this.preStudent.set(null);
-    this.toast.toast(`Saved — ${this.studentName().trim()} scored ${s.percent}%`);
+    this.scorePop.set(row);
+  }
+
+  // A misread must not be permanent: drop the row that was just written and
+  // reopen the result screen, where the answer chips and the student can be
+  // corrected before saving again.
+  async fixScore() {
+    const pop = this.scorePop();
+    this.scorePop.set(null);
+    if (!pop) return;
+    await deleteSheet(pop.id);
+    await this.refreshSession();
+    this.stage.set('result');
   }
 
   async undoLast() {
@@ -320,8 +462,7 @@ export class CheckingPage {
     this.autoStudent.set(null);
     this.studentSource.set(null);
     this.qrUnknownName.set(null);
-    this.preStudent.set(null);
-    this.prePickOpen.set(false);
+    this.scorePop.set(null);
   }
 
   flagColor(f: string) {

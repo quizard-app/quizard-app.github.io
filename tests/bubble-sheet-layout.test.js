@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { bubbleSheetLayout } from '../src/app/core/engine/export.js'
-import { SHEET, frameRect, markerRects, markerCenters, bubbleCenter, qrRect, rowPitch, rowLabelRight } from '../src/app/core/engine/sheet-spec.js'
+import { SHEET, frameRect, markerRects, markerCenters, bubbleCenter, qrRect, qrCaption, rowPitch, rowLabelRight } from '../src/app/core/engine/sheet-spec.js'
 
 const COUNTS = [6, 8, 20, 21, 40, 50]
 const box = (c, r) => ({ x0: c.x - r, x1: c.x + r, y0: c.y - r, y1: c.y + r })
@@ -108,6 +108,44 @@ describe('bubble sheet geometry', () => {
           const { x } = bubbleCenter(count, i, b)
           expect(x - SHEET.circleR).toBeGreaterThan(f.x)
           expect(x + SHEET.circleR).toBeLessThan(f.x + f.w)
+        }
+      }
+    }
+  })
+})
+
+describe('qr caption', () => {
+  // export.js prints this name under the code, and sheet-synth.js draws the same
+  // one so the result-screen thumbnail matches the real sheet. Both read this
+  // geometry, so these invariants are what keeps the name off the QR (which
+  // would eat its quiet zone and break the scan) and off the frame's edge.
+  it('sits inside the frame, under the code, with the quiet zone intact', () => {
+    for (const count of COUNTS) {
+      const f = frameRect(count)
+      const q = qrRect(count)
+      const c = qrCaption(count)
+      expect(c.right).toBe(q.x + q.size)
+      expect(c.right).toBeLessThan(f.x + f.w)
+      expect(c.baseline).toBeLessThan(f.y + f.h)
+      expect(c.baseline).toBeLessThan(SHEET.H - 24)
+      // one line of text on the baseline occupies [baseline - capHeight, baseline]
+      const textTop = c.baseline - SHEET.letterCap
+      expect(textTop).toBeGreaterThan(q.y + q.size)
+      expect(textTop - (q.y + q.size)).toBeGreaterThanOrEqual(8)
+      expect(c.maxWidth).toBeGreaterThan(0)
+    }
+  })
+
+  it('clears every bubble', () => {
+    for (const count of COUNTS) {
+      const c = qrCaption(count)
+      const capBox = {
+        x0: c.right - c.maxWidth, x1: c.right,
+        y0: c.baseline - SHEET.letterCap, y1: c.baseline,
+      }
+      for (let i = 0; i < count; i++) {
+        for (let b = 0; b < 4; b++) {
+          expect(hits(capBox, box(bubbleCenter(count, i, b), SHEET.circleR))).toBe(false)
         }
       }
     }

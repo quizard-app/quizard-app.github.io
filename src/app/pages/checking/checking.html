@@ -27,32 +27,67 @@
 
       @if (classes().length) {
         <div class="section-title">Which class are you checking?</div>
-        <div class="doc-list">
+        <div class="scan-grid">
           @for (cls of classes(); track cls.id) {
-            <button class="mode-card" [class.on]="classId() === cls.id" (click)="classId.set(cls.id)">
-              <span class="mode-title">{{ cls.name }}</span>
-              <span class="mode-hint">{{ cls.students.length }} students{{ cls.grade || cls.section ? ' · ' : '' }}{{ cls.grade }}{{ cls.grade && cls.section ? ' — ' : '' }}{{ cls.section }}</span>
+            <button class="scan-cls {{ bannerTheme(cls) }}" [class.on]="classId() === cls.id" [attr.aria-pressed]="classId() === cls.id" (click)="classId.set(cls.id)">
+              <span class="scan-cls-title">{{ cls.name }}</span>
+              <span class="scan-cls-sub">{{ cls.subject }}{{ cls.subject && (cls.grade || cls.section) ? ' · ' : '' }}{{ cls.grade }}{{ cls.grade && cls.section ? ' — ' : '' }}{{ cls.section }} · {{ cls.students.length }} student{{ cls.students.length === 1 ? '' : 's' }}</span>
+              @if (checkedCount(cls)) {
+                <span class="scan-cls-badge">{{ checkedCount(cls) }} checked</span>
+              }
             </button>
           }
         </div>
 
-        <div class="section-title">Quiz (usually read from the sheet's QR)</div>
-        <div class="doc-list quiz-pick">
-          <button type="button" class="mode-card" [class.on]="!quizOverrideId()" (click)="quizOverrideId.set(null)">
-            <span class="mode-title">Auto — from the QR code</span>
-            <span class="mode-hint">Each sheet's QR identifies its quiz — and its student, on roster-printed sheets</span>
-          </button>
-          @for (q of quizzes(); track q.id) {
-            <button type="button" class="mode-card" [class.on]="quizOverrideId() === q.id" (click)="quizOverrideId.set(q.id)">
-              <span class="mode-title">{{ q.subject }}{{ q.title ? ' — ' + q.title : '' }}</span>
-              <span class="mode-hint">{{ q.items.length }} items</span>
-            </button>
+        <div class="section-title">Which quiz are you scoring against?</div>
+        <button type="button" class="text-input picker-btn" (click)="quizPickOpen.set(true)">
+          @if (quizOverrideId(); as id) {
+            {{ quizLabel(id) }}
+          } @else {
+            <span class="quiz-auto"><span [innerHTML]="'check' | ico"></span> Auto — from each sheet's QR</span>
           }
-        </div>
+        </button>
+        <p class="faint" style="font-size:11.5px;margin:6px 2px 0">Every printed sheet's QR names its own quiz and student — you only pick a quiz as a backup when a QR won't read.</p>
 
         <button class="btn btn-primary gen-btn" [disabled]="!classId()" (click)="startSession()">
           <span [innerHTML]="'scan' | ico"></span> Start checking
         </button>
+
+        @if (quizPickOpen()) {
+          <div class="org-overlay" (click)="quizPickOpen.set(false)">
+            <div class="org-sheet picker-sheet" (click)="$event.stopPropagation()">
+              <h3>Which quiz will you score against?</h3>
+              <p class="faint" style="font-size:12px;margin:4px 0 10px">Sheets identify themselves by QR — picking one here is only a backup for unreadable codes.</p>
+              <div class="picker-list">
+                <button type="button" class="roster-row" [class.on]="!quizOverrideId()" (click)="setQuiz(null)">
+                  <span class="roster-name"><span [innerHTML]="'check' | ico"></span> Auto — from the QR</span>
+                  <span class="roster-cls">recommended</span>
+                </button>
+                @if (classSubjectQuizzes().length) {
+                  <div class="picker-group">For {{ pickedClass()?.subject }}</div>
+                  @for (q of classSubjectQuizzes(); track q.id) {
+                    <button type="button" class="roster-row" [class.on]="quizOverrideId() === q.id" (click)="setQuiz(q.id)">
+                      <span class="roster-name">{{ q.subject }}{{ q.title ? ' — ' + q.title : '' }}</span>
+                      <span class="roster-cls">{{ q.items.length }} items</span>
+                    </button>
+                  }
+                }
+                @if (otherQuizzes().length) {
+                  <div class="picker-group">{{ othersLabel() }}</div>
+                  @for (q of otherQuizzes(); track q.id) {
+                    <button type="button" class="roster-row" [class.on]="quizOverrideId() === q.id" (click)="setQuiz(q.id)">
+                      <span class="roster-name">{{ q.subject }}{{ q.title ? ' — ' + q.title : '' }}</span>
+                      <span class="roster-cls">{{ q.items.length }} items</span>
+                    </button>
+                  }
+                }
+              </div>
+              <div class="org-sheet-actions">
+                <button type="button" class="btn btn-secondary" (click)="quizPickOpen.set(false)">Cancel</button>
+              </div>
+            </div>
+          </div>
+        }
       } @else {
         <div class="empty-state">
           <div class="empty-ico" [innerHTML]="'users' | ico"></div>
@@ -66,60 +101,12 @@
   @if (stage() === 'scan') {
     <div class="screen lib-screen">
       <div class="session-bar">
-        <span>{{ session().length }} checked this session</span>
+        <span>{{ session().length }} saved for this class</span>
         @if (session().length) {
           <button class="btn btn-secondary" (click)="undoLast()">Undo last</button>
         }
         <button class="btn btn-secondary" (click)="endSession()">Finish</button>
       </div>
-      @if (session().length) {
-        <div class="doc-list session-list">
-          @for (s of session().slice(0, 5); track s.id) {
-            <div class="session-row">
-              <span class="session-name">{{ s.studentName }}@if (s.section) {<span style="color:var(--text-faint);font-weight:500"> · {{ s.section }}</span>}</span>
-              <span class="score-pill {{ s.percent >= 80 ? 'high' : s.percent >= 50 ? 'mid' : 'low' }}">{{ s.percent }}%</span>
-            </div>
-          }
-          @if (session().length > 5) { <p class="faint center" style="font-size:11.5px">+ {{ session().length - 5 }} more saved</p> }
-        </div>
-      }
-
-      <div class="section-title" style="margin-top:4px">Who's next? <span class="faint" style="font-size:11px;font-weight:500">(optional — decide after scanning instead)</span></div>
-      <button type="button" class="text-input picker-btn" (click)="prePickOpen.set(true)">
-        @if (preStudent(); as st) {
-          {{ st.name }}{{ st.no ? ' · #' + st.no : '' }}
-        } @else {
-          <span class="picker-placeholder">Pick after scanning — attach on the result screen</span>
-        }
-      </button>
-
-      @if (prePickOpen()) {
-        <div class="org-overlay" (click)="prePickOpen.set(false)">
-          <div class="org-sheet picker-sheet" (click)="$event.stopPropagation()">
-            <h3>Who's next?</h3>
-            <p class="faint" style="font-size:11.5px;margin:0 0 10px">
-              {{ pickedClass()?.name }} · green = already recorded{{ quizOverrideId() ? ' for this quiz' : ' this session' }}
-            </p>
-            <div class="picker-list">
-              <button type="button" class="roster-row" [class.on]="!preStudent()" (click)="preStudent.set(null); prePickOpen.set(false)">
-                <span class="roster-name">Decide after scanning</span>
-              </button>
-              @for (st of classRoster(); track st.id) {
-                <button type="button" class="roster-row" [class.on]="preStudent()?.id === st.id" (click)="preStudent.set(st); prePickOpen.set(false)">
-                  <span class="roster-no">{{ st.no }}</span>
-                  <span class="roster-name">{{ st.name }}</span>
-                  @if (doneIds().has(st.no ?? st.name)) {
-                    <span class="score-pill high" style="margin-left:auto">✓ done</span>
-                  }
-                </button>
-              }
-            </div>
-            <div class="org-sheet-actions">
-              <button type="button" class="btn btn-secondary" (click)="prePickOpen.set(false)">Cancel</button>
-            </div>
-          </div>
-        </div>
-      }
 
       @if (cameraActive()) {
         <video class="camera-view" autoplay playsinline muted></video>
@@ -133,9 +120,66 @@
         <input type="file" accept="image/*" capture="environment" (change)="onPhoto($event)" hidden />
       </label>
 
+      @if (devTest) {
+        <div class="devscan">
+          <div class="devscan-head">
+            <span class="devscan-badge">DEV</span>
+            Scan tester <span class="faint">· local build only</span>
+          </div>
+          <p class="devscan-hint">Prints a fake filled sheet and pushes it through the real scan path — QR, alignment, scoring, save.</p>
+
+          <div class="devscan-field">
+            <label class="devscan-label" for="dev-condition">Photo condition</label>
+            <select id="dev-condition" class="text-input devscan-select" [value]="devScenario()" (change)="devScenario.set($any($event.target).value)">
+              @for (s of devScenarios; track s.id) {
+                <option [value]="s.id">{{ s.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="devscan-field">
+            <label class="devscan-label" for="dev-acc">{{ devAccuracy() }}% answered correctly</label>
+            <input id="dev-acc" class="devscan-range" type="range" min="0" max="100" step="5" [value]="devAccuracy()" (input)="devAccuracy.set(+$any($event.target).value)" />
+          </div>
+
+          <div class="devscan-field">
+            <label class="devscan-label" for="dev-student">Print student into the fake QR</label>
+            <select id="dev-student" class="text-input devscan-select" [value]="devStudentPickerValue" (change)="devStudentId.set($any($event.target).value)">
+              @for (st of classRoster(); track st.id) {
+                <option [value]="st.id">{{ st.no ? '#' + st.no + ' ' : '' }}{{ st.name }}</option>
+              }
+              <option value="__none__">Nobody — blank sheet, QR won't say who</option>
+            </select>
+            <p class="devscan-hint">The scan reads this name back off the QR and matches it to the roster by itself — nothing to confirm on the result screen.</p>
+          </div>
+
+          <div class="devscan-actions">
+            <button type="button" class="btn btn-secondary devscan-btn" [disabled]="devRunning() || processing()" (click)="simulateScan()">
+              <span [innerHTML]="'zap' | ico"></span>
+              {{ devRunning() || processing() ? 'Simulating…' : 'Simulate scan' }}
+            </button>
+            <button type="button" class="icon-btn" (click)="devSeed.set(devSeed() + 1)" aria-label="Reshuffle the sheet" data-tooltip="Reshuffle the answers" [innerHTML]="'refresh' | ico"></button>
+          </div>
+        </div>
+      }
+
       @if (processing()) { <p class="parse-note">Reading the sheet…</p> }
       @if (scanError()) {
         <div class="gen-error"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> {{ scanError() }}</div>
+      }
+
+      @if (scorePop(); as pop) {
+        <div class="org-overlay" (click)="scorePop.set(null)">
+          <div class="org-sheet score-pop" (click)="$event.stopPropagation()">
+            <p class="score-pop-name">{{ pop.name }}@if (pop.section) {<span class="faint"> · {{ pop.section }}</span>}</p>
+            <h1 class="score-pop-pct">{{ pop.percent }}%</h1>
+            <p class="score-pop-sub">{{ pop.correct }} of {{ pop.total }} correct — recorded ✓</p>
+            <div class="score-pop-actions">
+              <button class="btn btn-primary" (click)="scorePop.set(null)">Next sheet</button>
+              <button class="btn btn-secondary" (click)="fixScore()">Fix score</button>
+            </div>
+          </div>
+        </div>
       }
     </div>
   }
@@ -157,8 +201,6 @@
         <p class="parse-note" style="margin-bottom:10px">
           @if (studentSource() === 'qr') {
             <span [innerHTML]="'check' | ico"></span> The sheet's QR identified <b>{{ auto.name }}</b> — attached automatically ✓
-          } @else if (studentSource() === 'pre') {
-            Scanning for <b>{{ auto.name }}</b> ✓ — correct the answers if needed, then save.
           } @else {
             Attached to <b>{{ auto.name }}</b> · {{ auto.className }}{{ auto.grade || auto.section ? ' · ' : '' }}{{ auto.grade }}{{ auto.grade && auto.section ? ' — ' : '' }}{{ auto.section }}
           }
@@ -196,7 +238,7 @@
             <h3>Whose paper is this?</h3>
             <div class="picker-list">
               @for (st of classRoster(); track st.id) {
-                <button type="button" class="roster-row" [class.on]="pickedStudentId() === st.id" (click)="selectStudent(st.id); preStudent.set(null); studentPickOpen.set(false)">
+                <button type="button" class="roster-row" [class.on]="pickedStudentId() === st.id" (click)="selectStudent(st.id); studentPickOpen.set(false)">
                   <span class="roster-no">{{ st.no }}</span>
                   <span class="roster-name">{{ st.name }}</span>
                   <span class="roster-cls">{{ st.section }}</span>
