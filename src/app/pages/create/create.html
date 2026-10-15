@@ -8,46 +8,81 @@
       } @else if (stage() === 'setup') {
         <button class="icon-btn" (click)="backHome()" aria-label="Back to quizzes" [innerHTML]="'chevronLeft' | ico"></button>
       }
-      <span class="mark" [innerHTML]="'logo' | ico"></span>Create
+      <span class="mark" [innerHTML]="'logo' | ico"></span>{{ stage() === 'home' ? 'Quizzes' : 'Create' }}
     </div>
     <div style="display:flex;gap:2px;align-items:center">
+      @if (stage() === 'home') {
+        <button class="icon-btn" aria-label="Answer keys" (click)="router.navigateByUrl('/tabs/keys')" data-tooltip="Answer keys" [innerHTML]="'key' | ico"></button>
+        <button class="icon-btn" aria-label="Results" (click)="router.navigateByUrl('/tabs/reports')" data-tooltip="Results & reports" [innerHTML]="'statsChart' | ico"></button>
+      }
       <button class="icon-btn" [class.ai-down]="byok.aiDown()" aria-label="AI key" (click)="byok.open()" [attr.data-tooltip]="byok.aiDown() ? 'AI is out of requests — tap to add a free key' : 'AI key — keep AI working when the relay is busy'" [innerHTML]="'sparkles' | ico"></button>
       <button class="icon-btn" aria-label="Settings" (click)="router.navigateByUrl('/tabs/settings')" data-tooltip="Settings & backup" [innerHTML]="'gear' | ico"></button>
       <button class="icon-btn" aria-label="Toggle theme" (click)="ui.toggleTheme()" [innerHTML]="(ui.theme() === 'dark' ? 'sun' : 'moon') | ico"></button>
     </div>
   </header>
 
+  <!-- Guided wizard rail: named steps, completed ones check-marked and
+       clickable, current one filled (GOV.UK/TurboTax step-tracker pattern).
+       Hidden on home, and on export opened straight from the saved list. -->
+  @if (stage() === 'setup' || stage() === 'review' || wizardExport()) {
+    <nav class="wiz-rail" aria-label="Create progress">
+      @for (s of wizSteps; track s; let i = $index) {
+        @if (i > 0) {
+          <span class="wstep-line" [class.done]="i <= wizStep()" aria-hidden="true"></span>
+        }
+        <button
+          class="wstep"
+          [class.on]="i === wizStep()"
+          [class.done]="i < wizStep()"
+          [disabled]="i >= wizStep()"
+          (click)="goStep(i)"
+          [attr.aria-current]="i === wizStep() ? 'step' : null"
+        >
+          <span class="wstep-dot">
+            @if (i < wizStep()) { <span [innerHTML]="'check' | ico"></span> }
+            @else { {{ i + 1 }} }
+          </span>
+          <span class="wstep-label">{{ s }}</span>
+        </button>
+      }
+    </nav>
+  }
+
   @if (stage() === 'home') {
     <div class="screen lib-screen" [class.screen-center]="!homeQuizzes().length">
       <div class="hero lib-hero">
         <div class="hero-ico" [innerHTML]="'sparkles' | ico"></div>
         <div>
-          <h1>Create</h1>
-          <p>Every quiz is saved on this device — export the papers any time.</p>
+          <h1>Quizzes</h1>
+          <p>Every quiz is saved on this device — print its papers or scan answers any time.</p>
         </div>
       </div>
 
-      @if (homeQuizzes().length) {
-        <div class="section-title">Saved quizzes</div>
-        <div class="doc-list">
-          @for (q of homeQuizzes(); track q.id) {
-            <div class="doc-card" (click)="openSaved(q.id)" data-tooltip="Export this quiz">
-              <div class="doc-icon folder" [innerHTML]="'fileText' | ico"></div>
-              <div class="doc-info">
-                <div class="doc-name">{{ q.subject }}@if (q.title) { <span class="faint"> — {{ q.title }}</span> }</div>
-                <div class="doc-meta">
-                  <span>{{ q.items.length }} item{{ q.items.length === 1 ? '' : 's' }}</span>·
-                  @if (q.source === 'ai') { <span>AI generated</span>· } @else { <span>from your key</span>· }
-                  <span>{{ dateOf(q.createdAt) }}</span>
-                </div>
-              </div>
-              <div class="doc-actions"><span class="chev" [innerHTML]="'chevronRight' | ico"></span></div>
+      <div class="section-title">{{ homeQuizzes().length ? 'Saved quizzes' : 'Start here' }}</div>
+      <div class="create-grid">
+        <button class="cq-new" (click)="startNewQuiz()">
+          <span class="cq-new-ico" [innerHTML]="'plus' | ico"></span>
+          <span class="cq-new-title">New quiz</span>
+          <span class="cq-new-sub">Full AI · From my key · Match my format</span>
+        </button>
+        @for (q of homeQuizzes(); track q.id) {
+          <div class="doc-card cq-card" (click)="openSaved(q.id)" data-tooltip="Export this quiz">
+            <div class="cls-banner cq-banner {{ bannerTheme(q.id) }}">
+              <div class="cls-title">{{ q.subject }}</div>
+              @if (q.title) { <div class="cls-sub">{{ q.title }}</div> }
             </div>
-          }
-        </div>
-      }
-
-      <button class="btn btn-primary" style="max-width:230px;margin:18px auto 0" (click)="startNewQuiz()"><span [innerHTML]="'plus' | ico"></span> New quiz</button>
+            <div class="cq-body">
+              <span class="key-chip">{{ q.items.length }} item{{ q.items.length === 1 ? '' : 's' }}</span>
+              <span class="key-chip src">{{ sourceLabel(q) }}</span>
+              @if (gradedOf(q)) {
+                <span class="key-chip graded" data-tooltip="Papers scanned against this quiz">{{ gradedOf(q) }} graded</span>
+              }
+              <span class="cq-date">{{ dateOf(q.createdAt) }}</span>
+              <span class="chev" [innerHTML]="'chevronRight' | ico"></span>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   }
 
@@ -66,57 +101,86 @@
         @for (m of modes; track m.id) {
           <button class="mode-card" [class.on]="mode() === m.id" (click)="setMode(m.id)">
             <span class="mode-title">{{ m.label }}</span>
+            <span class="mode-io">{{ m.io }}</span>
             <span class="mode-hint">{{ m.hint }}</span>
           </button>
         }
       </div>
 
-      <div class="section-title">2 · Your material</div>
-      <label class="btn btn-secondary file-btn" [class.busy]="extracting()">
-        <span [innerHTML]="'upload' | ico"></span> {{ extracting() ? 'Extracting…' : (fileName() || 'Upload lesson file (PDF, PPT, Word, txt)') }}
-        <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" (change)="onFile($event)" hidden />
-      </label>
-      @if (fileName()) {
-        <button class="file-clear" (click)="clearFile()">remove file</button>
-      }
-      <textarea class="text-input roster-paste" rows="4" placeholder="…or paste lesson text here" [attr.aria-label]="'Lesson text'" [value]="lessonPaste()" (input)="lessonPaste.set($any($event.target).value)"></textarea>
-
-      <div class="section-title">3 · Your answer key @if (mode() === 'format') { <span class="faint" style="font-weight:400">— paste your own multiple-choice questions as examples</span> }</div>
-      @if (mode() === 'key' || mode() === 'format') {
-        @if (savedKeys().length) {
-          <select class="text-input" [attr.aria-label]="'Use a saved key'" (change)="pickedKeyId.set($any($event.target).value || null); keyPaste.set('')">
-            <option value="">— paste a new key below —</option>
-            @for (k of savedKeys(); track k.id) {
-              <option [value]="k.id" [selected]="pickedKeyId() === k.id">{{ k.subject }}{{ k.title ? ' — ' + k.title : '' }} ({{ k.items.length }} items)</option>
-            }
-          </select>
+      <!-- The lesson block is the same upload/paste control in every mode; its
+           position and number change, its markup doesn't. -->
+      <ng-template #materialBlock>
+        <label class="btn btn-secondary file-btn" [class.busy]="extracting()">
+          <span [innerHTML]="'upload' | ico"></span> {{ extracting() ? 'Extracting…' : (fileName() || 'Upload lesson file (PDF, PPT, Word, txt)') }}
+          <input type="file" accept=".pdf,.docx,.pptx,.txt,.md" (change)="onFile($event)" hidden />
+        </label>
+        @if (fileName()) {
+          <button class="file-clear" (click)="clearFile()">remove file</button>
         }
-        @if (!pickedKeyId()) {
-          <textarea class="text-input roster-paste" rows="7" placeholder="Paste your key. All of these work:&#10;&#10;1. Photosynthesis&#10;2. What do plants use for food? → Photosynthesis&#10;&#10;Or your own multiple-choice questions (for Match my format):&#10;1. What is X?&#10;A. …  *B. …  C. …  D. …" [attr.aria-label]="'Answer key'" [value]="keyPaste()" (input)="keyPaste.set($any($event.target).value)"></textarea>
+        <textarea class="text-input roster-paste" rows="4" placeholder="…or paste lesson text here" [attr.aria-label]="'Lesson text'" [value]="lessonPaste()" (input)="lessonPaste.set($any($event.target).value)"></textarea>
+      </ng-template>
+
+      @if (mode() === 'ai') {
+        <div class="section-title">{{ stepMaterial() }} · Your material</div>
+        <ng-container [ngTemplateOutlet]="materialBlock" />
+      } @else {
+        @if (mode() === 'key') {
+          <div class="section-title">2 · Your answer key</div>
+          <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">Paste the correct answers — the AI writes questions each one correctly answers.</p>
+          @if (savedKeys().length) {
+            <select class="text-input" [attr.aria-label]="'Use a saved key'" (change)="pickedKeyId.set($any($event.target).value || null); keyPaste.set('')">
+              <option value="">— paste a new key below —</option>
+              @for (k of savedKeys(); track k.id) {
+                <option [value]="k.id" [selected]="pickedKeyId() === k.id">{{ k.subject }}{{ k.title ? ' — ' + k.title : '' }} ({{ k.items.length }} items)</option>
+              }
+            </select>
+          }
+          @if (!pickedKeyId()) {
+            <textarea class="text-input roster-paste" rows="7" placeholder="Paste your answer key. All of these work:&#10;&#10;1. Photosynthesis&#10;2. What do plants use for food? → Photosynthesis&#10;B, C, A, D, …" [attr.aria-label]="'Answer key'" [value]="keyPaste()" (input)="keyPaste.set($any($event.target).value)"></textarea>
+            @if (keyStats(); as ks) {
+              <p class="parse-note">
+                {{ ks.count }} answer{{ ks.count === 1 ? '' : 's' }} detected
+                @if (ks.format === 'qa') { · with questions }
+                @if (ks.notes) { · {{ ks.notes }} skipped }
+              </p>
+            }
+          } @else if (pickedKey()) {
+            <p class="parse-note">Using saved key “{{ pickedKey().subject }}” — {{ pickedKey().items.length }} items</p>
+          }
+        } @else {
+          <div class="section-title">2 · Your example questions</div>
+          <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">Paste a few of your own multiple-choice questions (mark the correct option with *) — the AI writes NEW ones that read like them.</p>
+          <textarea class="text-input roster-paste" rows="7" placeholder="1. What is X?&#10;A. …&#10;*B. …&#10;C. …&#10;D. …&#10;&#10;2. …" [attr.aria-label]="'Example questions'" [value]="keyPaste()" (input)="keyPaste.set($any($event.target).value)"></textarea>
           @if (keyStats(); as ks) {
             <p class="parse-note">
-              {{ ks.count }} item{{ ks.count === 1 ? '' : 's' }} detected
-              @if (ks.format === 'mcq') { · {{ ks.complete }} complete examples }
-              @else if (ks.format === 'qa') { · with questions }
+              {{ ks.count }} example{{ ks.count === 1 ? '' : 's' }} detected
+              @if (ks.format === 'mcq') { · {{ ks.complete }} complete }
+              @else { · needs options with a * on the correct one }
               @if (ks.notes) { · {{ ks.notes }} skipped }
             </p>
           }
-        } @else if (pickedKey()) {
-          <p class="parse-note">Using saved key “{{ pickedKey().subject }}” — {{ pickedKey().items.length }} items</p>
         }
-      } @else {
-        <p class="faint" style="font-size:12.5px;margin:-4px 0 0">Full AI mode — the AI writes the questions and the key itself.</p>
+
+        <div class="section-title">{{ stepMaterial() }} · Lesson context <span class="faint" style="font-weight:400">— optional</span></div>
+        <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">A lesson grounds the questions in your material. Leave empty to write purely from what you gave above.</p>
+        <ng-container [ngTemplateOutlet]="materialBlock" />
       }
 
-      <div class="section-title">4 · How many questions?</div>
+      <div class="section-title">{{ stepDetails() }} · Questions & details</div>
       <div class="count-row">
-        @for (c of [10, 20, 30, 40, 50]; track c) {
-          <button class="count-chip" [class.on]="count() === c" (click)="setCount(c)">{{ c }}</button>
-        }
-        <input class="text-input count-input" type="number" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" [attr.aria-label]="'Number of questions'" />
+        <div class="count-stepper">
+          <button class="count-step" type="button" (click)="nudgeCount(-5)" [attr.aria-label]="'5 fewer questions'">−</button>
+          <input class="text-input count-input" type="number" inputmode="numeric" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" (blur)="setCount(count())" [attr.aria-label]="'Number of questions — any value from 1 to 50'" />
+          <button class="count-step" type="button" (click)="nudgeCount(5)" [attr.aria-label]="'5 more questions'">+</button>
+        </div>
+        <span class="count-hint">any number 1–{{ maxItems }}</span>
+        <span class="count-presets">
+          @for (c of [10, 20, 30, 40, 50]; track c) {
+            <button class="count-chip" [class.on]="count() === c" (click)="setCount(c)" [attr.aria-label]="'Preset: ' + c + ' questions'">{{ c }}</button>
+          }
+        </span>
       </div>
 
-      <div class="section-title">5 · Subject & title</div>
       @if (knownSubjects().length) {
         <div class="count-row" style="margin-bottom:8px">
           @for (sub of knownSubjects(); track sub) {
@@ -190,53 +254,12 @@
           </div>
         }
       </div>
-      <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
+      <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px;display:flex" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
       }
 
       <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
         <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
       </button>
-
-      @if (quizId()) {
-        <button class="btn btn-secondary" style="max-width:230px;margin:10px auto 0" (click)="backHome()"><span [innerHTML]="'check' | ico"></span> Done — back to quizzes</button>
-        <div class="export-grid" style="margin-top:12px">
-          @if (!keyOnly()) {
-            <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
-            <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
-          }
-          <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
-        </div>
-        <div class="copies-row">
-          <span class="faint">Print for:</span>
-          <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Print sheets for'" (change)="setSheetClassId($any($event.target).value)">
-            <option value="" [selected]="!sheetClassId()" disabled>— pick a class —</option>
-            @for (c of classList(); track c.id) {
-              <option [value]="c.id" [selected]="sheetClassId() === c.id">{{ c.name }} · {{ c.students.length }} students</option>
-            }
-          </select>
-        </div>
-        <div class="copies-row">
-          @if (sheetClass(); as c) {
-            <span class="faint">{{ c.students.length }} sheets · one per student, no extras</span>
-          } @else {
-            <span class="faint">Pick a class — prints only its students</span>
-          }
-          <span class="faint">Paper:</span>
-          <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
-            <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
-            <option value="a4" [selected]="paper() === 'a4'">A4</option>
-            <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
-          </select>
-        </div>
-        @if (sheetClass()) {
-          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Exactly {{ sheetClass()!.students.length }} sheet{{ sheetClass()!.students.length === 1 ? '' : 's' }} — one per student in {{ sheetClass()!.name }}, each QR carrying that student's name so scanning attaches them automatically.</p>
-        } @else if (classList().length) {
-          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Pick a class to print its roster. Sheets are never printed blank — every sheet belongs to a student.</p>
-        } @else {
-          <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Add a class on the Classes tab first — sheets print exactly that class's students.</p>
-        }
-        <p class="faint center" style="font-size:11.5px;padding-bottom:12px">PDFs download to your device — print them anywhere, no internet needed.</p>
-      }
     </div>
   }
 
@@ -249,9 +272,9 @@
         } @else {
           <p class="faint" style="font-size:11.5px;text-align:center;margin:0 0 10px">
             @if (previewPages() > 1) {
-              Page {{ previewPage() }} of {{ previewPages() }} — one page per sheet
+              Sheet {{ previewPage() }} of {{ previewPages() }} — one page per student
             } @else {
-              Page 1 of 1
+              Sheet 1 of 1
             }
           </p>
           <div class="preview-canvas-wrap">
@@ -274,26 +297,32 @@
   }
   @if (stage() === 'export') {
     <div class="screen lib-screen">
+      <button class="qf-back" (click)="backHome()" data-tooltip="Back to all quizzes"><span [innerHTML]="'chevronLeft' | ico"></span> All quizzes</button>
       <div class="hero lib-hero">
         <div class="hero-ico" [innerHTML]="'fileText' | ico"></div>
         <div>
           <h1>{{ selectedQuiz()?.subject }}@if (selectedQuiz()?.title) { — {{ selectedQuiz()?.title }} }</h1>
-          <p>Saved on this device — export the papers whenever you need them.</p>
+          <p>@if (selectedQuiz(); as q) { {{ q.items.length }} items · {{ sourceLabel(q) }}@if (gradedOf(q)) { · {{ gradedOf(q) }} graded } — everything for this quiz lives here. }</p>
         </div>
       </div>
 
-      <div class="export-grid" style="margin-top:6px">
-        @if (!selectedQuiz()?.keyOnly) {
-          <button class="btn btn-primary" (click)="printQuiz()"><span [innerHTML]="'fileText' | ico"></span> Quiz paper</button>
-          <button class="btn btn-primary" (click)="printKey()"><span [innerHTML]="'listChecks' | ico"></span> Teacher's key</button>
+      <div class="section-title">Answer key</div>
+      @if (selectedQuiz()?.keyOnly) {
+        <p class="parse-note" style="margin:0 0 8px">Letters-only key — the questions live on your own printed paper; bubble sheets carry only each student's answers.</p>
+      }
+      <div class="key-strip qk-strip" role="list" aria-label="Answer key, one letter per question">
+        @for (c of keyStripOf(selectedQuiz()); track c.n) {
+          <span class="ks-cell" role="listitem" [title]="c.full"><i>{{ c.n }}</i><b>{{ c.a }}</b></span>
         }
+      </div>
+      <div class="export-grid">
+        <button class="btn btn-secondary" (click)="editSaved()" data-tooltip="Change what the scanner marks as correct"><span [innerHTML]="'pencil' | ico"></span> {{ selectedQuiz()?.keyOnly ? 'Edit key' : 'Edit questions & key' }}</button>
+      </div>
+
+      <div class="section-title">Print sheets</div>
+      <div class="export-grid" style="margin-top:6px">
         <button class="btn btn-primary" (click)="printSheets()"><span [innerHTML]="'scan' | ico"></span> Bubble sheets</button>
       </div>
-      @if (selectedQuiz()?.keyOnly) {
-        <p class="parse-note" style="margin:10px 0 0">
-          Letters-only key — students answer on your own question paper. The scanner scores these bubble sheets against your key.
-        </p>
-      }
       <div class="copies-row">
         <span class="faint">Print for:</span>
         <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Print sheets for'" (change)="setSheetClassId($any($event.target).value)">
@@ -324,6 +353,13 @@
         <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Add a class on the Classes tab first — sheets print exactly that class's students.</p>
       }
 
+      <div class="section-title">Scan &amp; results</div>
+      <div class="export-grid">
+        <button class="btn btn-primary" (click)="scanSaved()" data-tooltip="Scan filled bubble sheets against the key above"><span [innerHTML]="'scan' | ico"></span> Scan papers</button>
+        <button class="btn btn-secondary" (click)="resultsSaved()" data-tooltip="Grades and item analysis for this quiz"><span [innerHTML]="'chart' | ico"></span> Results</button>
+      </div>
+      <p class="faint center" style="font-size:11.5px;margin:8px 0 0">The scanner marks against the answer key at the top of this page — one quiz, one key.</p>
+
       @if (selectedQuiz(); as q) {
         @if (!q.keyOnly) {
           <div class="section-title">Questions (read-only)</div>
@@ -336,8 +372,6 @@
               </div>
             }
           </div>
-        } @else {
-          <p class="faint center" style="font-size:11.5px;padding:12px 0 0">{{ q.items.length }} entry answer grid — the questions live on your own paper.</p>
         }
         <p class="faint center" style="font-size:11.5px;padding:12px 0">Saved quizzes are permanent — export them any time, even offline.</p>
       }

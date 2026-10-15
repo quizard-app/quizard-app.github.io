@@ -1,30 +1,32 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NgTemplateOutlet } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { extractText } from '../../core/engine/extract/index.js';
 import { parseKeyText } from '../../core/engine/answerkey.js';
-import { generateTeacherQuiz, clampCount, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
-import { listClasses, listKeys, listQuizzes, saveQuiz, getQuiz, type TeacherQuiz } from '../../core/engine/storage.js';
-import { fmtDate } from '../../shared/helpers.js';
-import { buildTeacherQuizPdf, buildBubbleSheetsPdf } from '../../core/engine/export.js';
+import { generateTeacherQuiz, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
+import { listClasses, listKeys, listQuizzes, listSheets, saveQuiz, getQuiz } from '../../core/engine/storage.js';
+import { fmtDate, bannerTheme } from '../../shared/helpers.js';
+import { buildBubbleSheetsPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ByokService } from '../../core/services/byok.service';
 
 const MODES = [
-  { id: 'ai', label: 'Full AI', hint: 'AI writes everything from your file' },
-  { id: 'key', label: 'Anchor to my key', hint: 'Your key fixes the correct answers' },
-  { id: 'format', label: 'Match my format', hint: 'AI copies the style of your example questions' },
+  { id: 'ai', label: 'Full AI', hint: 'You have just a lesson — AI writes everything', io: 'lesson → full quiz' },
+  { id: 'key', label: 'Anchor to my key', hint: 'You have the answers — AI writes questions to fit them', io: 'answer key → questions' },
+  { id: 'format', label: 'Match my format', hint: 'You have sample questions — AI writes new ones in the same style', io: 'examples → new questions' },
 ];
 
 @Component({
   selector: 'app-create',
-  imports: [IonContent, IcoPipe],
+  imports: [IonContent, IcoPipe, NgTemplateOutlet],
   templateUrl: './create.html',
 })
 export class CreatePage {
   router = inject(Router);
+  private route = inject(ActivatedRoute);
   ui = inject(UiStateService);
   readonly byok = inject(ByokService);
   private toast = inject(ToastService);
@@ -32,10 +34,29 @@ export class CreatePage {
   readonly modes = MODES;
   readonly maxItems = MAX_ITEMS;
   readonly dateOf = fmtDate;
+  // Library cards wear the same hashed gradients as classes/keys, so a
+  // subject-colored tile reads consistently across the app.
+  readonly bannerTheme = bannerTheme;
   readonly letters = ['A', 'B', 'C', 'D'];
 
   stage = signal<'home' | 'setup' | 'review' | 'export'>('home');
+
+  // ── guided wizard rail (Setup → Review → Save) ───────────────────────────
+  // Export doubles as "saved quiz detail" when opened from the home list, so
+  // the rail only tracks whether it was reached by actually saving.
+  wizardExport = signal(false);
+  wizSteps = ['Setup', 'Review', 'Save'];
+  wizStep = computed(() => (this.stage() === 'setup' ? 0 : this.stage() === 'review' ? 1 : 2));
+  goStep(i: number) {
+    if (i >= this.wizStep()) return; // only completed steps are clickable
+    if (i === 0) this.backToSetup();
+    else this.stage.set('review');
+  }
   homeQuizzes = signal<any[]>([]);
+  // Scanned-paper rows, so a quiz card can show how many papers were graded
+  // against it — the "is this quiz live yet" indicator on the home board.
+  sheets = signal<any[]>([]);
+  gradedOf = (q: any): number => this.sheets().filter(s => s.quizId === q.id).length;
   selectedQuiz = signal<any>(null);
   mode = signal<'ai' | 'key' | 'format'>('ai');
   subject = signal('');
@@ -94,21 +115,62 @@ export class CreatePage {
   readonly knownSubjects = computed(() =>
     [...new Set(this.classList().map(c => c.subject).filter(Boolean))]);
 
+  // Setup sections renumber by mode: Full AI has no key step at all, so static
+  // 1..5 numbers kept dead steps between live ones — the main reason the form
+  // read as a confusing wall. Key/example is always section 2 (rendered only in
+  // key/format modes); material and details shift around it.
+  readonly stepMaterial = computed(() => this.mode() === 'ai' ? 2 : 3);
+  readonly stepDetails = computed(() => this.mode() === 'ai' ? 3 : 4);
+
   async ionViewWillEnter() {
     this.classList.set(await listClasses());
-    if (this.stage() === 'home') this.homeQuizzes.set(await listQuizzes());
+    this.applyKeyParam();
+    if (this.stage() === 'home') {
+      const [quizzes, sheets] = await Promise.all([listQuizzes(), listSheets()]);
+      this.homeQuizzes.set(quizzes);
+      this.sheets.set(sheets);
+    }
     if (this.stage() === 'setup') {
       this.savedKeys.set(await listKeys());
-      // prefill the subject from the classes when starting fresh
+      // prefill the subject: from the key we arrived with, else from the classes
       if (!this.subject().trim()) {
-        const first = this.classList().find(c => c.subject);
-        if (first) this.subject.set(first.subject);
+        const fromKey = this.pickedKey()?.subject;
+        const fromClass = this.classList().find(c => c.subject)?.subject;
+        const subj = fromKey || fromClass;
+        if (subj) this.subject.set(subj);
       }
     }
   }
 
-  setMode(id: any) { this.mode.set(id); }
-  setCount(v: any) { this.count.set(clampCount(v)); }
+  // Arriving from the Keys tab's "Build a quiz" button: open the setup form in
+  // key mode with that key already picked, so the teacher lands on a filled-in
+  // form instead of an empty one. The query param is dropped straight after, so
+  // coming back to this tab doesn't drag them into key mode again.
+  private applyKeyParam() {
+    const id = this.route.snapshot.queryParamMap.get('key');
+    if (!id) return;
+    this.stage.set('setup');
+    this.pickedKeyId.set(id);
+    this.mode.set('key');
+    this.keyPaste.set('');
+    void this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+  }
+
+  setMode(id: any) {
+    // Switching modes switches the paste box's meaning — a picked saved key is
+    // an *anchor*, meaningless once you leave key mode.
+    if (id !== 'key') this.pickedKeyId.set(null);
+    this.mode.set(id);
+  }
+  // Buttons step by 5 and typing accepts anything 1–50; junk (empty, 0,
+  // negative) simply keeps the current count instead of snapping to a default.
+  setCount(v: any) {
+    const n = Math.round(Number(v));
+    if (Number.isFinite(n) && n > 0) this.count.set(Math.min(MAX_ITEMS, n));
+  }
+
+  // −/+ stepper: floors at 1 so the button can step down to single digits.
+  nudgeCount(d: number) { this.setCount(Math.max(1, this.count() + d)); }
 
   async onFile(ev: Event) {
     const input = ev.target as HTMLInputElement;
@@ -185,17 +247,23 @@ export class CreatePage {
 
   async save() {
     if (!this.itemsValid()) return;
+    // An id means we're editing a saved quiz (from its detail page) — update
+    // that same record instead of stacking a duplicate.
+    const editing = !!this.quizId();
     const quiz = await saveQuiz({
+      id: this.quizId() || undefined,
       subject: this.subject().trim(),
       title: this.title().trim(),
-      source: this.mode(),
+      source: this.editingSource || this.mode(),
       keyOnly: this.keyOnly(),
       items: this.items(),
     });
+    this.editingSource = null;
     this.quizId.set(quiz.id);
     this.selectedQuiz.set(quiz);
+    this.wizardExport.set(!editing);
     this.stage.set('export');
-    this.toast.toast('Quiz saved ✓ — printable copies are ready');
+    this.toast.toast(editing ? 'Changes saved ✓' : 'Quiz saved ✓ — printable copies are ready');
   }
 
   // ── preview → download flow ──
@@ -206,11 +274,52 @@ export class CreatePage {
   previewDoc: any = null;
   previewFilename = '';
 
+  readonly sourceLabel = (q: any): string =>
+    ({ ai: 'AI written', key: 'from your key', format: 'from your examples' } as Record<string, string>)[q?.source] || 'saved quiz';
+
   async openSaved(id: string) {
     const quiz = await getQuiz(id);
     if (!quiz) return;
     this.selectedQuiz.set(quiz);
+    this.sheets.set(await listSheets());
+    this.wizardExport.set(false);
     this.stage.set('export');
+  }
+
+  // Per-number key strip for the detail page: the LETTER the scanner marks,
+  // with the answer text as the hover title.
+  readonly keyStripOf = (q: any): { n: number; a: string; full: string }[] =>
+    (q?.items || []).map((it: any, i: number) => ({
+      n: i + 1,
+      a: this.letters[it.answerIndex] || '—',
+      full: it.options?.[it.answerIndex] || '',
+    }));
+
+  // The source a saved quiz was built with — editSaved() pins it so Save
+  // doesn't overwrite the quiz's own provenance with the wizard's default.
+  editingSource: 'ai' | 'key' | 'format' | null = null;
+
+  // Edit a saved quiz in place: the review editor opens with the quiz's own
+  // items, and Save updates the same record — the quiz owns its key.
+  editSaved() {
+    const q = this.selectedQuiz();
+    if (!q) return;
+    this.quizId.set(q.id);
+    this.editingSource = q.source || null;
+    this.subject.set(q.subject || '');
+    this.title.set(q.title || '');
+    this.items.set((q.items || []).map((it: any) => ({ ...it })));
+    this.stage.set('review');
+  }
+
+  scanSaved() {
+    const q = this.selectedQuiz();
+    if (q) this.router.navigateByUrl(`/tabs/checking?quiz=${q.id}`);
+  }
+
+  resultsSaved() {
+    const q = this.selectedQuiz();
+    if (q) this.router.navigateByUrl(`/tabs/reports?quiz=${q.id}`);
   }
 
   backHome() {
@@ -225,6 +334,7 @@ export class CreatePage {
     this.items.set([]);
     this.quizId.set(null);
     this.selectedQuiz.set(null);
+    this.editingSource = null;
     this.mode.set('ai');
     this.subject.set(''); this.title.set(''); this.fileText.set(''); this.fileName.set('');
     this.lessonPaste.set(''); this.keyPaste.set(''); this.pickedKeyId.set(null);
@@ -233,41 +343,27 @@ export class CreatePage {
     void this.ionViewWillEnter();
   }
 
-  async printQuiz() { await this.previewWith(getQuiz, 'quiz'); }
-  async printKey() { await this.previewWith(getQuiz, 'key'); }
-  async printSheets() { await this.previewWith(getQuiz, 'sheets'); }
-
-  private async previewWith(getter: (id: string) => Promise<TeacherQuiz | null>, kind: 'quiz' | 'key' | 'sheets') {
+  async printSheets() {
     let quiz = this.selectedQuiz();
     if (!quiz) {
       const id = this.quizId();
-      quiz = id ? await getter(id) : null;
+      quiz = id ? await getQuiz(id) : null;
     }
     if (!quiz) return;
     this.previewBusy.set(true);
     try {
-      if (kind === 'quiz') {
-        this.previewDoc = await buildTeacherQuizPdf(quiz);
-        this.previewFilename = `quizard-quiz-${slugify(quiz.subject || quiz.title)}`;
-        this.previewLabel.set('Student quiz paper');
-      } else if (kind === 'key') {
-        this.previewDoc = await buildTeacherQuizPdf(quiz, { withAnswers: true });
-        this.previewFilename = `quizard-key-${slugify(quiz.subject || quiz.title)}`;
-        this.previewLabel.set('Teacher’s answer key');
-      } else {
-        // Sheets print exactly the chosen class's roster — one page per student,
-        // nothing blank and nothing spare. A class is required because the QR on
-        // each sheet is what tells the scanner whose paper it is.
-        const cls = this.sheetClass();
-        if (!cls?.students?.length) {
-          this.toast.toast('Pick a class first — sheets print only that class’s students.');
-          this.previewBusy.set(false);
-          return;
-        }
-        this.previewDoc = await buildBubbleSheetsPdf(quiz, cls.students, this.paper());
-        this.previewFilename = `quizard-bubble-sheets-${slugify(quiz.subject || quiz.title)}-${slugify(cls.name)}`;
-        this.previewLabel.set(`Bubble answer sheets — ${cls.name} (${cls.students.length}, one per student)`);
+      // Sheets print exactly the chosen class's roster — one page per student,
+      // nothing blank and nothing spare. A class is required because the QR on
+      // each sheet is what tells the scanner whose paper it is.
+      const cls = this.sheetClass();
+      if (!cls?.students?.length) {
+        this.toast.toast('Pick a class first — sheets print only that class’s students.');
+        this.previewBusy.set(false);
+        return;
       }
+      this.previewDoc = await buildBubbleSheetsPdf(quiz, cls.students, this.paper());
+      this.previewFilename = `quizard-bubble-sheets-${slugify(quiz.subject || quiz.title)}-${slugify(cls.name)}`;
+      this.previewLabel.set(`Bubble answer sheets — ${cls.name} (${cls.students.length}, one per student)`);
       // a new document always starts at sheet 1, and the cached pdfjs doc
       // belongs to the old one
       this.previewPdfDoc = null;
