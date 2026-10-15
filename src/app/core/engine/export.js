@@ -1,5 +1,5 @@
 import qrModule from 'qrcode-generator'
-import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, rowPitch, sheetQrPayload } from './sheet-spec.js'
+import { SHEET, bubbleSheetLayout, frameRect, markerRects, columnX, rowLabelRight, bubbleCenter, qrRect, rowPitch, sheetQrPayload, qrCaption } from './sheet-spec.js'
 import { sectionBreakdown } from './reports.js'
 
 export { bubbleSheetLayout } from './sheet-spec.js'
@@ -110,6 +110,74 @@ export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
   return pdf
 }
 
+// ── Student answer review: the full answer list, one page per student ──
+// Every question number from 1 to N with the student's letter — green when it
+// was right, red when it was wrong (with the keyed answer after the arrow),
+// grey when left blank. The teacher sees exactly which numbers each student
+// missed and what the right choice was, all on a single page.
+export async function exportReviewPdf(quiz, sheets) {
+  const pdf = await buildReviewPdf(quiz, sheets)
+  pdf.save(`quizard-review-${slug(quiz.subject + (quiz.title ? ' - ' + quiz.title : ''))}.pdf`)
+}
+
+/** Same review as exportReviewPdf, but returns the document for preview. */
+export async function buildReviewPdf(quiz, sheets) {
+  const { jsPDF } = await import('jspdf')
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
+  const W = 612, H = 792, M = 48
+  const LETTERS = ['A', 'B', 'C', 'D', 'E']
+  const COLS = 5
+  const colW = (W - M * 2) / COLS
+  const cellH = 17
+  let y = 0
+  const need = h => { if (y + h > H - M) { pdf.addPage(); y = M } }
+
+  sheets.forEach((s, si) => {
+    // every student starts on a fresh page
+    if (si > 0) pdf.addPage()
+    y = M
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
+    pdf.text('Q U I Z A R D   ·   A N S W E R   R E V I E W', M, M + 6)
+    y = M + 24
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor('#1c2438')
+    pdf.text(pdfSafe(s.studentName), M, y + 12)
+    const score = `${s.correct}/${s.total} · ${s.percent}%`
+    pdf.setFontSize(11)
+    pdf.text(score, W - M - pdf.getTextWidth(score), y + 12)
+    y += 18
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor('#6b7280')
+    const who = [s.studentNo != null ? `#${s.studentNo}` : '', s.grade, s.section].filter(Boolean).join(' · ')
+    const meta = [quiz.subject + (quiz.title ? ' — ' + quiz.title : ''), who, new Date(s.createdAt).toLocaleDateString()].filter(Boolean).join(' · ')
+    pdf.text(pdfSafe(meta), M, y + 8)
+    y += 16
+    pdf.setFontSize(8.5); pdf.setTextColor('#9ca3af')
+    pdf.text('Green — correct · red — wrong, keyed answer after the arrow · grey — left blank', M, y + 8)
+    y += 16
+
+    for (let qi = 0; qi < quiz.items.length; qi++) {
+      const it = quiz.items[qi]
+      const pick = s.answers ? s.answers[qi] : undefined
+      const hasPick = pick != null && pick >= 0
+      const right = hasPick && pick === it.answerIndex
+      if (qi % COLS === 0) need(cellH)
+      const x = M + (qi % COLS) * colW
+      const n = it.n || qi + 1
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#9ca3af')
+      pdf.text(`${n}.`, x, y + 10)
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11)
+      pdf.setTextColor(!hasPick ? '#9ca3af' : right ? '#15803d' : '#b91c1c')
+      pdf.text(hasPick ? LETTERS[pick] : '—', x + 22, y + 10)
+      if (!right && it.answerIndex != null && it.answerIndex >= 0) {
+        // the miss shows its correction: the keyed letter, in green
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor('#15803d')
+        pdf.text(`-> ${LETTERS[it.answerIndex]}`, x + 40, y + 10)
+      }
+      if (qi % COLS === COLS - 1 || qi === quiz.items.length - 1) y += cellH
+    }
+  })
+  return pdf
+}
+
 // ── Teacher app exports (PLAN.md Phase 2): quiz paper, teacher key, bubble sheets ──
 // Geometry lives in sheet-spec.js — the Phase 3 scanner samples the same
 // constants, so the printed sheet and the scanner agree by construction.
@@ -135,57 +203,6 @@ function bubbleQr(pdf, text, x, y, size, level = 'M') {
       if (qr.isDark(r, c)) pdf.rect(x + c * cell, y + r * cell, cell + 0.2, cell + 0.2, 'F')
     }
   }
-}
-
-function headerBlock(pdf, quiz, subtitle) {
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
-  pdf.text('Q U I Z A R D', SHEET.M, SHEET.M + 6)
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor('#1c2438')
-  const title = pdfSafe(quiz.subject + (quiz.title ? ' — ' + quiz.title : ''))
-  pdf.text(title, SHEET.M, SHEET.M + 26)
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor('#6b7280')
-  pdf.text(pdfSafe(subtitle), SHEET.M, SHEET.M + 40)
-}
-
-// Shared scaffold for the quiz paper and the teacher's key copy.
-export async function buildTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
-  const { jsPDF } = await import('jspdf')
-  const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
-  const W = 612, H = 792, M = 48
-  let y = 0
-  const need = h => { if (y + h > H - M) { pdf.addPage(); y = M } }
-  const text = (str, { size = 11, bold = false, color = '#1c2438', gap = 4, indent = 0 } = {}) => {
-    pdf.setFont('helvetica', bold ? 'bold' : 'normal')
-    pdf.setFontSize(size)
-    pdf.setTextColor(color)
-    const lines = pdf.splitTextToSize(pdfSafe(str), W - M * 2 - indent)
-    need(lines.length * (size + 3))
-    lines.forEach(line => { pdf.text(line, M + indent, y + size); y += size + 3 })
-    y += gap
-  }
-
-  headerBlock(pdf, quiz, withAnswers
-    ? 'Teacher copy — correct answers marked'
-    : 'Student name: ________________    Date: ____________    Grade & Section: ____________')
-  y = M + 56
-  text('Directions: Read each question. Shade the letter of the best answer on the answer sheet.', { size: 9.5, color: '#6b7280', gap: 10 })
-
-  quiz.items.forEach((it, i) => {
-    need(60)
-    text(`${i + 1}. ${it.question}`, { bold: false, gap: 3 })
-    it.options.forEach((o, oi) => {
-      const correct = withAnswers && oi === it.answerIndex
-      text(`${'ABCD'[oi]}. ${o}${correct ? '   (ANSWER)' : ''}`, { size: 10.5, indent: 16, bold: correct, color: correct ? '#166534' : '#1c2438', gap: 1 })
-    })
-    if (withAnswers) text('', { size: 4, gap: 2 })
-  })
-
-  return pdf
-}
-
-export async function exportTeacherQuizPdf(quiz, { withAnswers = false } = {}) {
-  const pdf = await buildTeacherQuizPdf(quiz, { withAnswers })
-  pdf.save(`quizard-${withAnswers ? 'key' : 'quiz'}-${slug(quiz.subject || quiz.title)}.pdf`)
 }
 
 // The scannable answer sheet. One clean bordered box holding nothing but the
@@ -277,6 +294,19 @@ export async function buildBubbleSheetsPdf(quiz, students, size = 'letter') {
     // modules keeps the cell size large enough to scan from a phone photo.
     const qr = qrRect(count)
     bubbleQr(pdf, sheetQrPayload(quiz.id, student), qr.x, qr.y, qr.size, student ? 'L' : 'M')
+
+    // the roster number and name in plain sight under the code, so a printed
+    // stack can be sorted and handed out from the bottom of the page alone
+    if (student?.name) {
+      const cap = qrCaption(count)
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor('#6b7280')
+      let who = [student.no != null ? '#' + student.no : '', student.name].filter(Boolean).join(' ')
+      if (pdf.getTextWidth(who) > cap.maxWidth) {
+        while (who.length > 4 && pdf.getTextWidth(who + '…') > cap.maxWidth) who = who.slice(0, -1)
+        who += '…'
+      }
+      pdf.text(who, cap.right, cap.baseline, { align: 'right' })
+    }
 
     // bubble grid: small grey numerals right-aligned against four circles
     const layout = bubbleSheetLayout(count)
