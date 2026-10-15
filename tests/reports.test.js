@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { itemAnalysis, weakestItems, resultsCsv, sectionBreakdown } from '../src/app/core/engine/reports.js'
+import { itemAnalysis, weakestItems, resultsCsv, sectionBreakdown, scoreDistribution } from '../src/app/core/engine/reports.js'
 
 const items = [
   { n: 1, question: 'Q1', answerIndex: 0 },
@@ -154,5 +154,32 @@ describe('resultsCsv — heavy injection', () => {
     ], [{ answerIndex: 0 }])
     const lines = csv.split('\r\n')
     expect(lines.length).toBe(2) // header + one (escaped) row
+  })
+})
+
+describe('scoreDistribution', () => {
+  it('bins sheets into the five fixed bands, A first', () => {
+    const dist = scoreDistribution([
+      { percent: 95 }, { percent: 100 },  // A
+      { percent: 84 },                    // B
+      { percent: 72 },                    // C
+      { percent: 60 },                    // D (inclusive edge)
+      { percent: 12 },                    // F
+    ])
+    expect(dist.map(d => d.letter)).toEqual(['A', 'B', 'C', 'D', 'F'])
+    expect(dist.map(d => d.count)).toEqual([2, 1, 1, 1, 1])
+  })
+
+  it('always returns five rows even with no sheets', () => {
+    const dist = scoreDistribution([])
+    expect(dist).toHaveLength(5)
+    expect(dist.every(d => d.count === 0)).toBe(true)
+  })
+
+  it('counts sum to the sheet total and treats a missing percent as 0 (F)', () => {
+    const sheets = [{ percent: 90 }, {}, { percent: 55 }]
+    const dist = scoreDistribution(sheets)
+    expect(dist.reduce((n, d) => n + d.count, 0)).toBe(3)
+    expect(dist.find(d => d.letter === 'F').count).toBe(2)
   })
 })
