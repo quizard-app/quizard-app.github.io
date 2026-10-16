@@ -51,10 +51,14 @@
                       <div class="roster-recs">
                         @for (r of records(st); track r.quizId) {
                           <div class="roster-rec">
-                            <span class="roster-rec-quiz">{{ r.quiz }}</span>
-                            <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
-                            <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
-                            <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r); $event.stopPropagation()" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
+                            <div class="roster-rec-head">
+                              <span class="roster-rec-quiz">{{ r.quiz }}</span>
+                              <span class="roster-rec-meta">
+                                <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
+                                <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
+                                <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r); $event.stopPropagation()" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
+                              </span>
+                            </div>
                             @if (answersOf(r).length) {
                               <div class="ans-strip">
                                 @for (a of answersOf(r); track $index) {

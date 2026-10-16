@@ -338,12 +338,13 @@
         } @else {
           <span class="faint">Pick a class — prints only its students</span>
         }
-        <span class="faint">Paper:</span>
-        <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
-          <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
-          <option value="a4" [selected]="paper() === 'a4'">A4</option>
-          <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
-        </select>
+        <span class="faint" style="display:inline-flex;gap:6px;align-items:center">Paper:
+          <select class="text-input" style="width:auto;padding:7px 8px" [attr.aria-label]="'Paper size'" (change)="setPaper($any($event.target).value)">
+            <option value="letter" [selected]="paper() === 'letter'">Short (Letter)</option>
+            <option value="a4" [selected]="paper() === 'a4'">A4</option>
+            <option value="long" [selected]="paper() === 'long'">Long (8.5×13)</option>
+          </select>
+        </span>
       </div>
       @if (sheetClass()) {
         <p class="faint center" style="font-size:11.5px;margin:8px 0 0">Exactly {{ sheetClass()!.students.length }} sheet{{ sheetClass()!.students.length === 1 ? '' : 's' }} — one per student in {{ sheetClass()!.name }}, each QR carrying that student's name so scanning attaches them automatically.</p>

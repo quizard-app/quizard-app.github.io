@@ -1124,7 +1124,7 @@ async function countDocsFor(accountId) {
 
 export async function clearAllData() {
   const db = await dbPromise
-  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams'], 'readwrite')
+  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams', 'classes', 'keys', 'quizzes', 'sheets'], 'readwrite')
   tx.objectStore('accounts').clear()
   tx.objectStore('docs').clear()
   tx.objectStore('attempts').clear()
@@ -1133,10 +1133,35 @@ export async function clearAllData() {
   tx.objectStore('srs').clear()
   tx.objectStore('decks').clear()
   tx.objectStore('exams').clear()
+  // teacher stores too — "erase all data" previously left classes and results behind
+  tx.objectStore('classes').clear()
+  tx.objectStore('keys').clear()
+  tx.objectStore('quizzes').clear()
+  tx.objectStore('sheets').clear()
   await tx.done
   localStorage.removeItem('quizard-settings')
   localStorage.removeItem('quizard-active-account')
   activeAccountId = null
+}
+
+// Sweep only the demo records (everything tagged `demo: true`), leaving the
+// teacher's own classes, keys, quizzes and results untouched.
+export async function deleteDemoData() {
+  const db = await dbPromise
+  const accountId = await requireAccount()
+  const stores = ['classes', 'keys', 'quizzes', 'sheets']
+  // read pass: collect the demo ids for this account
+  const doomed = []
+  for (const store of stores) {
+    const rows = await db.getAll(store)
+    for (const r of rows) if (r.accountId === accountId && r.demo) doomed.push([store, r.id])
+  }
+  if (!doomed.length) return 0
+  // write pass: one transaction, then wait for it to commit
+  const tx = db.transaction(stores, 'readwrite')
+  for (const [store, id] of doomed) tx.objectStore(store).delete(id)
+  await tx.done
+  return doomed.length
 }
 
 export async function storageUsage() {

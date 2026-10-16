@@ -399,9 +399,19 @@ export class CreatePage {
       this.previewPages.set(pdf.numPages);
       const page = Math.min(Math.max(1, this.previewPage()), pdf.numPages);
       const pdfPage = await pdf.getPage(page);
-      const scale = 340 / pdfPage.getViewport({ scale: 1 }).width;
+      // Render at the canvas's true display size × devicePixelRatio: a plain
+      // 340px bitmap gets upscaled by CSS on HiDPI screens and looks blurry.
+      const wrap = canvas.parentElement;
+      const pad = 20; // .preview-canvas-wrap side padding
+      const cssW = Math.max(240, Math.min(440, ((wrap?.clientWidth ?? 360) - pad)));
+      const dpr = Math.max(1.5, Math.min(window.devicePixelRatio || 1, 3));
+      const scale = (cssW * dpr) / pdfPage.getViewport({ scale: 1 }).width;
       const vp = pdfPage.getViewport({ scale });
       canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+      // the bitmap is dpr× the CSS size — pin the CSS size so the browser
+      // downsamples instead of stretching
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = 'auto';
       await pdfPage.render({ canvas, canvasContext: canvas.getContext('2d')!, viewport: vp }).promise;
     } catch (e: any) {
       this.toast.toast('Preview failed — you can still download the PDF', true);

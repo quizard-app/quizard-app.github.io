@@ -1997,7 +1997,12 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .opt-pick.on { background: var(--good-bg, var(--accent-soft)); border-color: var(--good, var(--accent)); color: var(--good, var(--accent-strong)); }
 .export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
 .export-grid .btn { justify-content: center; padding: 11px 6px; font-size: 12.5px; }
-.copies-row { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 12px; font-size: 12.5px; }
+@media (max-width: 560px) {
+  .export-grid { grid-template-columns: 1fr; }
+  .export-grid .btn { padding: 12px 10px; font-size: 13px; }
+}
+.copies-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; margin-top: 12px; font-size: 12.5px; max-width: 100%; }
+.copies-row .text-input { max-width: 100%; }
 
 /* ── Check papers: session bar, camera, answer grid ── */
 /* Setup: class cards wear the same banner themes as the Classes page, so a
@@ -2739,13 +2744,21 @@ button.roster-row.on { background: var(--accent-soft); }
 .roster-norec { font-size: 12px; color: var(--text-faint); }
 .roster-caret { color: var(--text-faint); flex: none; display: flex; transition: transform .15s ease; }
 .roster-caret.open { transform: rotate(90deg); }
-.roster-recs { padding: 6px 14px 12px 52px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border-top: 1px solid var(--border); }
-.roster-rec { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13.5px; }
-.roster-rec-quiz { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-recs { padding: 8px 12px 12px 52px; display: flex; flex-direction: column; gap: 8px; background: var(--surface-2); border-top: 1px solid var(--border); }
+/* Each attempt is its own mini-card: header line (title + score/date/delete),
+   then the answer strip as a full-width row below — nothing competes for space. */
+.roster-rec {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); font-size: 13.5px;
+}
+.roster-rec-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.roster-rec-quiz { font-weight: 600; flex: 1 1 100%; line-height: 1.3; }
+.roster-rec-meta { display: flex; gap: 8px; align-items: center; flex: none; padding-top: 1px; }
 .roster-rec-date { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
 /* Per-number answer list inside the expanded attempt: green picked-right,
    red picked-wrong with the keyed letter after the arrow, grey left blank. */
-.ans-strip { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 8px; }
+.ans-strip { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
 .ans-cell {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border);
