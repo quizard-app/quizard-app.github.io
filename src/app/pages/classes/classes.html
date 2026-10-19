@@ -70,7 +70,8 @@
             <input class="text-input" placeholder="Section (optional)" [attr.aria-label]="'Section'" maxlength="30" [value]="section()" (input)="section.set($any($event.target).value)" />
           </div>
           <input class="text-input" placeholder="Subject (optional — e.g. Science)" [attr.aria-label]="'Class subject'" maxlength="40" [value]="subject()" (input)="subject.set($any($event.target).value)" />
-          <textarea class="text-input roster-paste" rows="7" placeholder="Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+          <p class="sheet-label">Students <span class="faint">· one name per line</span></p>
+          <textarea class="text-input roster-paste" rows="7" placeholder="Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
           <label class="btn btn-secondary file-btn">
             <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
             <input type="file" accept=".txt,.csv,text/plain,text/csv" (change)="onFile($event)" hidden />

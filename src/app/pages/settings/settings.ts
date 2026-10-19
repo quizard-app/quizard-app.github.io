@@ -17,7 +17,8 @@ import { ByokService } from '../../core/services/byok.service';
 import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js';
 import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync, changeSyncPassword } from '../../core/engine/sync.js';
 import { normalizeSyncCode } from '../../core/engine/sync.js';
-import { hashPin, verifyPin, updateAccount } from '../../core/engine/storage.js';
+import { hashPin, verifyPin, updateAccount, deleteDemoData } from '../../core/engine/storage.js';
+import { seedDemoData } from '../../core/engine/demo.js';
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -413,6 +414,29 @@ export class SettingsPage implements OnInit {
     this.ui.account.set(null);
     this.account = null;
     this.accounts = [];
+  }
+
+  // ── Demo data ── a full sample teacher-week (2 classes, 3 quizzes, graded
+  // sheets) that overwrites on re-run, so the app is explorable on first boot.
+  readonly demoBusy = signal(false);
+
+  async loadDemo() {
+    if (this.demoBusy()) return;
+    this.demoBusy.set(true);
+    try {
+      await seedDemoData();
+      this.toast.toast('Demo data loaded — classes, quizzes and results are in');
+    } catch (e: any) {
+      this.toast.toast('Could not load demo data' + (e?.message ? ' — ' + e.message : ''), true);
+    } finally {
+      this.demoBusy.set(false);
+    }
+  }
+
+  async removeDemo() {
+    if (!await this.confirm.confirm('Remove demo data?', 'Only the sample classes, quizzes and results go — your own data stays.', 'Remove')) return;
+    const n = await deleteDemoData();
+    this.toast.toast(n ? `Removed ${n} demo records` : 'No demo data here');
   }
 
   clearCache() {

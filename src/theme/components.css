@@ -98,7 +98,7 @@
     padding: 8px 14px;
     border: 1px solid var(--border);
     border-radius: 999px;
-    box-shadow: 0 22px 48px -14px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(124, 58, 237, 0.1);
+    box-shadow: 0 22px 48px -14px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(23, 103, 124, 0.1);
   }
 }
 .nav-item {
@@ -177,7 +177,7 @@ html[data-theme='dark'] .nav-item.active { color: var(--text); }
 }
 .btn-primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 12px 30px -4px rgba(124, 58, 237, 0.5), 0 0 20px var(--accent-glow);
+  box-shadow: 0 12px 30px -4px rgba(23, 103, 124, 0.45), 0 0 20px var(--accent-glow);
   transform: translateY(-1px);
 }
 .btn-primary:active { transform: scale(0.97); }

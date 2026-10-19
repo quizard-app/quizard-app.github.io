@@ -91,7 +91,7 @@
   background: var(--surface-hover);
   border-color: var(--accent-border);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px -4px rgba(124, 58, 237, 0.12), var(--shadow);
+  box-shadow: 0 8px 24px -4px rgba(23, 103, 124, 0.12), var(--shadow);
 }
 .doc-card:active { transform: scale(0.98); }
 .doc-icon {
@@ -143,7 +143,7 @@
    numbers and actions. Scoped with .class-grid so no other page moves. */
 .class-grid .doc-card { display: block; padding: 0; overflow: hidden; contain-intrinsic-size: auto 280px; }
 .cls-banner { position: relative; height: 100px; padding: 16px 96px 16px 18px; color: #fff; }
-.cls-banner.th-0, .scan-cls.th-0 { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+.cls-banner.th-0, .scan-cls.th-0 { background: linear-gradient(135deg, #17677C, #0F4250); }
 .cls-banner.th-1, .scan-cls.th-1 { background: linear-gradient(135deg, #0f766e, #115e59); }
 .cls-banner.th-2, .scan-cls.th-2 { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
 .cls-banner.th-3, .scan-cls.th-3 { background: linear-gradient(135deg, #be123c, #881337); }
@@ -299,7 +299,7 @@
   content: '';
   position: absolute; inset: 0;
   border-radius: inherit;
-  background: linear-gradient(120deg, rgba(124, 58, 237, 0.16), transparent 42%, rgba(6, 182, 212, 0.14) 78%, transparent);
+  background: linear-gradient(120deg, rgba(23, 103, 124, 0.14), transparent 42%, rgba(233, 162, 59, 0.10) 78%, transparent);
   opacity: 0.35;
   animation: heroAurora 7s ease-in-out infinite alternate;
   pointer-events: none;
@@ -1099,7 +1099,7 @@ mark.find-current { background: var(--gold); color: #1c1400; box-shadow: 0 0 10p
 .exam-card-lib {
   display: flex; align-items: center; gap: 12px;
   width: 100%; margin-bottom: 18px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(6, 182, 212, 0.10));
+  background: linear-gradient(135deg, rgba(23, 103, 124, 0.14), rgba(233, 162, 59, 0.09));
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -1390,7 +1390,7 @@ ion-tab-button { --padding-start: 2px; --padding-end: 2px; min-width: 0 !importa
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 32px 24px; text-align: center;
-  box-shadow: var(--shadow-lg), 0 0 24px rgba(124, 58, 237, 0.08);
+  box-shadow: var(--shadow-lg), 0 0 24px rgba(23, 103, 124, 0.08);
 }
 .fc-back { transform: rotateY(180deg); background: var(--surface-2); }
 .fc-hint {
@@ -1848,7 +1848,14 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
   display: grid; place-items: center;
 }
 .empty-ico svg { width: 30px; height: 30px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Small-caps field label for bottom-sheet forms (mockup-style: label above
+   the field instead of stuffing the hint into the placeholder). */
+.sheet-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-dim); margin: 4px 0 0;
+}
+.sheet-label .faint { text-transform: none; letter-spacing: 0; font-weight: 600; }
 textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-height: 1.5; font-size: 13px; }
 .file-btn { position: relative; overflow: hidden; justify-content: center; margin-top: 10px; }
 .parse-note { font-size: 12.5px; color: var(--accent-strong); font-weight: 600; margin: 10px 0 0; text-align: center; }
@@ -2645,14 +2652,17 @@ button.qf-pill.on { border-color: var(--accent); background: var(--accent-soft);
   display: grid; place-items: end center;
 }
 .org-sheet {
-  width: min(100%, 560px); max-height: 78vh; overflow: auto;
+  width: min(100%, 560px); max-height: 84vh; overflow: auto;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
   animation: sheet-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes sheet-up { from { transform: translateY(26px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.org-sheet h3 { font-size: 16px; font-weight: 800; margin: 0 0 10px; }
+.org-sheet h3 { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 4px; }
+/* Even vertical rhythm for stacked form fields — forms were cramped when
+   inputs sat flush against each other. Later margin rules still win. */
+.org-sheet > * + * { margin-top: 12px; }
 .org-list { display: flex; flex-direction: column; gap: 6px; max-height: 264px; overflow: auto; }
 .org-row {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;

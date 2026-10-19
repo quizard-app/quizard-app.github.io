@@ -9,8 +9,8 @@ export class UiStateService {
     (typeof localStorage !== 'undefined' && (() => {
       try {
         const s = JSON.parse(localStorage.getItem('quizard-settings') || '{}');
-        return s['theme'] === 'light' ? 'light' : 'dark';
-      } catch { return 'dark'; }
+        return s['theme'] === 'dark' ? 'dark' : 'light';
+      } catch { return 'light'; }
     })()) as 'dark' | 'light'
   );
 

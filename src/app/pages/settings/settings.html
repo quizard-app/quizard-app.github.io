@@ -211,6 +211,15 @@
       <p class="faint" style="font-size:12px;margin-top:12px">{{ usageLine() }}</p>
     </div>
 
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="'zap' | ico"></span>Demo data</div>
+    <div class="card">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" style="flex:1" [disabled]="demoBusy()" (click)="loadDemo()" data-tooltip="Load a sample teacher week: 2 classes, 3 quizzes, graded results"><span [innerHTML]="'zap' | ico"></span> Load demo data</button>
+        <button class="btn btn-secondary" style="flex:1" (click)="removeDemo()" data-tooltip="Strip out every demo-tagged record; your own data stays"><span [innerHTML]="'trash' | ico"></span> Remove demo</button>
+      </div>
+      <p class="faint" style="font-size:11.5px;margin-top:10px;text-align:center">2 classes · 3 quizzes · graded sheets — safe to re-run, tagged so Remove demo only ever strips the samples.</p>
+    </div>
+
     <div class="section-title"><span class="set-sec-ico" [innerHTML]="'trash' | ico"></span>Danger zone</div>
     <div class="card" style="border-color:var(--bad-border)">
       <button class="btn btn-danger-ghost" style="width:100%" (click)="eraseAll()" data-tooltip="Permanently delete all documents, quizzes, history and mistakes — cannot be undone"><span [innerHTML]="'trash' | ico"></span> Erase all data</button>

@@ -50,7 +50,7 @@ export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
     y += gap
   }
 
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#17677C')
   pdf.text('Q U I Z A R D   ·   C L A S S   R E S U L T S', M, M + 6)
   y = M + 24
   text(cls.name, { size: 18, bold: true, gap: 2 })
@@ -102,7 +102,7 @@ export async function buildClassReportPdf(cls, quiz, sheets, analysis) {
     pdf.setTextColor('#6b7280')
     pdf.text(`${r.missRate}% of ${r.attempted}`, W - M - 96, y + 9)
     pdf.setFillColor('#e9e6f7'); pdf.rect(M + 28, y + 13, barW, 5, 'F')
-    pdf.setFillColor('#7c3aed'); pdf.rect(M + 28, y + 13, barW * r.missRate / 100, 5, 'F')
+    pdf.setFillColor('#17677C'); pdf.rect(M + 28, y + 13, barW * r.missRate / 100, 5, 'F')
     y += 22
   }
   if (!analysis.some(r => r.attempted)) text('No attempts recorded yet.', { size: 10, color: '#6b7280' })
@@ -136,7 +136,7 @@ export async function buildReviewPdf(quiz, sheets) {
     // every student starts on a fresh page
     if (si > 0) pdf.addPage()
     y = M
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#7c3aed')
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor('#17677C')
     pdf.text('Q U I Z A R D   ·   A N S W E R   R E V I E W', M, M + 6)
     y = M + 24
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor('#1c2438')
@@ -219,7 +219,7 @@ function sheetHeader(pdf, quiz, student) {
   const right = SHEET.W - SHEET.M
 
   // left lockup: purple roundel + wordmark + tagline
-  pdf.setFillColor('#7c3aed'); pdf.circle(SHEET.M + 11, 30, 11, 'F')
+  pdf.setFillColor('#17677C'); pdf.circle(SHEET.M + 11, 30, 11, 'F')
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(13); pdf.setTextColor('#ffffff')
   pdf.text('Q', SHEET.M + 11, 34.5, { align: 'center' })
   pdf.setFontSize(15); pdf.setTextColor('#1c2438')
