@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8"/>
     <title>Quizard — Study from your documents</title>
     <base href="/"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-    <meta name="theme-color" content="#0b0820"/>
+    <meta name="theme-color" content="#FBF5E7"/>
     <link rel="icon" type="image/x-icon" href="favicon.ico"/>
     <!-- Fonts are self-hosted variable woff2 (src/theme/fonts.css), precached
          by the service worker — no third-party font requests, offline-safe. -->
@@ -14,16 +14,16 @@
       try {
         var s = JSON.parse(localStorage.getItem("quizard-settings") || "{}");
         document.documentElement.dataset.theme =
-          s.theme === "light" ? "light" : "dark";
+          s.theme === "dark" ? "dark" : "light";
       } catch (e) {
-        document.documentElement.dataset.theme = "dark";
+        document.documentElement.dataset.theme = "light";
       }
     </script>
     <link rel="manifest" href="manifest.webmanifest"/>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://generativelanguage.googleapis.com https://quizard-relay.quizard-app.workers.dev; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"/>
-  <link rel="stylesheet" href="styles-Q7GFP2FK.css"></head>
+  <link rel="stylesheet" href="styles-M7KIPOE3.css"></head>
   <body>
     <app-root></app-root>
     <noscript>Please enable JavaScript to continue using this application.</noscript>
-  <link rel="modulepreload" href="chunk-BTFgPefw.js"><link rel="modulepreload" href="chunk-Js_3yds6.js"><link rel="modulepreload" href="chunk-BbOICyDP.js"><link rel="modulepreload" href="chunk-Y8QJL0jr.js"><link rel="modulepreload" href="chunk-C4-3tzuO.js"><link rel="modulepreload" href="chunk-B-ZaHVBq.js"><link rel="modulepreload" href="chunk-foUULV0k.js"><link rel="modulepreload" href="chunk-CABSGZFi.js"><link rel="modulepreload" href="chunk-Bh3eoH14.js"><link rel="modulepreload" href="chunk-JA1Buv4g.js"><script src="main-NZCKUTSS.js" type="module"></script></body>
+  <link rel="modulepreload" href="chunk-BTFgPefw.js"><link rel="modulepreload" href="chunk-BbOICyDP.js"><link rel="modulepreload" href="chunk-Y8QJL0jr.js"><link rel="modulepreload" href="chunk-CKJ57tpm.js"><link rel="modulepreload" href="chunk-B-ZaHVBq.js"><link rel="modulepreload" href="chunk-foUULV0k.js"><link rel="modulepreload" href="chunk-CABSGZFi.js"><link rel="modulepreload" href="chunk-Bh3eoH14.js"><link rel="modulepreload" href="chunk-BzCTVZ_s.js"><link rel="modulepreload" href="chunk-CspMZHSQ.js"><script src="main-XUHVFYG2.js" type="module"></script></body>
 </html>
