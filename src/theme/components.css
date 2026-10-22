@@ -28,7 +28,9 @@
   justify-content: space-between;
   gap: 16px;
   margin: 0 calc(var(--pad-x) * -1);
-  padding: 10px var(--pad-x);
+  /* Native (Capacitor) edge-to-edge: the status bar overlays the WebView, so
+     the sticky header reserves the top inset. On the web env() is 0. */
+  padding: calc(10px + env(safe-area-inset-top, 0px)) var(--pad-x) 10px;
   position: sticky;
   top: 0;
   z-index: 25;

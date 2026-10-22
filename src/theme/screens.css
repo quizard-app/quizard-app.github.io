@@ -1419,13 +1419,17 @@ ion-tab-button { --padding-start: 2px; --padding-end: 2px; min-width: 0 !importa
 }
 .fc-btn-again:hover { background: var(--surface-2); }
 .back-header {
-  height: var(--header-h); display: flex; align-items: center; gap: 12px;
+  /* row height stays header-h; the status-bar inset is added above it so the
+     native edge-to-edge status bar never overlaps the buttons (0 on web) */
+  box-sizing: border-box;
+  min-height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 12px;
   position: sticky; top: 0; z-index: 20;
   /* solid glass (no backdrop-filter): blur on a sticky bar can blank the whole
      page while scrolling on some GPUs */
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  margin: 0 calc(var(--pad-x) * -1); padding: 0 var(--pad-x);
+  margin: 0 calc(var(--pad-x) * -1); padding: env(safe-area-inset-top, 0px) var(--pad-x) 0;
 }
 .back-header h2 { font-size: 16.5px; font-weight: 700; flex: 1; letter-spacing: -0.015em; color: var(--text); }
 .back-header .spacer { width: 32px; }
@@ -1801,9 +1805,11 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 
 /* ── Welcome splash ── */
 .welcome {
+  box-sizing: border-box;
   min-height: 100dvh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
+  padding-top: env(safe-area-inset-top, 0px);
   cursor: pointer;
 }
 .welcome-inner { text-align: center; }
@@ -2296,7 +2302,7 @@ button.qf-pill.on { border-color: var(--accent); background: var(--accent-soft);
   display: flex; flex-direction: column;
   align-items: center; justify-content: space-evenly;
   gap: 14px;
-  padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
+  padding: calc(32px + env(safe-area-inset-top, 0px)) 24px calc(32px + env(safe-area-inset-bottom));
   max-width: 480px; margin: 0 auto;
   animation: screenIn 0.3s ease;
 }
