@@ -260,7 +260,12 @@ export class CheckingPage {
     const quiz = quizId ? await getQuiz(quizId) : null;
     if (!quiz) {
       this.processing.set(false);
-      this.scanError.set('This sheet’s quiz isn’t on this device — pick the quiz manually on the setup screen and scan again.');
+      // two different failures wore one message before: a photo with no
+      // readable QR at all, and a QR naming a quiz this device doesn't have
+      // (sheets printed on another phone / browser, or a deleted quiz)
+      this.scanError.set(parsed
+        ? `This sheet’s quiz isn’t on this device${parsed.studentName ? ` (the QR names ${parsed.studentName})` : ''} — it was printed somewhere else or deleted here. Pick the quiz manually on the setup screen and scan again.`
+        : 'No QR code found on that photo — fill the frame with the sheet, keep it flat and well-lit, then try again. Or pick the quiz manually on the setup screen to scan without one.');
       return;
     }
 
