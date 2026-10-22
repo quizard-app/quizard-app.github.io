@@ -208,33 +208,17 @@
         <div class="hero-ico" [innerHTML]="'edit' | ico"></div>
         <div>
           <h1>Review & edit</h1>
-          <p>Tap the circle beside the correct option. Fix anything the AI got wrong.</p>
+          <p>{{ mode() === 'key' ? 'Tap the circle beside the correct answer. Questions and choices are optional — fill them in if you also want a printable question paper.' : 'Tap the circle beside the correct option. Fix anything the AI got wrong.' }}</p>
         </div>
       </div>
 
       @if (keyOnly()) {
         <p class="parse-note" style="margin-bottom:12px">
-          Letters-only key — your own paper carries the questions, so there is nothing to write.
-          Check the correct letter for each number, then save: only the bubble answer sheets will be exported.
+          Letters-only key — your paper already carries the questions, so this quiz prints bubble sheets on its own.
+          The question and choice fields below are empty: type them in from your paper if you also want the quiz paper to print;
+          once every number is filled in, the question paper unlocks at export.
         </p>
-        <div class="doc-list">
-          @for (it of items(); track $index) {
-            <div class="qcard">
-              <div class="qhead">
-                <span class="qnum">{{ it.n }}</span>
-                <button class="icon-btn" (click)="removeItem($index)" [attr.aria-label]="'Remove entry ' + it.n" [innerHTML]="'trash' | ico"></button>
-              </div>
-              <div class="opt-row">
-                @for (o of it.options; track $index; let oi = $index) {
-                  <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer($index, oi)" [attr.aria-label]="'Mark ' + ('ABCD'[oi]) + ' correct for entry ' + it.n">
-                    @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      } @else {
+      }
       <div class="doc-list">
         @for (it of items(); track $index) {
           <div class="qcard">
@@ -242,20 +226,19 @@
               <span class="qnum">{{ it.n }}</span>
               <button class="icon-btn" (click)="removeItem($index)" [attr.aria-label]="'Remove question ' + it.n" [innerHTML]="'trash' | ico"></button>
             </div>
-            <textarea class="text-input q-edit" rows="2" [attr.aria-label]="'Question ' + it.n" [value]="it.question" (input)="editQ($index, $any($event.target).value)"></textarea>
+            <textarea class="text-input q-edit" rows="2" [attr.aria-label]="'Question ' + it.n" placeholder="Question text (optional with a letters-only key)" [value]="it.question" (input)="editQ($index, $any($event.target).value)"></textarea>
             @for (o of it.options; track $index; let oi = $index) {
               <div class="opt-row">
                 <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer($index, oi)" [attr.aria-label]="'Mark option ' + ('ABCD'[oi]) + ' correct'">
                   @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
                 </button>
-                <input class="text-input" [value]="o" (input)="setOpt($index, oi, $any($event.target).value)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
+                <input class="text-input" [value]="o" (input)="setOpt($index, oi, $any($event.target).value)" placeholder="{{ 'ABCD'[oi] }}. choice (optional)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
               </div>
             }
           </div>
         }
       </div>
       <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px;display:flex" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
-      }
 
       <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
         <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
@@ -307,7 +290,7 @@
       </div>
 
       <div class="section-title">Answer key</div>
-      @if (selectedQuiz()?.keyOnly) {
+      @if (!hasQuestionsIn(selectedQuiz())) {
         <p class="parse-note" style="margin:0 0 8px">Letters-only key — the questions live on your own printed paper; bubble sheets carry only each student's answers.</p>
       }
       <div class="key-strip qk-strip" role="list" aria-label="Answer key, one letter per question">
@@ -316,7 +299,7 @@
         }
       </div>
       <div class="export-grid">
-        <button class="btn btn-secondary" (click)="editSaved()" data-tooltip="Change what the scanner marks as correct"><span [innerHTML]="'pencil' | ico"></span> {{ selectedQuiz()?.keyOnly ? 'Edit key' : 'Edit questions & key' }}</button>
+        <button class="btn btn-secondary" (click)="editSaved()" data-tooltip="Change what the scanner marks as correct"><span [innerHTML]="'pencil' | ico"></span> {{ !hasQuestionsIn(selectedQuiz()) ? 'Edit key' : 'Edit questions & key' }}</button>
       </div>
 
       <div class="section-title">Print sheets</div>
@@ -362,7 +345,7 @@
       <p class="faint center" style="font-size:11.5px;margin:8px 0 0">The scanner marks against the answer key at the top of this page — one quiz, one key.</p>
 
       @if (selectedQuiz(); as q) {
-        @if (!q.keyOnly) {
+        @if (hasQuestionsIn(q)) {
           <div class="section-title">Questions (read-only)</div>
           <div class="doc-list">
             @for (it of q.items; track $index) {

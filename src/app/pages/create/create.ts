@@ -101,13 +101,25 @@ export class CreatePage {
     return true;
   });
   // letters-only key: every item is an empty scoring grid row (the teacher's
-  // own paper carries the questions) — review shows letter pickers and export
-  // skips the question paper entirely
+  // own paper carries the questions). Those rows can now be filled in from the
+  // review screen; the quiz paper unlocks once EVERY row is complete.
   readonly keyOnly = computed(() =>
     this.items().length > 0 && this.items().every(it => !String(it.question || '').trim()));
 
+  readonly hasQuestions = computed(() =>
+    this.items().length > 0 && this.items().every(it =>
+      String(it.question || '').trim() && it.options.every((o: string) => String(o || '').trim())));
+
+  // same check for a SAVED quiz (export stage, opened from the quizzes board)
+  hasQuestionsIn(q: any): boolean {
+    return !!q?.items?.length && q.items.every((it: any) =>
+      String(it.question || '').trim() && it.options.every((o: string) => String(o || '').trim()));
+  }
+
+  // key mode saves with letters alone (question fields are optional), every
+  // other mode needs the full question written
   readonly itemsValid = computed(() => this.items().length && this.items().every(it =>
-    it.answerIndex >= 0 && (this.keyOnly() || (it.question.trim() && it.options.every((o: string) => o.trim())))));
+    it.answerIndex >= 0 && (this.mode() === 'key' || (it.question.trim() && it.options.every((o: string) => o.trim())))));
 
   classList = signal<any[]>([]);
 
