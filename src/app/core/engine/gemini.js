@@ -11,7 +11,10 @@ export const MODEL_LABEL = 'gemini-3.5-flash-lite'
 
 // The relay only accepts the production origin, so on localhost the dev server
 // (scripts/local-dev-server.mjs) proxies /gemini to it — same-origin, no CORS.
-const IS_LOCAL = /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
+// Capacitor serves the native app from https://localhost too; that is NOT the
+// dev server, so native builds must call the relay directly.
+const NATIVE_APP = !!globalThis.Capacitor?.isNativePlatform?.()
+const IS_LOCAL = !NATIVE_APP && /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
 const RELAY_URL = IS_LOCAL ? '/gemini' : 'https://quizard-relay.quizard-app.workers.dev/gemini'
 const HAS_RELAY = true
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'

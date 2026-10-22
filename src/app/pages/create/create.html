@@ -128,7 +128,7 @@
           <div class="section-title">2 · Your answer key</div>
           <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">Paste the correct answers — the AI writes questions each one correctly answers.</p>
           @if (savedKeys().length) {
-            <select class="text-input" [attr.aria-label]="'Use a saved key'" (change)="pickedKeyId.set($any($event.target).value || null); keyPaste.set('')">
+            <select class="text-input key-select" [attr.aria-label]="'Use a saved key'" (change)="pickedKeyId.set($any($event.target).value || null); keyPaste.set('')">
               <option value="">— paste a new key below —</option>
               @for (k of savedKeys(); track k.id) {
                 <option [value]="k.id" [selected]="pickedKeyId() === k.id">{{ k.subject }}{{ k.title ? ' — ' + k.title : '' }} ({{ k.items.length }} items)</option>
@@ -171,7 +171,7 @@
         }
       }
 
-      <div class="section-title">{{ stepDetails() }} · Questions & details</div>
+      <div class="section-title title-center">{{ stepDetails() }} · Questions & details</div>
       @if (mode() === 'key') {
         <p class="parse-note" style="margin:2px 0 12px">
           <b>{{ keySource()?.items?.length || 0 }} question{{ (keySource()?.items?.length || 0) === 1 ? '' : 's' }}</b> — fixed by your answer key.
@@ -182,7 +182,7 @@
           }
         </p>
       } @else {
-        <div class="count-row">
+        <div class="count-row count-row-center">
           <div class="count-stepper">
             <button class="count-step" type="button" (click)="nudgeCount(-5)" [attr.aria-label]="'5 fewer questions'">−</button>
             <input class="text-input count-input" type="number" inputmode="numeric" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" (blur)="setCount(count())" [attr.aria-label]="'Number of questions — any value from 1 to 50'" />

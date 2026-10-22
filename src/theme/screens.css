@@ -1865,7 +1865,10 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 }
 .sheet-label .faint { text-transform: none; letter-spacing: 0; font-weight: 600; }
 textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-height: 1.5; font-size: 13px; }
-.file-btn { position: relative; overflow: hidden; justify-content: center; margin-top: 10px; }
+.file-btn { position: relative; overflow: hidden; justify-content: center; margin-top: 10px; margin-bottom: 10px; }
+/* The saved-key picker sits directly above the paste box in key mode; without
+   this the select and textarea touch. */
+.key-select { margin-bottom: 10px; }
 .parse-note { font-size: 12.5px; color: var(--accent-strong); font-weight: 600; margin: 10px 0 0; text-align: center; }
 
 /* ── Create tab: guided wizard rail (Setup → Review → Save) ────────────────── */
@@ -1956,6 +1959,12 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 .mode-card.on .mode-io { border-color: var(--accent-border); color: var(--accent-strong); }
 .mode-hint { font-size: 12px; color: var(--text-dim); }
 .count-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+.count-row-center { justify-content: center; }
+.count-row-center .count-presets { margin-left: 0; }
+@media (max-width: 520px) {
+  .count-row-center .count-presets { flex-basis: 100%; justify-content: center; }
+}
+.title-center { text-align: center; }
 .count-chip {
   padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13px;
   background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;

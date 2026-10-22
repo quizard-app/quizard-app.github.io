@@ -2,7 +2,10 @@
 // pages (CORS), so the relay worker fetches the URL and strips it to clean
 // text. Only public, article-style pages yield usable content — logged-in
 // walls and JS-only apps return nothing readable.
-const IS_LOCAL = /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
+// Capacitor serves the native app from https://localhost — that is not the
+// local dev proxy, so native builds must call the relay directly.
+const NATIVE_APP = !!globalThis.Capacitor?.isNativePlatform?.()
+const IS_LOCAL = !NATIVE_APP && /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
 const EXTRACT_URL = IS_LOCAL ? '/extract' : 'https://quizard-relay.quizard-app.workers.dev/extract'
 
 export function isProbablyArticleUrl(url) {

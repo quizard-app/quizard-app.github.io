@@ -8,7 +8,10 @@
 import { exportAll, importAll } from './storage.js'
 import { encryptBackup, decryptBackup, syncVerifier } from './crypto-backup.js'
 
-const IS_LOCAL = /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
+// Capacitor serves the native app from https://localhost — that is not the
+// local dev proxy, so native builds must call the relay directly.
+const NATIVE_APP = !!globalThis.Capacitor?.isNativePlatform?.()
+const IS_LOCAL = !NATIVE_APP && /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '')
 const SYNC_URL = IS_LOCAL ? '/sync' : 'https://quizard-relay.quizard-app.workers.dev/sync'
 const AUTO_PUSH_MIN_MS = 10 * 60 * 1000
 

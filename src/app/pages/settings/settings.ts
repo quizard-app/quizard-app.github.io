@@ -18,7 +18,7 @@ import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js
 import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync, changeSyncPassword } from '../../core/engine/sync.js';
 import { normalizeSyncCode } from '../../core/engine/sync.js';
 import { hashPin, verifyPin, updateAccount, deleteDemoData } from '../../core/engine/storage.js';
-import { seedDemoData } from '../../core/engine/demo.js';
+import { seedDemoData, demoSummary } from '../../core/engine/demo.js';
 
 const BACKUP_NUDGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -416,9 +416,10 @@ export class SettingsPage implements OnInit {
     this.accounts = [];
   }
 
-  // ── Demo data ── a full sample teacher-week (2 classes, 3 quizzes, graded
-  // sheets) that overwrites on re-run, so the app is explorable on first boot.
+  // ── Demo data ── a snapshot of a real teacher week (classes, keys, quizzes,
+  // graded sheets) that upserts on re-run, so the app is explorable on boot.
   readonly demoBusy = signal(false);
+  readonly demoBlurb = demoSummary();
 
   async loadDemo() {
     if (this.demoBusy()) return;

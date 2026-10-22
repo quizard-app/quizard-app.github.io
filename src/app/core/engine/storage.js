@@ -219,9 +219,10 @@ export async function updateAccount(id, patch) {
 export async function deleteAccount(id) {
   if (!id) return
   const db = await dbPromise
-  const tx = db.transaction(['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams'], 'readwrite')
+  const stores = ['accounts', 'docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams', 'classes', 'keys', 'quizzes', 'sheets']
+  const tx = db.transaction(stores, 'readwrite')
   tx.objectStore('accounts').delete(id)
-  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams']) {
+  for (const storeName of stores.slice(1)) {
     const store = tx.objectStore(storeName)
     let cursor = await store.openCursor()
     while (cursor) {
@@ -234,7 +235,10 @@ export async function deleteAccount(id) {
 
 export async function accountHasData(accountId) {
   const db = await dbPromise
-  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams']) {
+  // Includes the teacher stores: a profile with classes, keys, quizzes or
+  // checked sheets is NOT an empty auto-created account and must never be
+  // swept when another profile is added.
+  for (const storeName of ['docs', 'attempts', 'mistakes', 'images', 'srs', 'decks', 'exams', 'classes', 'keys', 'quizzes', 'sheets']) {
     const store = db.transaction(storeName).objectStore(storeName)
     let cursor = await store.openCursor()
     while (cursor) {
