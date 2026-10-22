@@ -223,9 +223,9 @@ export class CreatePage {
       }
       const items = await generateTeacherQuiz({
         mode, text: this.lessonText(), keyItems, examples,
-        count: mode === 'key' && !this.lessonText()
-          ? Math.min(this.count(), keyItems.length || this.count())
-          : this.count(),
+        // key mode is locked to the key: one question per entry, exactly —
+        // the teacher cannot request more or fewer than they uploaded
+        count: mode === 'key' ? (keyItems.length || this.count()) : this.count(),
         subject: this.subject().trim(),
       });
       this.items.set(items.map((it: any, i: number) => ({ ...it, n: i + 1 })));

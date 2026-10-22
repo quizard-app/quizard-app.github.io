@@ -167,19 +167,30 @@
       }
 
       <div class="section-title">{{ stepDetails() }} · Questions & details</div>
-      <div class="count-row">
-        <div class="count-stepper">
-          <button class="count-step" type="button" (click)="nudgeCount(-5)" [attr.aria-label]="'5 fewer questions'">−</button>
-          <input class="text-input count-input" type="number" inputmode="numeric" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" (blur)="setCount(count())" [attr.aria-label]="'Number of questions — any value from 1 to 50'" />
-          <button class="count-step" type="button" (click)="nudgeCount(5)" [attr.aria-label]="'5 more questions'">+</button>
-        </div>
-        <span class="count-hint">any number 1–{{ maxItems }}</span>
-        <span class="count-presets">
-          @for (c of [10, 20, 30, 40, 50]; track c) {
-            <button class="count-chip" [class.on]="count() === c" (click)="setCount(c)" [attr.aria-label]="'Preset: ' + c + ' questions'">{{ c }}</button>
+      @if (mode() === 'key') {
+        <p class="parse-note" style="margin:2px 0 12px">
+          <b>{{ keySource()?.items?.length || 0 }} question{{ (keySource()?.items?.length || 0) === 1 ? '' : 's' }}</b> — fixed by your answer key.
+          @if ((keySource()?.items?.length || 0) > maxItems) {
+            Sheets hold up to {{ maxItems }}, so the last {{ (keySource()?.items?.length || 0) - maxItems }} are left off.
+          } @else {
+            The quiz matches the key exactly: no more, no fewer.
           }
-        </span>
-      </div>
+        </p>
+      } @else {
+        <div class="count-row">
+          <div class="count-stepper">
+            <button class="count-step" type="button" (click)="nudgeCount(-5)" [attr.aria-label]="'5 fewer questions'">−</button>
+            <input class="text-input count-input" type="number" inputmode="numeric" min="1" [max]="maxItems" [value]="count()" (input)="setCount($any($event.target).value)" (blur)="setCount(count())" [attr.aria-label]="'Number of questions — any value from 1 to 50'" />
+            <button class="count-step" type="button" (click)="nudgeCount(5)" [attr.aria-label]="'5 more questions'">+</button>
+          </div>
+          <span class="count-hint">any number 1–{{ maxItems }}</span>
+          <span class="count-presets">
+            @for (c of [10, 20, 30, 40, 50]; track c) {
+              <button class="count-chip" [class.on]="count() === c" (click)="setCount(c)" [attr.aria-label]="'Preset: ' + c + ' questions'">{{ c }}</button>
+            }
+          </span>
+        </div>
+      }
 
       @if (knownSubjects().length) {
         <div class="count-row" style="margin-bottom:8px">
