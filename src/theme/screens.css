@@ -1834,8 +1834,8 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 .wm-icon svg { width: 62px; height: 62px; stroke-width: 1.6; }
 .wm-icon img.wiz-hero { width: 66px; height: 66px; object-fit: contain; }
 .onb-illust img.wiz-hero { width: 100%; height: auto; max-height: 220px; object-fit: contain; }
-.mark img.wiz-mark { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
-.acc-brand .mark img.wiz-mark { padding: 4px; }
+.mark img.wiz-mark { width: 100%; height: 100%; object-fit: cover; padding: 0; box-sizing: border-box; }
+.acc-brand .mark img.wiz-mark { padding: 0; }
 .q-wiz { width: 60px; height: 60px; object-fit: contain; margin: 0 auto 6px; display: block; }
 .q-wiz-fb { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 10px; display: block; }
 .lib-hero { display: flex; align-items: center; gap: 16px; }
