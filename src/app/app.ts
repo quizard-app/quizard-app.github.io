@@ -2,12 +2,15 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular';
 import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { IdlePreloadService } from './core/services/idle-preload.service';
 import { ByokService } from './core/services/byok.service';
 import { ConfirmService } from './core/services/confirm.service';
+import { UiStateService } from './core/services/ui-state.service';
 import { maybeAutoPush } from './core/engine/sync.js';
 import { IcoPipe } from './shared/ico.pipe';
-import { afterNextRender } from '@angular/core';
+import { afterNextRender, effect } from '@angular/core';
 
 // Eager shell: under zoneless CD (Angular 22 makes OnPush the default) an
 // OnPush shell strands ion-router-outlet pages — stuck `ion-page-invisible`,
@@ -26,6 +29,7 @@ export class App {
   private swUpdate = inject(SwUpdate, { optional: true });
   readonly byok = inject(ByokService);
   readonly confirm = inject(ConfirmService);
+  private ui = inject(UiStateService);
 
   openKeyPage() {
     const url = this.byok.providerConfig?.keyUrl;
@@ -34,6 +38,25 @@ export class App {
 
   constructor() {
     afterNextRender(() => this.preload.start());
+    if (Capacitor.isNativePlatform()) {
+      // An APK upgrade must never run the previous build out of a service
+      // worker cache: the bundled assets are the truth on the device. Older
+      // installs may still have a registration — drop it and its caches.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(rs => rs.forEach(r => r.unregister()))
+          .catch(() => {});
+        if ('caches' in window) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+        }
+      }
+      // Edge-to-edge draws the app under the status bar, so its icons must
+      // contrast with the APP theme (light app → dark icons, dark app → light)
+      effect(() => {
+        const style = this.ui.theme() === 'dark' ? Style.Dark : Style.Light;
+        StatusBar.setStyle({ style }).catch(() => {});
+      });
+    }
     // Quiet cloud sync: when sync is on, push an encrypted snapshot when the
     // student leaves the tab/app (throttled inside maybeAutoPush). Never throws.
     if (typeof document !== 'undefined') {

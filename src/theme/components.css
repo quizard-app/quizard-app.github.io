@@ -47,6 +47,7 @@
   width: 34px; height: 34px; border-radius: 11px;
   background: var(--grad-accent); color: #fff;
   display: grid; place-items: center;
+  overflow: hidden; /* the wizard artwork must never spill past the tile */
   box-shadow: var(--grad-shadow);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

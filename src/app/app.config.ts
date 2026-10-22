@@ -12,6 +12,11 @@ import { UiStateService } from './core/services/ui-state.service';
 import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
 
+// Capacitor serves the bundled assets locally, so the PWA service worker has
+// nothing to cache there — and an old registration would keep serving the
+// PREVIOUS APK's JS/CSS after an app update. Register it on the web only.
+const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -19,7 +24,7 @@ export const appConfig: ApplicationConfig = {
     provideIonicAngular({ mode: 'md' }),
     provideRouter(routes),
     provideServiceWorker('ngsw-worker.js', {
-      enabled: !isDevMode(),
+      enabled: !isDevMode() && !isNative,
       registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
