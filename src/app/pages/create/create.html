@@ -264,6 +264,9 @@
                   <input class="text-input" [value]="o" (input)="setOpt(ii, oi, $any($event.target).value)" placeholder="{{ 'ABCD'[oi] }}. choice (optional)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
                 </div>
               }
+              <p class="qanswer">
+                Answer: <b>{{ 'ABCD'[it.answerIndex] }}</b>@if (it.options[it.answerIndex]?.trim()) {. {{ it.options[it.answerIndex] }}}
+              </p>
             </div>
           }
         </div>
