@@ -2025,6 +2025,10 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 }
 .q-edit { margin-bottom: 8px; font-weight: 600; }
 .opt-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+/* letters-only compact row: number + four letter circles + trash, no fields */
+.qcard-compact { display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+.qcard-compact .opt-row { flex: 1; margin-top: 0; }
+.qcard-compact > .icon-btn { flex: none; }
 .opt-pick {
   flex: none; width: 28px; height: 28px; border-radius: 9px; font-weight: 800; font-size: 12px;
   display: grid; place-items: center; cursor: pointer;

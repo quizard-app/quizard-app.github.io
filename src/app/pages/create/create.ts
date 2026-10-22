@@ -106,6 +106,10 @@ export class CreatePage {
   readonly keyOnly = computed(() =>
     this.items().length > 0 && this.items().every(it => !String(it.question || '').trim()));
 
+  // letters-only review starts compact (numbers + letter circles only); the
+  // toggle reveals the optional question/choice fields
+  showQuestions = signal(false);
+
   readonly hasQuestions = computed(() =>
     this.items().length > 0 && this.items().every(it =>
       String(it.question || '').trim() && it.options.every((o: string) => String(o || '').trim())));
@@ -225,6 +229,7 @@ export class CreatePage {
         subject: this.subject().trim(),
       });
       this.items.set(items.map((it: any, i: number) => ({ ...it, n: i + 1 })));
+      this.showQuestions.set(false);
       this.stage.set('review');
     } catch (e: any) {
       this.error.set(e?.message || 'Generation failed. Check your connection or AI key and try again.');
@@ -347,6 +352,7 @@ export class CreatePage {
     this.quizId.set(null);
     this.selectedQuiz.set(null);
     this.editingSource = null;
+    this.showQuestions.set(false);
     this.mode.set('ai');
     this.subject.set(''); this.title.set(''); this.fileText.set(''); this.fileName.set('');
     this.lessonPaste.set(''); this.keyPaste.set(''); this.pickedKeyId.set(null);

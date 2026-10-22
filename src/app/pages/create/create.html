@@ -213,32 +213,52 @@
       </div>
 
       @if (keyOnly()) {
-        <p class="parse-note" style="margin-bottom:12px">
+        <p class="parse-note" style="margin-bottom:10px">
           Letters-only key — your paper already carries the questions, so this quiz prints bubble sheets on its own.
-          The question and choice fields below are empty: type them in from your paper if you also want the quiz paper to print;
-          once every number is filled in, the question paper unlocks at export.
+          Tap a circle to change a correct answer. Add the question and choice fields only if you also want the quiz paper.
         </p>
+        <button class="btn btn-secondary" style="max-width:290px;margin:0 auto 12px;display:flex" (click)="showQuestions.set(!showQuestions())">
+          <span [innerHTML]="'plus' | ico"></span> {{ showQuestions() ? 'Hide question & choice fields' : 'Add questions & choices (optional)' }}
+        </button>
       }
-      <div class="doc-list">
-        @for (it of items(); track $index) {
-          <div class="qcard">
-            <div class="qhead">
+      @if (keyOnly() && !showQuestions()) {
+        <div class="doc-list">
+          @for (it of items(); track $index; let ii = $index) {
+            <div class="qcard qcard-compact">
               <span class="qnum">{{ it.n }}</span>
-              <button class="icon-btn" (click)="removeItem($index)" [attr.aria-label]="'Remove question ' + it.n" [innerHTML]="'trash' | ico"></button>
-            </div>
-            <textarea class="text-input q-edit" rows="2" [attr.aria-label]="'Question ' + it.n" placeholder="Question text (optional with a letters-only key)" [value]="it.question" (input)="editQ($index, $any($event.target).value)"></textarea>
-            @for (o of it.options; track $index; let oi = $index) {
               <div class="opt-row">
-                <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer($index, oi)" [attr.aria-label]="'Mark option ' + ('ABCD'[oi]) + ' correct'">
-                  @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
-                </button>
-                <input class="text-input" [value]="o" (input)="setOpt($index, oi, $any($event.target).value)" placeholder="{{ 'ABCD'[oi] }}. choice (optional)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
+                @for (o of it.options; track $index; let oi = $index) {
+                  <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer(ii, oi)" [attr.aria-label]="'Mark ' + ('ABCD'[oi]) + ' correct for number ' + it.n">
+                    @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
+                  </button>
+                }
               </div>
-            }
-          </div>
-        }
-      </div>
-      <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px;display:flex" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
+              <button class="icon-btn" (click)="removeItem(ii)" [attr.aria-label]="'Remove number ' + it.n" [innerHTML]="'trash' | ico"></button>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="doc-list">
+          @for (it of items(); track $index; let ii = $index) {
+            <div class="qcard">
+              <div class="qhead">
+                <span class="qnum">{{ it.n }}</span>
+                <button class="icon-btn" (click)="removeItem(ii)" [attr.aria-label]="'Remove question ' + it.n" [innerHTML]="'trash' | ico"></button>
+              </div>
+              <textarea class="text-input q-edit" rows="2" [attr.aria-label]="'Question ' + it.n" placeholder="Question text (optional with a letters-only key)" [value]="it.question" (input)="editQ(ii, $any($event.target).value)"></textarea>
+              @for (o of it.options; track $index; let oi = $index) {
+                <div class="opt-row">
+                  <button class="opt-pick" [class.on]="it.answerIndex === oi" (click)="setAnswer(ii, oi)" [attr.aria-label]="'Mark option ' + ('ABCD'[oi]) + ' correct'">
+                    @if (it.answerIndex === oi) { <span [innerHTML]="'check' | ico"></span> } @else { {{ 'ABCD'[oi] }} }
+                  </button>
+                  <input class="text-input" [value]="o" (input)="setOpt(ii, oi, $any($event.target).value)" placeholder="{{ 'ABCD'[oi] }}. choice (optional)" [attr.aria-label]="'Option ' + ('ABCD'[oi]) + ' of question ' + it.n" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <button class="btn btn-secondary" style="max-width:200px;margin:6px auto 12px;display:flex" (click)="addItem()"><span [innerHTML]="'plus' | ico"></span> Add question</button>
+      }
 
       <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
         <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
