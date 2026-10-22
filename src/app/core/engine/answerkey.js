@@ -34,7 +34,9 @@ const KEYED_LINE = /^(?:(\d{1,3})\s*[.):\-–—]\s*)?([A-Da-d])\s*[.):\-–—]
 // or null when no complete block exists.
 function tryParseMcqBlocks(lines) {
   const isOptionStart = (s) => /^\*?\(?[A-Da-d][\).]\s+\S/.test(s.trim())
-  const ANSWER_LINE = /^\(?(?:answer|key|sagot)\b\s*[:\-]?\s*\*?\(?([A-Da-d])\)?\)?\.?$/i
+  // "Answer: B" or "Answer: B. CPU" — the letter is the first token; any answer
+  // text after it is fine (teachers write the whole answer out)
+  const ANSWER_LINE = /^\(?(?:answer|key|sagot)\b\s*[:\-]?\s*\*?\(?([A-Da-d])\)?\)?\.?(?:\s+\S.*)?$/i
   const items = []
   const used = new Set()
   let i = 0

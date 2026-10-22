@@ -44,4 +44,44 @@ describe('parseKeyText — MCQ examples', () => {
     expect(parseKeyText('1.A 2.B 3.C').format).toBe('letters')
     expect(parseKeyText('1. Photosynthesis').format).toBe('answers')
   })
+
+  it('accepts the full answer text after the letter (Answer: A. Central Processing Unit)', () => {
+    const text = [
+      '1. What does CPU stand for?',
+      'A. Central Processing Unit',
+      'B. Computer Personal Unit',
+      'C. Central Program Utility',
+      'D. Control Processing User',
+      'Answer: A. Central Processing Unit',
+      '',
+      '2. Which type of memory is volatile?',
+      'A. ROM',
+      'B. SSD',
+      'C. Hard disk',
+      'D. RAM',
+      'Answer: D. RAM'
+    ].join('\n')
+    const { format, items, notes } = parseKeyText(text)
+    expect(format).toBe('mcq')
+    expect(items).toHaveLength(2)
+    expect(items[0].question).toBe('What does CPU stand for?')
+    expect(items[0].answerIndex).toBe(0)
+    expect(items[1].question).toBe('Which type of memory is volatile?')
+    expect(items[1].answerIndex).toBe(3)
+    expect(notes).toHaveLength(0)
+  })
+
+  it('does not mistake a word answer for a letter line', () => {
+    const text = [
+      '1. What is X?',
+      'A. one',
+      'B. two',
+      'C. three',
+      'D. four',
+      'Answer: About five'
+    ].join('\n')
+    const { format, items } = parseKeyText(text)
+    expect(format).toBe('mcq')
+    expect(items[0].answerIndex).toBe(-1)
+  })
 })
