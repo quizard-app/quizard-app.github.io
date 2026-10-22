@@ -2073,18 +2073,6 @@ button.scan-cls:not(.on):hover { opacity: 1; }
   text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border);
 }
 .roster-name svg { width: 14px; height: 14px; vertical-align: -2px; }
-/* the dev-only scan tester: a dashed panel that only renders on localhost */
-.devscan { margin-top: 18px; padding: 13px 14px 14px; border: 1px dashed var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
-.devscan-head { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--text-dim); }
-.devscan-badge { padding: 2px 6px; border-radius: 5px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .06em; color: var(--warn); background: var(--warn-bg, var(--accent-soft)); }
-.devscan-hint { margin: 6px 0 12px; font-size: 11.5px; line-height: 1.45; color: var(--text-faint); }
-.devscan-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
-.devscan-label { font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
-.devscan-select { width: 100%; padding: 9px 10px; font-size: 13px; }
-.devscan-range { width: 100%; accent-color: var(--accent); }
-.devscan-actions { display: flex; gap: 8px; align-items: center; }
-.devscan-btn { flex: 1; justify-content: center; padding: 11px; font-size: 13px; }
-.devscan-btn:disabled { opacity: .55; }
 .session-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .session-bar .btn { padding: 7px 12px; font-size: 12px; }
 /* Score popup: the sheet's result, shown the moment the scan is read back. */

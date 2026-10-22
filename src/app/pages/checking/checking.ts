@@ -4,12 +4,10 @@ import { IonContent } from '@ionic/angular';
 import { listClasses, listQuizzes, saveSheet, listSheets, deleteSheet, getQuiz } from '../../core/engine/storage.js';
 import { readSheet, scoreSheet, decodeQr, FLAG } from '../../core/engine/omr.js';
 import { parseSheetQr, resolveSheetStudent } from '../../core/engine/sheet-spec.js';
-import { planSheet, renderSyntheticSheet, SCENARIOS, scenarioById } from '../../core/engine/sheet-synth.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ByokService } from '../../core/services/byok.service';
-import { isDevHost } from '../../core/dev-only';
 import { bannerTheme } from '../../shared/helpers.js';
 
 /**
@@ -302,81 +300,6 @@ export class CheckingPage {
       }
       this.processing.set(false);
     });
-  }
-
-  // ── dev-only scan tester (localhost builds only — see dev-only.ts) ──
-  // Prints a fake filled sheet and feeds it to the very same processImage() a
-  // camera capture uses, so the whole path — QR decode, quiz lookup, roster
-  // match, OMR, scoring, save — is exercised without a printer or a camera.
-  readonly devTest = isDevHost();
-  readonly devScenarios = SCENARIOS;
-  /** Sentinel for the "print a student-less sheet" option. Not a real id. */
-  static readonly DEV_NO_STUDENT = '__none__';
-  devScenario = signal(SCENARIOS[0].id);
-  devAccuracy = signal(80);
-  devStudentId = signal<string | null>(null);
-  devSeed = signal(1);
-  devRunning = signal(false);
-
-  // Which student to print into the fake sheet's QR. null = untouched, so fall
-  // back to the first on the roster and the scan identifies them on its own,
-  // the way it does for a real roster-printed sheet. Picking the explicit
-  // sentinel instead exercises the blank-QZ1 path where nobody is known.
-  get devSheetStudent() {
-    const id = this.devStudentId();
-    if (id === CheckingPage.DEV_NO_STUDENT) return null;
-    return this.classRoster().find(s => s.id === id) || this.classRoster()[0] || null;
-  }
-
-  // What the picker shows. Mirrors devSheetStudent, so the highlighted name is
-  // always the one that will actually be printed into the fake QR.
-  get devStudentPickerValue() {
-    return this.devSheetStudent?.id ?? CheckingPage.DEV_NO_STUDENT;
-  }
-
-  async simulateScan() {
-    if (!this.pickedClass()) return;
-    const quiz = await this.devQuiz();
-    if (!quiz) return;
-    const key = (quiz.items || []).map((it: any) => it.answerIndex);
-    if (key.some((k: any) => typeof k !== 'number')) {
-      this.toast.toast('That quiz has no answer key — set one before simulating a scan', true);
-      return;
-    }
-    const scenario = scenarioById(this.devScenario());
-    const student = this.devSheetStudent;
-    const plan = planSheet({
-      itemCount: key.length, key,
-      accuracy: this.devAccuracy() / 100,
-      blanks: scenario.blanks, multis: scenario.multis,
-      seed: this.devSeed(),
-    });
-
-    this.devRunning.set(true);
-    // let the button paint before the synchronous canvas + CV work blocks the frame
-    await new Promise(r => setTimeout(r, 60));
-    try {
-      const image = renderSyntheticSheet({
-        itemCount: key.length, quizId: quiz.id, student, plan,
-        rotate: scenario.rotate, noise: scenario.noise,
-        pencil: scenario.pencil, dropMarker: !!scenario.dropMarker,
-        seed: this.devSeed(),
-      });
-      await this.processImage(image);
-    } finally {
-      this.devRunning.set(false);
-    }
-  }
-
-  // The sheet's QR has to name a quiz that exists on this device, or the scan
-  // fails at the first step — so fall back to whatever is on hand.
-  private async devQuiz() {
-    const id = this.quizOverrideId() || this.quizzes()[0]?.id;
-    if (!id) {
-      this.toast.toast('Create a quiz first — the simulated sheet’s QR has to name one', true);
-      return null;
-    }
-    return await getQuiz(id);
   }
 
   // ── result editor ──

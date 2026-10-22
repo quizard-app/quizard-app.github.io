@@ -120,49 +120,6 @@
         <input type="file" accept="image/*" capture="environment" (change)="onPhoto($event)" hidden />
       </label>
 
-      @if (devTest) {
-        <div class="devscan">
-          <div class="devscan-head">
-            <span class="devscan-badge">DEV</span>
-            Scan tester <span class="faint">· local build only</span>
-          </div>
-          <p class="devscan-hint">Prints a fake filled sheet and pushes it through the real scan path — QR, alignment, scoring, save.</p>
-
-          <div class="devscan-field">
-            <label class="devscan-label" for="dev-condition">Photo condition</label>
-            <select id="dev-condition" class="text-input devscan-select" [value]="devScenario()" (change)="devScenario.set($any($event.target).value)">
-              @for (s of devScenarios; track s.id) {
-                <option [value]="s.id">{{ s.label }}</option>
-              }
-            </select>
-          </div>
-
-          <div class="devscan-field">
-            <label class="devscan-label" for="dev-acc">{{ devAccuracy() }}% answered correctly</label>
-            <input id="dev-acc" class="devscan-range" type="range" min="0" max="100" step="5" [value]="devAccuracy()" (input)="devAccuracy.set(+$any($event.target).value)" />
-          </div>
-
-          <div class="devscan-field">
-            <label class="devscan-label" for="dev-student">Print student into the fake QR</label>
-            <select id="dev-student" class="text-input devscan-select" [value]="devStudentPickerValue" (change)="devStudentId.set($any($event.target).value)">
-              @for (st of classRoster(); track st.id) {
-                <option [value]="st.id">{{ st.no ? '#' + st.no + ' ' : '' }}{{ st.name }}</option>
-              }
-              <option value="__none__">Nobody — blank sheet, QR won't say who</option>
-            </select>
-            <p class="devscan-hint">The scan reads this name back off the QR and matches it to the roster by itself — nothing to confirm on the result screen.</p>
-          </div>
-
-          <div class="devscan-actions">
-            <button type="button" class="btn btn-secondary devscan-btn" [disabled]="devRunning() || processing()" (click)="simulateScan()">
-              <span [innerHTML]="'zap' | ico"></span>
-              {{ devRunning() || processing() ? 'Simulating…' : 'Simulate scan' }}
-            </button>
-            <button type="button" class="icon-btn" (click)="devSeed.set(devSeed() + 1)" aria-label="Reshuffle the sheet" data-tooltip="Reshuffle the answers" [innerHTML]="'refresh' | ico"></button>
-          </div>
-        </div>
-      }
-
       @if (scanError()) {
         <div class="gen-error"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> {{ scanError() }}</div>
       }
