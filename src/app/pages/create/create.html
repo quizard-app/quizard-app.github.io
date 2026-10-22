@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="brand">
       @if (stage() === 'review') {
-        <button class="icon-btn" (click)="backToSetup()" aria-label="Back to setup" [innerHTML]="'chevronLeft' | ico"></button>
+        <button class="icon-btn" (click)="backFromReview()" aria-label="Back" [innerHTML]="'chevronLeft' | ico"></button>
       } @else if (stage() === 'export') {
         <button class="icon-btn" (click)="backHome()" aria-label="Back to quizzes" [innerHTML]="'chevronLeft' | ico"></button>
       } @else if (stage() === 'setup') {

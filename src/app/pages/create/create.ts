@@ -49,7 +49,11 @@ export class CreatePage {
   wizStep = computed(() => (this.stage() === 'setup' ? 0 : this.stage() === 'review' ? 1 : 2));
   goStep(i: number) {
     if (i >= this.wizStep()) return; // only completed steps are clickable
-    if (i === 0) this.backToSetup();
+    // editing a SAVED quiz: "back" means its export page, not a blank wizard
+    if (i === 0) {
+      if (this.editingSource) { this.stage.set('export'); return; }
+      this.backToSetup();
+    }
     else this.stage.set('review');
   }
   homeQuizzes = signal<any[]>([]);
@@ -487,6 +491,13 @@ export class CreatePage {
     this.quizId.set(null);
     this.savedKeys.set([]);
     void this.ionViewWillEnter();
+  }
+
+  // Back from the Review screen: when it was opened through "Edit key" on a
+  // saved quiz, return to that quiz's export page instead of a blank setup.
+  backFromReview() {
+    if (this.editingSource) { this.stage.set('export'); return; }
+    this.backToSetup();
   }
 }
 
