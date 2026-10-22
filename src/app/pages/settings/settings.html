@@ -73,6 +73,20 @@
       </div>
     </div>
 
+    @if (!install.native) {
+      <div class="section-title"><span class="set-sec-ico" [innerHTML]="'download' | ico"></span>Install app</div>
+      <div class="settings-group">
+        <div class="row" style="border-top:none">
+          <div><div class="label">Install on this device</div><div class="sub">{{ install.canInstall() ? 'Adds Quizard to your home screen and opens full screen.' : 'Use the browser menu → Install app / Add to Home Screen.' }}</div></div>
+          <button class="btn btn-primary" [disabled]="!install.canInstall()" (click)="install.installPwa()">Install</button>
+        </div>
+        <div class="row" style="border-bottom:none">
+          <div><div class="label">Android APK</div><div class="sub">Download the APK and install it directly on your phone.</div></div>
+          <a class="btn btn-secondary" [href]="install.apkUrl" target="_blank" rel="noopener">Download</a>
+        </div>
+      </div>
+    }
+
     <div class="section-title"><span class="set-sec-ico" [innerHTML]="'sparkles' | ico"></span>AI question writing</div>
     <div class="card" style="padding:16px" [class.ai-down-card]="byok.aiDown()">
       @if (byok.aiDown()) {
@@ -213,9 +227,9 @@
 
     <div class="section-title"><span class="set-sec-ico" [innerHTML]="'zap' | ico"></span>Demo data</div>
     <div class="card">
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-primary" style="flex:1" [disabled]="demoBusy()" (click)="loadDemo()" data-tooltip="Load the bundled teacher week: classes, keys, quizzes and graded results"><span [innerHTML]="'zap' | ico"></span> Load demo data</button>
-        <button class="btn btn-secondary" style="flex:1" (click)="removeDemo()" data-tooltip="Strip out every demo-tagged record; your own data stays"><span [innerHTML]="'trash' | ico"></span> Remove demo</button>
+      <div class="demo-actions">
+        <button class="btn btn-primary" [disabled]="demoBusy()" (click)="loadDemo()" data-tooltip="Load the bundled teacher week: classes, keys, quizzes and graded results"><span [innerHTML]="'zap' | ico"></span> Load demo data</button>
+        <button class="btn btn-secondary" (click)="removeDemo()" data-tooltip="Strip out every demo-tagged record; your own data stays"><span [innerHTML]="'trash' | ico"></span> Remove demo</button>
       </div>
       <p class="faint" style="font-size:11.5px;margin-top:10px;text-align:center">{{ demoBlurb }} — safe to re-run, tagged so Remove demo only ever strips the samples.</p>
     </div>

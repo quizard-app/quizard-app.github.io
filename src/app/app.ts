@@ -7,6 +7,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { IdlePreloadService } from './core/services/idle-preload.service';
 import { ByokService } from './core/services/byok.service';
 import { ConfirmService } from './core/services/confirm.service';
+import { InstallService } from './core/services/install.service';
 import { UiStateService } from './core/services/ui-state.service';
 import { maybeAutoPush } from './core/engine/sync.js';
 import { IcoPipe } from './shared/ico.pipe';
@@ -29,6 +30,7 @@ export class App {
   private swUpdate = inject(SwUpdate, { optional: true });
   readonly byok = inject(ByokService);
   readonly confirm = inject(ConfirmService);
+  readonly install = inject(InstallService);
   private ui = inject(UiStateService);
 
   openKeyPage() {

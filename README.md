@@ -6,6 +6,13 @@
 
 > The magic-wielding mascot is not just decoration — the whole app is themed around a wizard who "forges" your documents into quizzes.
 
+## Install
+
+- **In the browser:** open <https://quizard-app.github.io/> in Chrome and accept the **Install app** prompt (or use the browser menu → *Install app*). On iPhone Safari, use **Share → Add to Home Screen**.
+- **Android APK:** [Download the latest APK](https://github.com/quizard-app/quizard-app.github.io/releases/latest/download/Quizard.apk) and open it on your phone. Android will ask you to allow installs from your browser the first time.
+
+The web version installs as a standalone app and works offline after the first visit.
+
 ## Features
 
 - **Import** PDF, DOCX, PPTX, TXT and MD files — text, images and topics are extracted **locally on your device** (pdf.js, mammoth, JSZip). Nothing is uploaded.

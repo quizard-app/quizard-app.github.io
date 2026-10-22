@@ -2,6 +2,27 @@
   <ion-router-outlet></ion-router-outlet>
 </ion-app>
 
+@if (install.showBanner()) {
+  <aside class="install-banner" role="region" aria-label="Install Quizard">
+    <div class="install-banner-top">
+      <span class="install-banner-ico" [innerHTML]="'download' | ico"></span>
+      <div class="install-banner-copy">
+        <b>Install Quizard</b>
+        <span>{{ install.canInstall() ? 'Add it to your home screen for full-screen, offline use.' : 'Get the Android APK and install it on your phone.' }}</span>
+      </div>
+      <button class="icon-btn install-banner-close" type="button" (click)="install.dismiss()" aria-label="Dismiss install banner" [innerHTML]="'x' | ico"></button>
+    </div>
+    <div class="install-banner-actions">
+      @if (install.canInstall()) {
+        <button class="btn btn-primary" type="button" (click)="install.installPwa()">Install app</button>
+      }
+      @if (install.isAndroid) {
+        <a class="btn btn-secondary" [href]="install.apkUrl" target="_blank" rel="noopener">Android APK</a>
+      }
+    </div>
+  </aside>
+}
+
 @if (byok.visible()) {
   <div class="byok-overlay" (click)="byok.close()">
     <div class="byok-modal" (click)="$event.stopPropagation()">

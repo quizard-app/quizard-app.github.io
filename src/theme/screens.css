@@ -1869,6 +1869,13 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 /* The saved-key picker sits directly above the paste box in key mode; without
    this the select and textarea touch. */
 .key-select { margin-bottom: 10px; }
+/* Demo controls: side by side on wide screens, stacked on phones so
+   "Load demo data" is never clipped by its own button. */
+.demo-actions { display: flex; gap: 10px; }
+.demo-actions > .btn { flex: 1 1 0; min-width: 0; justify-content: center; white-space: normal; line-height: 1.25; }
+@media (max-width: 430px) {
+  .demo-actions { flex-direction: column; }
+}
 .parse-note { font-size: 12.5px; color: var(--accent-strong); font-weight: 600; margin: 10px 0 0; text-align: center; }
 
 /* ── Create tab: guided wizard rail (Setup → Review → Save) ────────────────── */
