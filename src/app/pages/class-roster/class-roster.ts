@@ -83,6 +83,28 @@ export class ClassRosterPage {
     quizzes: this.quizzes(),
   }));
 
+  readonly quizCount = computed(() => this.book().columns.length);
+  // A student counts as completed once any quiz cell carries a score.
+  readonly completedOf = computed(() =>
+    this.book().rows.filter(r => r.cells.some((c: any) => c.scored)).length);
+  readonly ringPct = computed(() => {
+    const total = this.students().length || 1;
+    return Math.round((this.completedOf() / total) * 100);
+  });
+
+  // Row avatars: initials + a stable colour per student, so the roster reads
+  // like a people list at a glance (same student always wears the same tint).
+  private static readonly AVA_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#14b8a6', '#a855f7', '#ef4444', '#3b82f6', '#ec4899'];
+  initialsOf(st: any): string {
+    return String(st?.name || '').trim().split(/\s+/).slice(0, 2).map((w: string) => w[0] || '').join('').toUpperCase();
+  }
+  avatarColorOf(st: any): string {
+    const key = String(st?.id || st?.name || '');
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return ClassRosterPage.AVA_COLORS[h % ClassRosterPage.AVA_COLORS.length];
+  }
+
   // The latest attempt per quiz, newest quiz first, for the expanded rows. Only
   // the latest is shown: rescanning a paper is a correction, not a second
   // sitting, so listing every stored row would just repeat the same quiz.

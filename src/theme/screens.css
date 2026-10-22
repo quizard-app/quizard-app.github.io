@@ -143,12 +143,12 @@
    numbers and actions. Scoped with .class-grid so no other page moves. */
 .class-grid .doc-card { display: block; padding: 0; overflow: hidden; contain-intrinsic-size: auto 280px; }
 .cls-banner { position: relative; height: 100px; padding: 16px 96px 16px 18px; color: #fff; }
-.cls-banner.th-0, .scan-cls.th-0 { background: linear-gradient(135deg, #17677C, #0F4250); }
-.cls-banner.th-1, .scan-cls.th-1 { background: linear-gradient(135deg, #0f766e, #115e59); }
-.cls-banner.th-2, .scan-cls.th-2 { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
-.cls-banner.th-3, .scan-cls.th-3 { background: linear-gradient(135deg, #be123c, #881337); }
-.cls-banner.th-4, .scan-cls.th-4 { background: linear-gradient(135deg, #b45309, #92400e); }
-.cls-banner.th-5, .scan-cls.th-5 { background: linear-gradient(135deg, #15803d, #166534); }
+.cls-banner.th-0, .cr-banner.th-0, .scan-cls.th-0 { background: linear-gradient(135deg, #17677C, #0F4250); }
+.cls-banner.th-1, .cr-banner.th-1, .scan-cls.th-1 { background: linear-gradient(135deg, #0f766e, #115e59); }
+.cls-banner.th-2, .cr-banner.th-2, .scan-cls.th-2 { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
+.cls-banner.th-3, .cr-banner.th-3, .scan-cls.th-3 { background: linear-gradient(135deg, #be123c, #881337); }
+.cls-banner.th-4, .cr-banner.th-4, .scan-cls.th-4 { background: linear-gradient(135deg, #b45309, #92400e); }
+.cls-banner.th-5, .cr-banner.th-5, .scan-cls.th-5 { background: linear-gradient(135deg, #15803d, #166534); }
 .cls-title {
   font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2861,96 +2861,139 @@ button.roster-row.on { background: var(--accent-soft); }
   .roster-edit { right: 84px; padding: 6px 11px; font-size: 13px; }
 }
 
-.gb-wrap {
-  border: 1px solid var(--border); border-radius: 16px;
-  background: var(--surface); overflow-x: auto;
-  max-width: 720px; margin: 0 auto;
+
+/* ── Class roster dashboard: banner, stats strip, neon gradebook ── */
+.cr-banner {
+  position: relative; overflow: hidden;
+  border-radius: 18px; padding: 16px 16px 52px;
+  color: #fff; margin-bottom: 14px;
+  display: flex; gap: 14px; align-items: flex-start;
+  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.55);
+}
+.cr-banner::after {
+  content: ''; position: absolute; right: -50px; top: -70px;
+  width: 240px; height: 240px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.16), transparent 65%);
+}
+.cr-banner-book {
+  width: 54px; height: 54px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.32);
+}
+.cr-banner-book svg { width: 26px; height: 26px; }
+.cr-banner-main { flex: 1; min-width: 0; padding-right: 70px; }
+.cr-name { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.cr-sub { font-size: 13px; opacity: 0.92; margin-bottom: 6px; }
+.cr-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; opacity: 0.9; margin-top: 3px; }
+.cr-meta-ico { display: inline-flex; opacity: 0.85; }
+.cr-meta-ico svg { width: 14px; height: 14px; }
+.cr-avatar {
+  position: absolute; top: 16px; right: 16px; width: 62px; height: 62px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 26px; font-weight: 800; color: #fff;
+  background: rgba(255, 255, 255, 0.2); border: 3px solid rgba(255, 255, 255, 0.85);
+}
+.cr-edit {
+  position: absolute; right: 16px; bottom: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff; font: inherit; font-size: 13px; font-weight: 700;
+}
+.cr-edit:hover { background: rgba(255, 255, 255, 0.24); }
+.cr-edit svg { width: 14px; height: 14px; }
+
+.cr-stats {
+  display: flex; align-items: center;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface); padding: 12px 4px; margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
+}
+.cr-stat { flex: 1; display: flex; align-items: center; gap: 10px; padding: 2px 10px; min-width: 0; }
+.cr-sep { width: 1px; align-self: stretch; background: var(--border); }
+.cr-stat-ico { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.cr-stat-ico svg { width: 17px; height: 17px; }
+.cr-stat-ico.people { background: rgba(34, 197, 94, 0.16); color: var(--good); }
+.cr-stat-ico.quiz { background: var(--accent-soft); color: var(--accent-strong); }
+.cr-stat-ico.done { padding: 0; }
+.cr-stat-ico-in { width: 27px; height: 27px; border-radius: 50%; background: var(--surface); display: block; }
+.cr-stat-txt { display: flex; flex-direction: column; min-width: 0; }
+.cr-stat-txt b { font-size: 17px; font-weight: 800; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cr-stat-txt span { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+.cr-chev { margin-left: auto; color: var(--text-faint); display: flex; }
+.cr-chev svg { width: 15px; height: 15px; }
+
+.cr-table-wrap {
+  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); overflow-x: auto; box-shadow: var(--shadow-sm);
   -webkit-overflow-scrolling: touch;
 }
-.gb-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 14px; }
-.gb-table th, .gb-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
-.gb-table tbody tr:last-child > * { border-bottom: none; }
-/* the top row is its own band, rounded with the card it sits on */
-.gb-table thead th {
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border-strong);
-  font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em;
-  text-transform: uppercase; color: var(--text-dim);
+.cr-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.cr-table th, .cr-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.cr-table tbody tr:last-child > * { border-bottom: none; }
+.cr-table thead th {
+  background: var(--surface-2); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
 }
-.gb-table thead th:first-child { border-top-left-radius: 16px; }
-.gb-table thead th:last-child { border-top-right-radius: 16px; }
-/* breathing room on hover, same surface language as every other card list */
-.gb-row { transition: background 0.15s ease; }
-.gb-row:hover .gb-who, .gb-row:hover .gb-cell { background: var(--surface-hover); }
-/* The student column stays put while the quiz columns scroll sideways, so it
-   owns the hard rule between the two kinds of column: names on the left, marks
-   to the right of it — and a soft shadow so marks tuck under it when scrolled. */
-.gb-who {
-  position: sticky; left: 0; z-index: 1;
-  background: var(--surface); text-align: left; width: 172px; max-width: 250px;
-  border-right: 2px solid var(--border-strong);
-  box-shadow: 7px 0 9px -9px rgba(0, 0, 0, 0.45);
+.cr-th-stud { text-align: left; }
+.cr-th-ico { display: inline-flex; vertical-align: -2px; margin-right: 6px; }
+.cr-th-ico svg { width: 13px; height: 13px; }
+.cr-th-quiz { min-width: 86px; }
+.cr-th-more { width: 28px; }
+.cr-row:hover td { background: var(--surface-hover); }
+.cr-stud { text-align: left; }
+.cr-no { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-faint); display: inline-block; width: 18px; text-align: right; margin-right: 8px; vertical-align: middle; }
+.cr-ava { width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-size: 11.5px; font-weight: 800; margin-right: 10px; vertical-align: middle; }
+.cr-stud-main { display: inline-flex; flex-direction: column; vertical-align: middle; max-width: 150px; }
+.cr-stud-name { font-weight: 650; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; }
+.cr-answers {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 3px;
+  padding: 2px 9px; width: max-content; border-radius: var(--radius-pill);
+  border: 1px solid transparent; background: var(--accent-soft); color: var(--accent-strong);
+  font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer;
 }
-.gb-table thead .gb-who { color: var(--text); text-align: left; }
-.gb-who-btn {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  background: transparent; border: 0; padding: 0; font: inherit; color: var(--text);
-  cursor: pointer; text-align: left;
+.cr-answers:hover { border-color: var(--accent); }
+.cr-answers-ico { display: inline-flex; }
+.cr-answers-ico svg { width: 11px; height: 11px; }
+.cr-score { min-width: 86px; }
+.cr-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
 }
-/* the row itself no longer expands — a div reusing the layout; the Answers
-   button drops to its own line so the student name keeps the full width */
-.gb-who-static { flex-wrap: wrap; row-gap: 3px; cursor: default; }
-.gb-answers {
-  flex: 0 0 100%; width: max-content;
-  margin-left: auto;
-  font: inherit; font-size: 11px; font-weight: 700;
-  color: var(--accent-strong); background: var(--accent-soft);
-  border: 1px solid transparent; border-radius: var(--radius-pill);
-  padding: 3px 10px; cursor: pointer;
-  transition: border-color .15s ease;
-}
-.gb-answers:hover { border-color: var(--accent); }
-.gb-name { font-size: 14.5px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* one lane per quiz, so a row of marks reads across as columns */
-.gb-quiz, .gb-cell { border-left: 1px solid var(--border); }
-.gb-who + .gb-quiz, .gb-who + .gb-cell { border-left: none; }
-.gb-quiz { font-size: 11.5px; font-weight: 700; color: var(--text-dim); cursor: help; }
-/* one lane per quiz and nothing else: with a single quiz that lane is wide,
-   with six they sit side by side — but a column only exists when a quiz does */
-.gb-cell { min-width: 92px; }
-/* inside the 1120px library column a 720px grid floats alone; stretch to the
-   app's wide reading column so the board reads like Classroom's grades view */
-@media (min-width: 1100px) {
-  .gb-wrap { max-width: 880px; }
-}
-.gb-cell .score-pill { font-size: 12px; padding: 3px 10px; }
-.gb-none { color: var(--text-faint); }
+.cr-pill.pass { color: var(--good); background: var(--good-bg); border-color: var(--good-border); }
+.cr-pill.fail { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-border); }
+.cr-pill-ico { font-size: 11px; }
+.cr-none { color: var(--text-faint); }
+.cr-more { width: 28px; padding-left: 0; }
+.cr-more-btn { background: transparent; border: 0; color: var(--text-faint); display: grid; place-items: center; cursor: pointer; padding: 4px; }
+.cr-more-btn svg { width: 15px; height: 15px; }
 
 /* ── Answers modal: one student's attempts + per-number answer strip ── */
 .answers-sheet { width: min(94vw, 560px); }
 .answers-body { display: flex; flex-direction: column; gap: 10px; max-height: 56vh; overflow: auto; margin: 0 -2px; padding: 2px; }
 
-/* Phones: a 172px name column is over half of a 360px screen, and 36px rows are
-   under the touch-target floor. Narrow the pinned lane, tighten the padding and
-   raise the row height so more quizzes fit before the grid has to scroll. */
 @media (max-width: 560px) {
-  .gb-table { font-size: 13px; }
-  /* the tap target is the whole student cell, so the row height comes from the
-     button rather than from padding around it */
-  .gb-table th, .gb-table td { padding: 0 8px; }
-  .gb-table thead th { padding-top: 10px; padding-bottom: 10px; font-size: 10.5px; letter-spacing: 0.03em; }
-  .gb-who { width: 150px; max-width: 150px; }
-  .gb-who-btn { min-height: 46px; gap: 6px; }
-  .gb-name { font-size: 13.5px; }
-  .gb-cell { min-width: 76px; }
-  .gb-cell .score-pill { font-size: 11px; padding: 3px 8px; }
-  .roster-no { width: 22px; }
-}
-
-/* Small phones: keep the name legible but hand the marks the room. */
-@media (max-width: 380px) {
-  .gb-who { width: 140px; max-width: 140px; }
-  .gb-cell { min-width: 68px; }
-  .gb-name { font-size: 13px; }
+  .cr-banner { padding: 14px 14px 48px; gap: 10px; }
+  .cr-banner-book { width: 44px; height: 44px; }
+  .cr-banner-book svg { width: 21px; height: 21px; }
+  .cr-name { font-size: 19px; }
+  .cr-banner-main { padding-right: 58px; }
+  .cr-avatar { width: 50px; height: 50px; font-size: 21px; top: 14px; right: 14px; }
+  .cr-stat { gap: 8px; padding: 2px 6px; }
+  .cr-stat-ico { width: 30px; height: 30px; }
+  .cr-stat-ico svg { width: 15px; height: 15px; }
+  .cr-stat-ico-in { width: 22px; height: 22px; }
+  .cr-stat-txt b { font-size: 15px; }
+  .cr-stat-txt span { font-size: 9.5px; }
+  .cr-chev { display: none; }
+  .cr-table th, .cr-table td { padding: 9px 6px; }
+  .cr-stud-main { max-width: 88px; }
+  .cr-stud-name { font-size: 12.5px; }
+  .cr-th-quiz { min-width: 62px; }
+  .cr-score { min-width: 62px; }
+  .cr-pill { padding: 4px 8px; font-size: 11px; gap: 4px; }
+  .cr-ava { width: 28px; height: 28px; font-size: 10px; margin-right: 6px; }
+  .cr-no { width: 14px; margin-right: 5px; }
+  .cr-more { width: 22px; }
 }

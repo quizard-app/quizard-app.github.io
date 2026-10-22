@@ -1,49 +1,92 @@
 <ion-content [fullscreen]="true">
   <header class="back-header">
     <button class="icon-btn" aria-label="Back to classes" (click)="router.navigateByUrl('/tabs/classes')" [innerHTML]="'chevronLeft' | ico"></button>
-    <h2>Class roster</h2>
+    <h2>Class Roster</h2>
     <div class="spacer"></div>
   </header>
   <div class="screen lib-screen">
     @if (cls(); as c) {
-      <div class="cls-banner roster-banner {{ bannerTheme(c) }}">
-        <div class="cls-title">{{ c.name }}</div>
-        <div class="cls-sub">{{ metaOf(c) }}</div>
-        <div class="cls-avatar" aria-hidden="true">{{ bannerAvatar(c) }}</div>
-        <button class="roster-edit" (click)="openRoster()"><span [innerHTML]="'pencil' | ico"></span> Edit roster</button>
+      <div class="cr-banner {{ bannerTheme(c) }}">
+        <div class="cr-banner-book" [innerHTML]="'book' | ico"></div>
+        <div class="cr-banner-main">
+          <h1 class="cr-name">{{ c.name }}</h1>
+          <div class="cr-sub">
+            @if (c.subject) { {{ c.subject }}{{ c.grade ? ' · ' : '' }} }
+            @if (c.grade) { {{ c.grade }} }
+          </div>
+          @if (c.section) {
+            <div class="cr-meta"><span class="cr-meta-ico" [innerHTML]="'users' | ico"></span>{{ c.section }}</div>
+          }
+          <div class="cr-meta"><span class="cr-meta-ico" [innerHTML]="'users' | ico"></span>{{ c.students.length }} student{{ c.students.length === 1 ? '' : 's' }}</div>
+        </div>
+        <div class="cr-avatar" aria-hidden="true">{{ bannerAvatar(c) }}</div>
+        <button class="cr-edit" (click)="openRoster()"><span [innerHTML]="'pencil' | ico"></span> Edit roster</button>
       </div>
+
+      <div class="cr-stats">
+        <div class="cr-stat">
+          <span class="cr-stat-ico people" [innerHTML]="'users' | ico"></span>
+          <div class="cr-stat-txt"><b>{{ c.students.length }}</b><span>Students</span></div>
+        </div>
+        <div class="cr-sep"></div>
+        <div class="cr-stat">
+          <span class="cr-stat-ico quiz" [innerHTML]="'fileText' | ico"></span>
+          <div class="cr-stat-txt"><b>{{ quizCount() }}</b><span>Quiz{{ quizCount() === 1 ? '' : 'zes' }}</span></div>
+          <span class="cr-chev" [innerHTML]="'chevronRight' | ico"></span>
+        </div>
+        <div class="cr-sep"></div>
+        <div class="cr-stat">
+          <span class="cr-stat-ico done" [style.background]="'conic-gradient(var(--good) ' + ringPct() + '%, var(--surface-2) 0)'"><span class="cr-stat-ico-in"></span></span>
+          <div class="cr-stat-txt"><b>{{ completedOf() }}/{{ c.students.length }}</b><span>Completed</span></div>
+          <span class="cr-chev" [innerHTML]="'chevronRight' | ico"></span>
+        </div>
+      </div>
+
       @if (book().columns.length) {
-        <div class="gb-wrap">
-          <table class="gb-table">
+        <div class="cr-table-wrap">
+          <table class="cr-table">
             <thead>
               <tr>
-                <th class="gb-who" scope="col">Student</th>
-                @for (c of book().columns; track c.quizId) {
-                  <th class="gb-quiz" scope="col" [title]="c.full || c.label" [attr.aria-label]="c.full || c.label">{{ c.label }}</th>
+                <th class="cr-th-stud"><span class="cr-th-ico" [innerHTML]="'users' | ico"></span>Student</th>
+                @for (col of book().columns; track col.quizId) {
+                  <th class="cr-th-quiz" [title]="col.full || col.label"><span class="cr-th-ico" [innerHTML]="'fileText' | ico"></span>{{ col.label }}</th>
                 }
+                <th class="cr-th-more" aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody>
-              @for (st of book().rows; track st.id) {
-                <tr class="gb-row">
-                  <th class="gb-who" scope="row">
-                    <div class="gb-who-btn gb-who-static">
-                      <span class="roster-no">{{ st.no }}</span>
-                      <span class="gb-name">{{ st.name }}</span>
-                      @if (records(st).length) {
-                        <button type="button" class="gb-answers" (click)="openAnswers(st)" [attr.aria-label]="'Answers for ' + st.name">Answers</button>
+              @for (row of book().rows; track row.id) {
+                <tr class="cr-row">
+                  <td class="cr-stud">
+                    <span class="cr-no">{{ row.no }}</span>
+                    <span class="cr-ava" [style.background]="avatarColorOf(row)">{{ initialsOf(row) }}</span>
+                    <span class="cr-stud-main">
+                      <span class="cr-stud-name">{{ row.name }}</span>
+                      @if (records(row).length) {
+                        <button type="button" class="cr-answers" (click)="openAnswers(row)">
+                          <span class="cr-answers-ico" [innerHTML]="'fileText' | ico"></span> Answers
+                        </button>
                       }
-                    </div>
-                  </th>
-                  @for (cell of st.cells; track cell.quizId) {
-                    <td class="gb-cell">
+                    </span>
+                  </td>
+                  @for (cell of row.cells; track cell.quizId) {
+                    <td class="cr-score">
                       @if (cell.scored) {
-                        <span class="score-pill {{ pill(cell.percent) }}" [title]="(cell.full || cell.label) + ' · ' + cell.correct + ' of ' + cell.total + ' · ' + cell.percent + '%'">{{ cell.correct }}/{{ cell.total }}</span>
+                        <span class="cr-pill" [class.pass]="cell.percent >= 50" [class.fail]="cell.percent < 50"
+                              [title]="(cell.full || cell.label) + ' · ' + cell.correct + ' of ' + cell.total + ' · ' + cell.percent + '%'">
+                          <span class="cr-pill-ico" aria-hidden="true">{{ cell.percent >= 50 ? '✓' : '✗' }}</span>
+                          {{ cell.correct }}/{{ cell.total }}
+                        </span>
                       } @else {
-                        <span class="gb-none">—</span>
+                        <span class="cr-none">—</span>
                       }
                     </td>
                   }
+                  <td class="cr-more">
+                    @if (records(row).length) {
+                      <button type="button" class="cr-more-btn" (click)="openAnswers(row)" [attr.aria-label]="'Open ' + row.name + ' answers'" [innerHTML]="'chevronRight' | ico"></button>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -62,92 +105,92 @@
           }
         </div>
       }
+
+      @if (answersStudent(); as st) {
+        <div class="org-overlay" (click)="closeAnswers()">
+          <div class="org-sheet answers-sheet" (click)="$event.stopPropagation()">
+            <h3>{{ st.no ? st.no + ' · ' : '' }}{{ st.name }}</h3>
+            <p class="faint" style="font-size:11.5px;margin:0 0 12px">
+              {{ cls()?.name }} · {{ records(st).length }} quiz result{{ records(st).length === 1 ? '' : 's' }}
+            </p>
+            <div class="answers-body">
+              @for (r of records(st); track r.quizId) {
+                <div class="roster-rec">
+                  <div class="roster-rec-head">
+                    <span class="roster-rec-quiz">{{ r.quiz }}</span>
+                    <span class="roster-rec-meta">
+                      <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
+                      <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
+                      <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r)" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
+                    </span>
+                  </div>
+                  @if (answersOf(r).length) {
+                    <div class="ans-strip">
+                      @for (a of answersOf(r); track $index) {
+                        <span class="ans-cell" [class.ok]="a.right" [class.bad]="!a.right && !a.blank" [class.blank]="a.blank" [title]="a.right ? 'Correct' : (a.blank ? 'Left blank' : 'Key: ' + a.key)">
+                          <i>{{ a.n }}</i>{{ a.pick || '—' }}@if (a.key) { <em>→ {{ a.key }}</em> }
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="org-sheet-actions">
+              <button class="btn btn-secondary" (click)="closeAnswers()">Close</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (rosterOpen() && cls()) {
+        <div class="org-overlay" (click)="closeRoster()">
+          <div class="org-sheet" (click)="$event.stopPropagation()">
+            <h3>{{ rosterMode() === 'add' ? 'Add students —' : 'Edit roster —' }} {{ cls().name }}</h3>
+            <div class="roster-mode" role="tablist">
+              <button type="button" [class.on]="rosterMode() === 'replace'" (click)="setMode('replace')" role="tab" [attr.aria-selected]="rosterMode() === 'replace'">Replace list</button>
+              <button type="button" [class.on]="rosterMode() === 'add'" (click)="setMode('add')" role="tab" [attr.aria-selected]="rosterMode() === 'add'">Add names</button>
+            </div>
+            <textarea class="text-input roster-paste" rows="7" [placeholder]="rosterMode() === 'add' ? 'One name per line — only new names are added.&#10;Juan Dela Cruz&#10;Maria Santos' : 'Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita'" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+            <label class="btn btn-secondary file-btn">
+              <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
+              <input type="file" accept=".txt,.csv,text/plain,text/csv" (change)="onFile($event)" hidden />
+            </label>
+            @if (rosterMode() === 'replace') {
+              @if (paste().trim()) {
+                <p class="parse-note">
+                  {{ previewCount() }} student{{ previewCount() === 1 ? '' : 's' }} detected
+                  @if (previewSkipped()) { · {{ previewSkipped() }} line{{ previewSkipped() === 1 ? '' : 's' }} skipped }
+                </p>
+              }
+            } @else {
+              @if (addPreview().fresh.length || addPreview().dupes) {
+                <p class="parse-note">
+                  +{{ addPreview().fresh.length }} new student{{ addPreview().fresh.length === 1 ? '' : 's' }}
+                  @if (addPreview().dupes) { · {{ addPreview().dupes }} already on the roster (skipped) }
+                </p>
+              }
+            }
+            <p class="faint" style="font-size:11.5px;margin:10px 0 0;text-align:center">
+              Sheet numbers stay with students already on the roster, even ones you remove.
+            </p>
+            <div class="org-sheet-actions">
+              <button class="btn btn-secondary" (click)="closeRoster()">Cancel</button>
+              @if (rosterMode() === 'replace') {
+                <button class="btn btn-primary" [disabled]="!previewCount()" (click)="saveRoster()">Save roster</button>
+              } @else {
+                <button class="btn btn-primary" [disabled]="!addPreview().fresh.length" (click)="saveRoster()">Add {{ addPreview().fresh.length }}</button>
+              }
+            </div>
+          </div>
+        </div>
+      }
     } @else if (missing()) {
       <div class="empty-state">
         <div class="empty-ico" [innerHTML]="'users' | ico"></div>
         <h3>Class not found</h3>
         <p>This class may have been deleted on this device.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="router.navigateByUrl('/tabs/classes')">Back to classes</button>
-      </div>
-    }
-
-    @if (answersStudent(); as st) {
-      <div class="org-overlay" (click)="closeAnswers()">
-        <div class="org-sheet answers-sheet" (click)="$event.stopPropagation()">
-          <h3>{{ st.no ? st.no + ' · ' : '' }}{{ st.name }}</h3>
-          <p class="faint" style="font-size:11.5px;margin:0 0 12px">
-            {{ cls()?.name }} · {{ records(st).length }} quiz result{{ records(st).length === 1 ? '' : 's' }}
-          </p>
-          <div class="answers-body">
-            @for (r of records(st); track r.quizId) {
-              <div class="roster-rec">
-                <div class="roster-rec-head">
-                  <span class="roster-rec-quiz">{{ r.quiz }}</span>
-                  <span class="roster-rec-meta">
-                    <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
-                    <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
-                    <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r)" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
-                  </span>
-                </div>
-                @if (answersOf(r).length) {
-                  <div class="ans-strip">
-                    @for (a of answersOf(r); track $index) {
-                      <span class="ans-cell" [class.ok]="a.right" [class.bad]="!a.right && !a.blank" [class.blank]="a.blank" [title]="a.right ? 'Correct' : (a.blank ? 'Left blank' : 'Key: ' + a.key)">
-                        <i>{{ a.n }}</i>{{ a.pick || '—' }}@if (a.key) { <em>→ {{ a.key }}</em> }
-                      </span>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-          <div class="org-sheet-actions">
-            <button class="btn btn-secondary" (click)="closeAnswers()">Close</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    @if (rosterOpen() && cls()) {
-      <div class="org-overlay" (click)="closeRoster()">
-        <div class="org-sheet" (click)="$event.stopPropagation()">
-          <h3>{{ rosterMode() === 'add' ? 'Add students —' : 'Edit roster —' }} {{ cls().name }}</h3>
-          <div class="roster-mode" role="tablist">
-            <button type="button" [class.on]="rosterMode() === 'replace'" (click)="setMode('replace')" role="tab" [attr.aria-selected]="rosterMode() === 'replace'">Replace list</button>
-            <button type="button" [class.on]="rosterMode() === 'add'" (click)="setMode('add')" role="tab" [attr.aria-selected]="rosterMode() === 'add'">Add names</button>
-          </div>
-          <textarea class="text-input roster-paste" rows="7" [placeholder]="rosterMode() === 'add' ? 'One name per line — only new names are added.&#10;Juan Dela Cruz&#10;Maria Santos' : 'Paste student names — one per line.&#10;Juan Dela Cruz&#10;Maria Santos, Grade 8, Sampaguita'" [attr.aria-label]="'Student names'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
-          <label class="btn btn-secondary file-btn">
-            <span [innerHTML]="'upload' | ico"></span> Upload .txt / .csv
-            <input type="file" accept=".txt,.csv,text/plain,text/csv" (change)="onFile($event)" hidden />
-          </label>
-          @if (rosterMode() === 'replace') {
-            @if (paste().trim()) {
-              <p class="parse-note">
-                {{ previewCount() }} student{{ previewCount() === 1 ? '' : 's' }} detected
-                @if (previewSkipped()) { · {{ previewSkipped() }} line{{ previewSkipped() === 1 ? '' : 's' }} skipped }
-              </p>
-            }
-          } @else {
-            @if (addPreview().fresh.length || addPreview().dupes) {
-              <p class="parse-note">
-                +{{ addPreview().fresh.length }} new student{{ addPreview().fresh.length === 1 ? '' : 's' }}
-                @if (addPreview().dupes) { · {{ addPreview().dupes }} already on the roster (skipped) }
-              </p>
-            }
-          }
-          <p class="faint" style="font-size:11.5px;margin:10px 0 0;text-align:center">
-            Sheet numbers stay with students already on the roster, even ones you remove.
-          </p>
-          <div class="org-sheet-actions">
-            <button class="btn btn-secondary" (click)="closeRoster()">Cancel</button>
-            @if (rosterMode() === 'replace') {
-              <button class="btn btn-primary" [disabled]="!previewCount()" (click)="saveRoster()">Save roster</button>
-            } @else {
-              <button class="btn btn-primary" [disabled]="!addPreview().fresh.length" (click)="saveRoster()">Add {{ addPreview().fresh.length }}</button>
-            }
-          </div>
-        </div>
       </div>
     }
   </div>
