@@ -26,9 +26,20 @@
   mobileMenu?.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setMenu(false)));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
 
-  // Reveal-on-scroll. Content is visible if IntersectionObserver is missing.
+  // Stagger cards inside each section so groups arrive in a soft cascade.
+  document.querySelectorAll('.feature-grid, .gallery, .steps, .install-grid, .qr-grid, .docs-grid, .faq-list, .offline-cards, .footer-grid')
+    .forEach(group => {
+      [...group.children].forEach((el, i) => {
+        if (el.classList?.contains('reveal')) {
+          el.style.setProperty('--reveal-delay', `${Math.min(i * 55, 220)}ms`);
+        }
+      });
+    });
+
+  // Reveal-on-scroll. The observer runs in both motion modes: full motion uses
+  // the app-style rise, reduced motion fades opacity only (see CSS).
   const reveals = [...document.querySelectorAll('.reveal')];
-  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(entries => {
       for (const entry of entries) {
         if (entry.isIntersecting) {

@@ -413,8 +413,22 @@ html[data-theme="dark"] .flow-n { color: #062124; }
 
 /* ── Reveal ── */
 .reveal { opacity: 1; transform: none; }
-.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s ease, transform .55s cubic-bezier(.16,1,.3,1); }
+.js .reveal {
+  opacity: 0; transform: translateY(14px) scale(.995);
+  transition: opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
 .js .reveal.in { opacity: 1; transform: none; }
+
+/* Subtle card/phone lift, in the same spirit as the app's cards. */
+.shot .phone-frame { transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease; }
+.shot:hover .phone-frame { transform: translateY(-5px); box-shadow: var(--shadow); }
+.install-card, .qr-card, .doc, .faq, .flow-step, .offline-card {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.install-card:hover, .qr-card:hover, .doc:hover, .faq:hover, .flow-step:hover, .offline-card:hover {
+  transform: translateY(-2px); border-color: var(--border-strong);
+}
 
 /* ── Responsive ── */
 @media (max-width: 1000px) {
@@ -488,7 +502,6 @@ html[data-theme="dark"] .flow-n { color: #062124; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .reveal, .js .reveal { opacity: 1; transform: none; transition: none; }
   /* Reduced motion still gets a calm, staggered fade on arrival — no movement,
      loops or transforms, but the page does not snap into place. */
   .site-header { animation: softIn .5s ease both !important; }
@@ -500,5 +513,11 @@ html[data-theme="dark"] .flow-n { color: #062124; }
   .hero-phone { animation: softIn .8s ease .2s both !important; }
   .fact-strip { animation: softIn .8s ease .4s both !important; }
   .float-card, .hero-glow, .grad-text { animation: none !important; }
-  *, *::before, *::after { transition-duration: .01ms !important; }
+  /* Every section/card still fades in while scrolling, just without motion. */
+  .js .reveal { opacity: 0; transform: none; transition: opacity .4s ease; transition-delay: var(--reveal-delay, 0ms); }
+  .js .reveal.in { opacity: 1; }
+  .btn:hover, .feature-card:hover, .shot:hover .phone-frame, .install-card:hover,
+  .doc:hover, .faq:hover, .qr-card:hover, .flow-step:hover, .offline-card:hover {
+    transform: none !important;
+  }
 }
