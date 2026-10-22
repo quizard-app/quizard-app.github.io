@@ -33,6 +33,9 @@
             </button>
             <div class="key-foot">
               <span class="key-when">{{ dateOf(key.createdAt) }}</span>
+              @if (needsAnswers(key)) {
+                <span class="score-pill low" title="Saved before answer lines were understood — open Edit and paste the key again to fix">no answers — re-paste</span>
+              }
               <div class="doc-actions">
                 <button class="btn btn-secondary" (click)="buildQuiz(key); $event.stopPropagation()">Build a quiz</button>
                 <button class="icon-btn doc-delete-btn" (click)="remove(key); $event.stopPropagation()" [attr.aria-label]="'Delete ' + key.subject + ' key'" data-tooltip="Delete key" [innerHTML]="'trash' | ico"></button>
@@ -92,6 +95,11 @@
             <input class="text-input" placeholder="Title (optional)" [attr.aria-label]="'Title'" maxlength="60" [value]="title()" (input)="title.set($any($event.target).value)" />
           </div>
           <textarea class="text-input roster-paste" rows="8" placeholder="Paste your key — all of these work:&#10;&#10;1. Photosynthesis&#10;2. What do plants use for food? → Photosynthesis&#10;or a letter key: BCADBACDDA…" [attr.aria-label]="'Answer key text'" [value]="paste()" (input)="setPaste($any($event.target).value)"></textarea>
+          @if (editingKey(); as ek) {
+            @if (needsAnswers(ek)) {
+              <div class="gen-error" style="margin-top:8px"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> <span>This key was saved without its correct answers. Paste the whole key again below (the answer lines are now understood) and save to fix it.</span></div>
+            }
+          }
           @if (previewCount()) {
             <p class="parse-note">
               {{ previewCount() }} item{{ previewCount() === 1 ? '' : 's' }} detected

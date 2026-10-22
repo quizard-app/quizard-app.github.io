@@ -14,8 +14,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { ByokService } from '../../core/services/byok.service';
 
 const MODES = [
+  { id: 'key', label: 'Anchor to my key', hint: 'You have the answers — the quiz follows your key exactly', io: 'answer key → quiz' },
   { id: 'ai', label: 'Full AI', hint: 'You have just a lesson — AI writes everything', io: 'lesson → full quiz' },
-  { id: 'key', label: 'Anchor to my key', hint: 'You have the answers — AI writes questions to fit them', io: 'answer key → questions' },
   { id: 'format', label: 'Match my format', hint: 'You have sample questions — AI writes new ones in the same style', io: 'examples → new questions' },
 ];
 
@@ -58,7 +58,7 @@ export class CreatePage {
   sheets = signal<any[]>([]);
   gradedOf = (q: any): number => this.sheets().filter(s => s.quizId === q.id).length;
   selectedQuiz = signal<any>(null);
-  mode = signal<'ai' | 'key' | 'format'>('ai');
+  mode = signal<'ai' | 'key' | 'format'>('key');
   subject = signal('');
   title = signal('');
   count = signal(20);
@@ -88,6 +88,13 @@ export class CreatePage {
   readonly lessonText = computed(() => this.fileText() || this.lessonPaste().trim());
   readonly pickedKey = computed(() => this.savedKeys().find(k => k.id === this.pickedKeyId()) || null);
   readonly keySource = computed(() => this.pickedKey() ?? (this.keyPaste().trim() ? this.keyPreview() : null));
+  // A key saved before the "Answer: A. <text>" parser fix carries questions
+  // and options but no correct letters — building from it would be wrong.
+  readonly keyHasMissingAnswers = computed(() => {
+    const src: any = this.keySource();
+    return this.mode() === 'key' && !!src?.items?.length &&
+      src.items.some((it: any) => (it.options?.length >= 2) && !(it.answerIndex >= 0));
+  });
   readonly mcqExamples = computed(() => {
     const src: any = this.keySource();
     return src?.format === 'mcq' ? src.items : [];
@@ -207,6 +214,10 @@ export class CreatePage {
 
   async generate() {
     if (!this.canGenerate()) return;
+    if (this.mode() === 'key' && this.keyHasMissingAnswers()) {
+      this.error.set('This saved key has no correct answers (it was saved before the answer lines were understood) — open it in Keys, paste the key again and save, then build the quiz.');
+      return;
+    }
     this.generating.set(true);
     this.error.set('');
     try {
@@ -348,7 +359,7 @@ export class CreatePage {
     this.quizId.set(null);
     this.selectedQuiz.set(null);
     this.editingSource = null;
-    this.mode.set('ai');
+    this.mode.set('key');
     this.subject.set(''); this.title.set(''); this.fileText.set(''); this.fileName.set('');
     this.lessonPaste.set(''); this.keyPaste.set(''); this.pickedKeyId.set(null);
     this.error.set('');

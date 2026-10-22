@@ -34,6 +34,7 @@ export class KeysPage {
   keys = signal<any[]>([]);
   sheetOpen = signal(false);
   editingId = signal<string | null>(null);
+  readonly editingKey = computed(() => this.keys().find(k => k.id === this.editingId()) || null);
 
   subject = signal('');
   title = signal('');
@@ -63,6 +64,11 @@ export class KeysPage {
   // The answer an item carries, whichever field the parser chose.
   readonly answerOf = (it: any): string =>
     String(it?.answer || it?.answerLetter || 'ABCD'[it?.answerIndex] || '—');
+
+  // Keys saved before the "Answer: A. <text>" parser fix kept their questions
+  // but lost the correct letters — flag them so they can be re-pasted once.
+  readonly needsAnswers = (key: any): boolean =>
+    (key?.items || []).some((it: any) => (it.options?.length >= 2) && !(it.answerIndex >= 0));
 
   // ── View sheet: read the whole key without touching the edit form ──
   viewOpen = signal(false);

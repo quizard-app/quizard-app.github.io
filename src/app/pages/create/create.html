@@ -146,6 +146,9 @@
             }
           } @else if (pickedKey()) {
             <p class="parse-note">Using saved key “{{ pickedKey().subject }}” — {{ pickedKey().items.length }} items</p>
+            @if (keyHasMissingAnswers()) {
+              <div class="gen-error" style="margin-top:8px"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> <span>This saved key has no correct answers — open it in Keys, paste the key again and save to fix it.</span></div>
+            }
           }
         } @else {
           <div class="section-title">2 · Your example questions</div>
