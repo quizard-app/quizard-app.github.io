@@ -6,5 +6,5 @@ import { Capacitor } from '@capacitor/core';
 const local = /^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname || '');
 
 export const DOCS_URL = Capacitor.isNativePlatform()
-  ? 'https://quizard-app.github.io/quizard-docs/'
+  ? 'https://quizard-checker.github.io/quizard-docs/'
   : local ? '/site/' : '/quizard-docs/';

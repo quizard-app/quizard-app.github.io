@@ -9,7 +9,7 @@ vulnerabilities.
 
 Only the latest deployment is supported:
 
-- Web: https://quizard-app.github.io/
+- Web: https://quizard-checker.github.io/
 - Android APK: the latest release
 
 ## Data handling

@@ -1,6 +1,6 @@
 # Quizard — Final Test Pass (Live Site)
 
-- Site: https://quizard-app.github.io/
+- Site: https://quizard-checker.github.io/
 - Date: 12 September 2026
 - Build: Ionic 8 + Angular (v2.0)
 - Method: Automated browser test (Chrome, 390×844 viewport) walking every screen

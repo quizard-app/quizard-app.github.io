@@ -37,6 +37,7 @@ const THROTTLE_MS = 60 * 1000
 let env = {}
 
 const ALLOWED_ORIGINS = new Set([
+  'https://quizard-checker.github.io',
   'https://quizard-app.github.io',
   // legacy home that may still have open tabs
   'https://quizforge-app.github.io',
@@ -545,7 +546,7 @@ async function handleExtract(request, sec) {
       redirect: 'follow',
       signal: AbortSignal.timeout(20_000),
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; QuizardStudyBot/1.0; +https://quizard-app.github.io)',
+        'User-Agent': 'Mozilla/5.0 (compatible; QuizardStudyBot/1.0; +https://quizard-checker.github.io)',
         'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
         'Accept-Language': 'en-US, en;q=0.9, *;q=0.5'
       }

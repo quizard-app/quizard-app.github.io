@@ -57,7 +57,7 @@ Fix the AI generation Groq fallback mechanism to ensure high-quality AI-generate
 
 ### Live Deployment
 - ✅ Changes deployed to live relay at `https://quizard-relay.quizard-app.workers.dev`
-- ✅ Frontend deployed to GitHub Pages at `https://quizard-app.github.io/`
+- ✅ Frontend deployed to GitHub Pages at `https://quizard-checker.github.io/`
 - ✅ Both systems operating with fixes in production
 
 ## AI Quality Improvement Achieved
