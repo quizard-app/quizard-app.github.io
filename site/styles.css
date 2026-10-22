@@ -489,11 +489,16 @@ html[data-theme="dark"] .flow-n { color: #062124; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal, .js .reveal { opacity: 1; transform: none; transition: none; }
-  /* Reduced motion still gets a calm fade on arrival — no movement, loops or
-     transforms, but the page does not snap into place with zero transition. */
-  .site-header, .hero-copy > .eyebrow, .hero h1, .lede, .hero-actions, .hero-points, .hero-phone, .fact-strip {
-    animation: softIn .5s ease both !important;
-  }
+  /* Reduced motion still gets a calm, staggered fade on arrival — no movement,
+     loops or transforms, but the page does not snap into place. */
+  .site-header { animation: softIn .5s ease both !important; }
+  .hero-copy > .eyebrow { animation: softIn .6s ease .05s both !important; }
+  .hero h1 { animation: softIn .7s ease .1s both !important; }
+  .lede { animation: softIn .7s ease .18s both !important; }
+  .hero-actions { animation: softIn .7s ease .26s both !important; }
+  .hero-points { animation: softIn .7s ease .34s both !important; }
+  .hero-phone { animation: softIn .8s ease .2s both !important; }
+  .fact-strip { animation: softIn .8s ease .4s both !important; }
   .float-card, .hero-glow, .grad-text { animation: none !important; }
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
