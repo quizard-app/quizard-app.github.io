@@ -221,20 +221,17 @@
         <div class="hero-ico" [innerHTML]="'edit' | ico"></div>
         <div>
           <h1>Review & edit</h1>
-          <p>{{ mode() === 'key' ? 'Tap the circle beside the correct answer. Questions and choices are optional — fill them in if you also want a printable question paper.' : 'Tap the circle beside the correct option. Fix anything the AI got wrong.' }}</p>
+          <p>{{ mode() === 'key' ? 'Tap the circle beside the correct answer to change it.' : 'Tap the circle beside the correct option. Fix anything the AI got wrong.' }}</p>
         </div>
       </div>
 
       @if (keyOnly()) {
         <p class="parse-note" style="margin-bottom:10px">
-          Letters-only key — your paper already carries the questions, so this quiz prints bubble sheets on its own.
-          Tap a circle to change a correct answer. Add the question and choice fields only if you also want the quiz paper.
+          Letters-only key — your paper carries the questions, so this quiz prints bubble sheets on its own.
+          Tap a circle to change a correct answer, then save.
         </p>
-        <button class="btn btn-secondary" style="max-width:290px;margin:0 auto 12px;display:flex" (click)="showQuestions.set(!showQuestions())">
-          <span [innerHTML]="'plus' | ico"></span> {{ showQuestions() ? 'Hide question & choice fields' : 'Add questions & choices (optional)' }}
-        </button>
       }
-      @if (keyOnly() && !showQuestions()) {
+      @if (keyOnly()) {
         <div class="doc-list">
           @for (it of items(); track $index; let ii = $index) {
             <div class="qcard qcard-compact">
