@@ -155,7 +155,7 @@ html[data-theme="dark"] .btn-primary:hover { color: #062124; }
 .btn-lg { padding: 15px 24px; font-size: 15px; border-radius: 14px; }
 
 /* ── Hero ── */
-.hero { position: relative; padding: 68px 0 0; overflow: hidden; }
+.hero { position: relative; padding: 68px 0 56px; overflow: hidden; }
 .hero-glow { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .5; pointer-events: none; }
 .hero-glow-a { width: 520px; height: 520px; background: rgba(42, 163, 191, .28); top: -180px; right: -80px; animation: glowPulse 9s ease-in-out infinite; }
 .hero-glow-b { width: 420px; height: 420px; background: rgba(233, 162, 59, .22); bottom: 40px; left: -140px; animation: glowPulse 11s ease-in-out infinite 1.2s; }
@@ -256,17 +256,18 @@ html[data-theme="dark"] .btn-primary:hover { color: #062124; }
 .offline-copy p { color: #B8CFD1; margin-top: 12px; font-size: 14.5px; max-width: 520px; }
 .offline-cards { display: grid; gap: 12px; }
 .offline-card {
-  display: flex; gap: 13px; padding: 16px 18px; border-radius: 16px;
+  display: flex; align-items: center; gap: 15px; padding: 16px 18px; border-radius: 16px;
   background: rgba(255, 255, 255, .055); border: 1px solid rgba(255, 255, 255, .13);
 }
 .offline-ico {
   flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
   background: rgba(61, 201, 138, .2); color: #A7F3D0; border: 1px solid rgba(61, 201, 138, .28);
-  font-weight: 900; font-size: 17px;
+  font-weight: 900; font-size: 17px; line-height: 1;
 }
+.offline-ico svg { width: 18px; height: 18px; }
 .offline-ico.ai { background: rgba(239, 185, 92, .2); color: #FFD28A; border-color: rgba(239, 185, 92, .3); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; }
 .offline-card b { display: block; color: #fff; font-size: 14px; }
-.offline-card span { display: block; color: #A9C3C5; font-size: 12.5px; line-height: 1.45; margin-top: 2px; }
+.offline-card > div span { display: block; color: #A9C3C5; font-size: 12.5px; line-height: 1.45; margin-top: 2px; }
 .offline-note { max-width: 660px; margin: 28px auto 0; text-align: center; font-size: 13px; color: var(--text-dim); }
 .offline-note b { color: var(--text); }
 @media (max-width: 900px) { .offline-grid { grid-template-columns: 1fr; gap: 24px; } }
@@ -453,7 +454,7 @@ html[data-theme="dark"] .flow-n { color: #062124; }
 @media (max-width: 520px) {
   .nav-row { gap: 12px; }
   .nav-actions .btn-sm { display: none; }
-  .hero { padding-top: 46px; }
+  .hero { padding-top: 46px; padding-bottom: 40px; }
   .hero h1 { font-size: 2.35rem; }
   .hero-art { min-height: 480px; }
   .phone-frame { width: 215px; }
