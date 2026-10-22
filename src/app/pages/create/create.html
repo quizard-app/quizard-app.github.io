@@ -277,7 +277,8 @@
       }
 
       <button class="btn btn-primary gen-btn" [disabled]="!itemsValid() || quizId()" (click)="save()">
-        <span [innerHTML]="'check' | ico"></span> {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
+        @if (!quizId()) { <span [innerHTML]="'check' | ico"></span> }
+        {{ quizId() ? 'Saved ✓' : 'Save quiz' }}
       </button>
     </div>
   }
