@@ -224,6 +224,7 @@ html[data-theme="dark"] .btn-primary:hover { color: #062124; }
 @keyframes floatFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes gradShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 @keyframes glowPulse { 0%,100% { opacity: .42; transform: scale(1); } 50% { opacity: .62; transform: scale(1.07); } }
+@keyframes softIn { from { opacity: 0; } to { opacity: 1; } }
 
 .fact-strip {
   position: relative; display: grid; grid-template-columns: repeat(4, 1fr);
@@ -488,5 +489,11 @@ html[data-theme="dark"] .flow-n { color: #062124; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal, .js .reveal { opacity: 1; transform: none; transition: none; }
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  /* Reduced motion still gets a calm fade on arrival — no movement, loops or
+     transforms, but the page does not snap into place with zero transition. */
+  .site-header, .hero-copy > .eyebrow, .hero h1, .lede, .hero-actions, .hero-points, .hero-phone, .fact-strip {
+    animation: softIn .5s ease both !important;
+  }
+  .float-card, .hero-glow, .grad-text { animation: none !important; }
+  *, *::before, *::after { transition-duration: .01ms !important; }
 }
