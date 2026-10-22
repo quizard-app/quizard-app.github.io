@@ -136,7 +136,8 @@ export class CreatePage {
   // read as a confusing wall. Key/example is always section 2 (rendered only in
   // key/format modes); material and details shift around it.
   readonly stepMaterial = computed(() => this.mode() === 'ai' ? 2 : 3);
-  readonly stepDetails = computed(() => this.mode() === 'ai' ? 3 : 4);
+  // key mode has no lesson step: 1 mode, 2 key, 3 details
+  readonly stepDetails = computed(() => this.mode() === 'format' ? 4 : 3);
 
   async ionViewWillEnter() {
     this.classList.set(await listClasses());

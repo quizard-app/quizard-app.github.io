@@ -161,9 +161,11 @@
           }
         }
 
-        <div class="section-title">{{ stepMaterial() }} · Lesson context <span class="faint" style="font-weight:400">— optional</span></div>
-        <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">A lesson grounds the questions in your material. Leave empty to write purely from what you gave above.</p>
-        <ng-container [ngTemplateOutlet]="materialBlock" />
+        @if (mode() !== 'key') {
+          <div class="section-title">{{ stepMaterial() }} · Lesson context <span class="faint" style="font-weight:400">— optional</span></div>
+          <p class="faint" style="font-size:12.5px;margin:-4px 0 6px">A lesson grounds the questions in your material. Leave empty to write purely from what you gave above.</p>
+          <ng-container [ngTemplateOutlet]="materialBlock" />
+        }
       }
 
       <div class="section-title">{{ stepDetails() }} · Questions & details</div>
