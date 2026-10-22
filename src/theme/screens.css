@@ -2796,6 +2796,10 @@ button.roster-row.on { background: var(--accent-soft); }
    where Classroom keeps its banner actions. */
 .roster-banner { margin-bottom: 22px; border-radius: 16px; }
 .roster-banner .cls-avatar { top: 20px; }
+/* Edit roster lives on the meta line, so long class names keep the full first
+   line instead of running beneath the button */
+.roster-banner .roster-edit { top: auto; bottom: 12px; }
+.roster-banner .cls-sub { padding-right: 140px; }
 /* readability: banner sub + edit pill carry real information, keep them at body size */
 .roster-banner .cls-sub { font-size: 14px; }
 .roster-edit {
@@ -2864,6 +2868,19 @@ button.roster-row.on { background: var(--accent-soft); }
   background: transparent; border: 0; padding: 0; font: inherit; color: var(--text);
   cursor: pointer; text-align: left;
 }
+/* the row itself no longer expands — a div reusing the layout; the Answers
+   button drops to its own line so the student name keeps the full width */
+.gb-who-static { flex-wrap: wrap; row-gap: 3px; cursor: default; }
+.gb-answers {
+  flex: 0 0 100%; width: max-content;
+  margin-left: auto;
+  font: inherit; font-size: 11px; font-weight: 700;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border: 1px solid transparent; border-radius: var(--radius-pill);
+  padding: 3px 10px; cursor: pointer;
+  transition: border-color .15s ease;
+}
+.gb-answers:hover { border-color: var(--accent); }
 .gb-name { font-size: 14.5px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* one lane per quiz, so a row of marks reads across as columns */
 .gb-quiz, .gb-cell { border-left: 1px solid var(--border); }
@@ -2879,11 +2896,10 @@ button.roster-row.on { background: var(--accent-soft); }
 }
 .gb-cell .score-pill { font-size: 12px; padding: 3px 10px; }
 .gb-none { color: var(--text-faint); }
-.gb-detail { padding: 0; }
-.gb-detail .roster-recs { padding: 8px 12px; text-align: left; }
-/* the detail row is as wide as the whole grid now, so keep its one line compact
-   instead of flinging the score across the empty lanes */
-.gb-detail .roster-rec { max-width: 420px; }
+
+/* ── Answers modal: one student's attempts + per-number answer strip ── */
+.answers-sheet { width: min(94vw, 560px); }
+.answers-body { display: flex; flex-direction: column; gap: 10px; max-height: 56vh; overflow: auto; margin: 0 -2px; padding: 2px; }
 
 /* Phones: a 172px name column is over half of a 360px screen, and 36px rows are
    under the touch-target floor. Narrow the pinned lane, tighten the padding and
@@ -2899,9 +2915,6 @@ button.roster-row.on { background: var(--accent-soft); }
   .gb-name { font-size: 13.5px; }
   .gb-cell { min-width: 76px; }
   .gb-cell .score-pill { font-size: 11px; padding: 3px 8px; }
-  /* the whole width is precious here, so the detail line uses all of it */
-  .gb-detail .roster-rec { max-width: none; }
-  .gb-detail .roster-recs { padding: 8px 10px; }
   .roster-no { width: 22px; }
 }
 

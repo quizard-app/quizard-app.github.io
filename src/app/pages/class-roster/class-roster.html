@@ -27,53 +27,24 @@
               @for (st of book().rows; track st.id) {
                 <tr class="gb-row">
                   <th class="gb-who" scope="row">
-                    <button type="button" class="gb-who-btn" (click)="records(st).length ? toggle(st.id) : null" [attr.aria-expanded]="expandedId() === st.id">
+                    <div class="gb-who-btn gb-who-static">
                       <span class="roster-no">{{ st.no }}</span>
                       <span class="gb-name">{{ st.name }}</span>
                       @if (records(st).length) {
-                        <span class="roster-caret" [class.open]="expandedId() === st.id" [innerHTML]="'chevronRight' | ico"></span>
+                        <button type="button" class="gb-answers" (click)="openAnswers(st)" [attr.aria-label]="'Answers for ' + st.name">Answers</button>
                       }
-                    </button>
+                    </div>
                   </th>
                   @for (cell of st.cells; track cell.quizId) {
                     <td class="gb-cell">
                       @if (cell.scored) {
-                        <span class="score-pill {{ pill(cell.percent) }}" [title]="(cell.full || cell.label) + ' · ' + cell.correct + '/' + cell.total">{{ cell.percent }}%</span>
+                        <span class="score-pill {{ pill(cell.percent) }}" [title]="(cell.full || cell.label) + ' · ' + cell.correct + ' of ' + cell.total + ' · ' + cell.percent + '%'">{{ cell.correct }}/{{ cell.total }}</span>
                       } @else {
                         <span class="gb-none">—</span>
                       }
                     </td>
                   }
                 </tr>
-                @if (expandedId() === st.id) {
-                  <tr>
-                    <td class="gb-detail" [attr.colspan]="book().columns.length + 1">
-                      <div class="roster-recs">
-                        @for (r of records(st); track r.quizId) {
-                          <div class="roster-rec">
-                            <div class="roster-rec-head">
-                              <span class="roster-rec-quiz">{{ r.quiz }}</span>
-                              <span class="roster-rec-meta">
-                                <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
-                                <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
-                                <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r); $event.stopPropagation()" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
-                              </span>
-                            </div>
-                            @if (answersOf(r).length) {
-                              <div class="ans-strip">
-                                @for (a of answersOf(r); track $index) {
-                                  <span class="ans-cell" [class.ok]="a.right" [class.bad]="!a.right && !a.blank" [class.blank]="a.blank" [title]="a.right ? 'Correct' : (a.blank ? 'Left blank' : 'Key: ' + a.key)">
-                                    <i>{{ a.n }}</i>{{ a.pick || '—' }}@if (a.key) { <em>→ {{ a.key }}</em> }
-                                  </span>
-                                }
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                }
               }
             </tbody>
           </table>
@@ -97,6 +68,43 @@
         <h3>Class not found</h3>
         <p>This class may have been deleted on this device.</p>
         <button class="btn btn-primary" style="max-width:230px;margin:0 auto" (click)="router.navigateByUrl('/tabs/classes')">Back to classes</button>
+      </div>
+    }
+
+    @if (answersStudent(); as st) {
+      <div class="org-overlay" (click)="closeAnswers()">
+        <div class="org-sheet answers-sheet" (click)="$event.stopPropagation()">
+          <h3>{{ st.no ? st.no + ' · ' : '' }}{{ st.name }}</h3>
+          <p class="faint" style="font-size:11.5px;margin:0 0 12px">
+            {{ cls()?.name }} · {{ records(st).length }} quiz result{{ records(st).length === 1 ? '' : 's' }}
+          </p>
+          <div class="answers-body">
+            @for (r of records(st); track r.quizId) {
+              <div class="roster-rec">
+                <div class="roster-rec-head">
+                  <span class="roster-rec-quiz">{{ r.quiz }}</span>
+                  <span class="roster-rec-meta">
+                    <span class="score-pill {{ pill(r.percent) }}">{{ r.correct }}/{{ r.total }} · {{ r.percent }}%</span>
+                    <span class="roster-rec-date">{{ fmtDate(r.date) }}</span>
+                    <button class="icon-btn doc-delete-btn" (click)="removeRecord(st, r)" [attr.aria-label]="'Remove ' + st.name + ' result'" data-tooltip="Remove result" [innerHTML]="'trash' | ico"></button>
+                  </span>
+                </div>
+                @if (answersOf(r).length) {
+                  <div class="ans-strip">
+                    @for (a of answersOf(r); track $index) {
+                      <span class="ans-cell" [class.ok]="a.right" [class.bad]="!a.right && !a.blank" [class.blank]="a.blank" [title]="a.right ? 'Correct' : (a.blank ? 'Left blank' : 'Key: ' + a.key)">
+                        <i>{{ a.n }}</i>{{ a.pick || '—' }}@if (a.key) { <em>→ {{ a.key }}</em> }
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div class="org-sheet-actions">
+            <button class="btn btn-secondary" (click)="closeAnswers()">Close</button>
+          </div>
+        </div>
       </div>
     }
 

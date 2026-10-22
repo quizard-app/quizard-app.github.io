@@ -42,7 +42,9 @@ export class ClassRosterPage {
   bannerTheme = bannerTheme;
   bannerAvatar = bannerAvatar;
   missing = signal(false);
-  expandedId = signal<string | null>(null);
+  // The Answers button per student opens this modal — the full attempt list
+  // with the per-number answer strip, instead of expanding the table row.
+  answersStudent = signal<any | null>(null);
   rosterOpen = signal(false);
   // Replace rewrites the whole list (box prefilled); Add appends just the new
   // names a teacher pastes or uploads — real classes arrive in batches.
@@ -115,7 +117,7 @@ export class ClassRosterPage {
     const cls = id ? await getClass(id) : null;
     this.cls.set(cls);
     this.missing.set(!cls);
-    this.expandedId.set(null);
+    this.answersStudent.set(null);
     if (!cls) { this.sheets.set([]); return; }
     const [sheets, quizzes] = await Promise.all([listSheets({ classId: cls.id }), listQuizzes()]);
     this.sheets.set(sheets);
@@ -156,9 +158,8 @@ export class ClassRosterPage {
   };
   pill = scorePill;
   fmtDate = fmtDate;
-  toggle(id: string) {
-    this.expandedId.set(this.expandedId() === id ? null : id);
-  }
+  openAnswers(st: any) { this.answersStudent.set(st); }
+  closeAnswers() { this.answersStudent.set(null); }
 
   // Delete lives on the expanded row, next to the date — the grid cell shows
   // the score, the row underneath acts on it. Same confirm pattern as Reports.
@@ -259,7 +260,7 @@ export class ClassRosterPage {
       })),
     });
     this.cls.set(record);
-    this.expandedId.set(null);
+    this.answersStudent.set(null);
     this.rosterOpen.set(false);
     this.toast.toast(`${parsed.students.length} student${parsed.students.length === 1 ? '' : 's'} saved to “${cls.name}”`);
   }
