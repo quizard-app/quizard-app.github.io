@@ -715,36 +715,8 @@ ion-tab-button.tab-selected .tab-tile { animation: tile-pop 0.28s cubic-bezier(0
    concurrent compositor animations on phones */
 .gh-grid { animation: fadeIn 0.4s ease-out backwards; }
 
-/* ── Web install banner ── */
-.install-banner {
-  position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);
-  z-index: 70; width: calc(100% - 24px); max-width: 430px;
-  padding: 12px 14px; border-radius: 16px;
-  background: var(--surface); border: 1px solid var(--accent-border);
-  box-shadow: var(--shadow-lg);
-  animation: installIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes installIn {
-  from { opacity: 0; transform: translate(-50%, 10px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-.install-banner-top { display: flex; align-items: center; gap: 10px; }
-.install-banner-ico {
-  flex: none; width: 34px; height: 34px; border-radius: 10px;
-  display: grid; place-items: center;
-  background: var(--accent-soft); color: var(--accent-strong);
-}
-.install-banner-ico svg { width: 17px; height: 17px; }
-.install-banner-copy { flex: 1; min-width: 0; }
-.install-banner-copy b { display: block; font-size: 13px; }
-.install-banner-copy span { display: block; font-size: 11.5px; line-height: 1.3; color: var(--text-dim); }
-.install-banner-close { flex: none; width: 30px; height: 30px; }
-.install-banner-actions { display: flex; gap: 8px; margin-top: 10px; }
-.install-banner-actions .btn { flex: 1; padding: 9px 12px; font-size: 13px; }
-
 @media (prefers-reduced-motion: reduce) {
-  .screen > *, .trend-svg, .gh-grid, .tab-tile, .btn, .doc-card, .exam-card, .exam-entry, .install-banner {
+  .screen > *, .trend-svg, .gh-grid, .tab-tile, .btn, .doc-card, .exam-card, .exam-entry {
     animation: none !important;
     transition: none !important;
   }

@@ -73,19 +73,16 @@
       </div>
     </div>
 
-    @if (!install.native) {
-      <div class="section-title"><span class="set-sec-ico" [innerHTML]="'download' | ico"></span>Install app</div>
-      <div class="settings-group">
-        <div class="row" style="border-top:none">
-          <div><div class="label">Install on this device</div><div class="sub">{{ install.canInstall() ? 'Adds Quizard to your home screen and opens full screen.' : 'Use the browser menu → Install app / Add to Home Screen.' }}</div></div>
-          <button class="btn btn-primary" [disabled]="!install.canInstall()" (click)="install.installPwa()">Install</button>
+    <div class="section-title"><span class="set-sec-ico" [innerHTML]="'book' | ico"></span>Help</div>
+    <div class="settings-group">
+      <div class="row" style="border-top:none;border-bottom:none">
+        <div>
+          <div class="label">How to use Quizard</div>
+          <div class="sub">Screenshots, printing, scanning, and install guides</div>
         </div>
-        <div class="row" style="border-bottom:none">
-          <div><div class="label">Android APK</div><div class="sub">Download the APK and install it directly on your phone.</div></div>
-          <a class="btn btn-secondary" [href]="install.apkUrl" target="_blank" rel="noopener">Download</a>
-        </div>
+        <a class="btn btn-secondary" [href]="docsUrl" target="_blank" rel="noopener">Open guide</a>
       </div>
-    }
+    </div>
 
     <div class="section-title"><span class="set-sec-ico" [innerHTML]="'sparkles' | ico"></span>AI question writing</div>
     <div class="card" style="padding:16px" [class.ai-down-card]="byok.aiDown()">

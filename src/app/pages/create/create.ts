@@ -7,6 +7,7 @@ import { parseKeyText } from '../../core/engine/answerkey.js';
 import { generateTeacherQuiz, MAX_ITEMS } from '../../core/engine/teacher-quiz.js';
 import { listClasses, listKeys, listQuizzes, listSheets, saveQuiz, getQuiz } from '../../core/engine/storage.js';
 import { fmtDate, bannerTheme } from '../../shared/helpers.js';
+import { DOCS_URL } from '../../shared/docs-url';
 import { buildBubbleSheetsPdf } from '../../core/engine/export.js';
 import { IcoPipe } from '../../shared/ico.pipe';
 import { UiStateService } from '../../core/services/ui-state.service';
@@ -38,6 +39,7 @@ export class CreatePage {
   // subject-colored tile reads consistently across the app.
   readonly bannerTheme = bannerTheme;
   readonly letters = ['A', 'B', 'C', 'D'];
+  readonly docsUrl = DOCS_URL;
 
   stage = signal<'home' | 'setup' | 'review' | 'export'>('home');
 

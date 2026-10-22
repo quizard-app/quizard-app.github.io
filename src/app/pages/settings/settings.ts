@@ -14,7 +14,7 @@ import { UiStateService } from '../../core/services/ui-state.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ByokService } from '../../core/services/byok.service';
-import { InstallService } from '../../core/services/install.service';
+import { DOCS_URL } from '../../shared/docs-url';
 import { encryptBackup, decryptBackup } from '../../core/engine/crypto-backup.js';
 import { generateSyncCode, getSyncInfo, turnOffSync, activateSync, pushSync, pullSync, changeSyncPassword } from '../../core/engine/sync.js';
 import { normalizeSyncCode } from '../../core/engine/sync.js';
@@ -43,7 +43,7 @@ export class SettingsPage implements OnInit {
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
   readonly byok = inject(ByokService);
-  readonly install = inject(InstallService);
+  readonly docsUrl = DOCS_URL;
 
   @ViewChild('importInput') importInput?: ElementRef<HTMLInputElement>;
   @ViewChild('encImportInput') encImportInput?: ElementRef<HTMLInputElement>;

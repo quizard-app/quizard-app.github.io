@@ -1841,6 +1841,16 @@ html[data-theme='dark'] .srs-good { color: var(--accent); }
 .q-wiz { width: 60px; height: 60px; object-fit: contain; margin: 0 auto 6px; display: block; }
 .q-wiz-fb { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 10px; display: block; }
 .lib-hero { display: flex; align-items: center; gap: 16px; }
+/* Small docs link under the Quizzes home hero — the guide lives on the
+   separate site at /site/, not inside the app. */
+.hero-help {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  padding: 7px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; text-decoration: none;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+}
+.hero-help:hover { border-color: var(--accent); color: var(--accent-strong); }
 .lib-wiz { width: 84px; height: 84px; object-fit: contain; flex: none; }
 
 /* ── Teacher app (Classes / Keys): roster + key sheets ── */

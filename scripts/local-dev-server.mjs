@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const PORT = Number(process.argv[2] || 4310)
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist', 'quizard-ng', 'browser')
+const SITE_ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'site')
 const RELAY = 'https://quizard-relay.quizard-app.workers.dev/gemini'
 const RELAY_EXTRACT = 'https://quizard-relay.quizard-app.workers.dev/extract'
 
@@ -66,6 +67,26 @@ const server = createServer(async (req, res) => {
       }
       res.writeHead(out.status, { 'Content-Type': out.headers.get('content-type') || 'application/json' })
       res.end(Buffer.from(await out.arrayBuffer()))
+      return
+    }
+
+    // docs site — served at the same /site/ path used in production
+    if (url.pathname === '/site') {
+      res.writeHead(302, { Location: '/site/' })
+      res.end()
+      return
+    }
+    if (url.pathname.startsWith('/site/')) {
+      const rel = decodeURIComponent(url.pathname.slice('/site/'.length))
+      let sitePath = join(SITE_ROOT, normalize(rel).replace(/^([A-Za-z]:)?[\\/]/, ''))
+      if (!sitePath.startsWith(SITE_ROOT)) { res.writeHead(403); res.end(); return }
+      try {
+        if ((await stat(sitePath)).isDirectory()) sitePath = join(sitePath, 'index.html')
+        await serveFile(res, sitePath)
+      } catch {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+        res.end('Site page not found')
+      }
       return
     }
 
