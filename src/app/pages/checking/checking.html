@@ -163,7 +163,6 @@
         </div>
       }
 
-      @if (processing()) { <p class="parse-note">Reading the sheet…</p> }
       @if (scanError()) {
         <div class="gen-error"><span class="gen-error-ico" [innerHTML]="'alert' | ico"></span> {{ scanError() }}</div>
       }
@@ -255,6 +254,16 @@
       <button class="btn btn-primary gen-btn" [disabled]="!studentName().trim()" (click)="saveResult()">
         <span [innerHTML]="'check' | ico"></span> Save & next sheet
       </button>
+    </div>
+  }
+
+  @if (processing()) {
+    <div class="analyzing-overlay" role="status" aria-live="assertive">
+      <div class="analyzing-card">
+        <span class="analyzing-spinner" aria-hidden="true"></span>
+        <p>Analyzing the sheet…</p>
+        <span class="analyzing-sub">Reading the QR · aligning the grid · scoring the bubbles</span>
+      </div>
     </div>
   }
 </ion-content>

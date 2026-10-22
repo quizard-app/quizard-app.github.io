@@ -1992,6 +1992,30 @@ textarea.roster-paste { height: auto; min-height: 150px; resize: vertical; line-
 }
 .gen-error-ico { flex: none; display: inline-flex; margin-top: 1px; }
 .gen-error-ico svg { width: 14px; height: 14px; }
+
+/* ── Analyzing overlay: covers the screen while the photo runs through the
+   QR decode + alignment + bubble scoring, so a capture always visibly does
+   something even when the scan itself is fast ── */
+.analyzing-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.analyzing-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 24px 30px; border-radius: 16px; max-width: 320px; text-align: center;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.55);
+}
+.analyzing-card p { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--text); }
+.analyzing-sub { font-size: 11.5px; color: var(--text-dim); }
+.analyzing-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3.5px solid var(--border);
+  border-top-color: var(--accent);
+  animation: analyzing-spin 0.75s linear infinite;
+}
+@keyframes analyzing-spin { to { transform: rotate(360deg); } }
 .qcard { padding: 14px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }
 .qhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .qnum {
