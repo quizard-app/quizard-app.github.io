@@ -1,1 +1,0 @@
-import{Vt as U}from"./main-BPIUTSXK.js";var t=/^localhost$|^127(\.\d+){3}$/.test(globalThis.location?.hostname||``);var i=U.isNativePlatform()?`https://quizard-app.github.io/quizard-docs/`:t?`/site/`:`/quizard-docs/`;export{i as t};

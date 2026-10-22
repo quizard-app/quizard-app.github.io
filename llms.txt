@@ -6,12 +6,12 @@
 
 Quizard is an offline-first study PWA: import a document and it extracts the text locally and generates multiple-choice, true/false, fill-in-the-blank, identification, matching, ordering and short-answer quizzes.
 
-- [App homepage](https://quizard-app.github.io/)
-- [PWA manifest](https://quizard-app.github.io/manifest.webmanifest)
-- [Service worker](https://quizard-app.github.io/sw.js)
+- [App homepage](https://quizard-checker.github.io/)
+- [PWA manifest](https://quizard-checker.github.io/manifest.webmanifest)
+- [Service worker](https://quizard-checker.github.io/sw.js)
 
 ## Tech notes
 
 - Static Vite PWA (vanilla JS modules, no framework). Data in IndexedDB; settings in localStorage.
 - Optional AI features call Google's Gemini API directly from the browser using the user's own free key (BYOK) — the key is stored only on the user's device.
-- Source repository: [github.com/quizard-app/quizard-app.github.io](https://github.com/quizard-app/quizard-app.github.io)
+- Source repository: [github.com/quizard-checker/quizard-checker.github.io](https://github.com/quizard-checker/quizard-checker.github.io)
