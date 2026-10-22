@@ -69,7 +69,7 @@ html[data-theme="dark"] {
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 16px); }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 16px); overflow-x: clip; }
 body {
   margin: 0;
   background: var(--bg);
@@ -77,17 +77,24 @@ body {
   font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: clip;
   transition: background-color .25s ease, color .25s ease;
 }
 img { max-width: 100%; display: block; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-strong); }
 button { font: inherit; }
-h1, h2, h3 { line-height: 1.1; letter-spacing: -0.026em; margin: 0; font-weight: 800; }
+h1, h2, h3 { line-height: 1.1; letter-spacing: -0.026em; margin: 0; font-weight: 800; overflow-wrap: break-word; }
+p, li, summary, figcaption { overflow-wrap: break-word; }
 p { margin: 0; }
 code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 6px; }
 .wrap { width: min(1120px, 100% - 44px); margin: 0 auto; }
+/* Flex/grid text cells must be allowed to shrink, otherwise long words can
+   force the whole page wider than a narrow phone viewport. */
+.hero-copy, .offline-copy, .offline-card > div, .flow-step > div, .feature-card,
+.step, .install-card, .qr-card > div, .footer-brand, .footer-col { min-width: 0; }
 .skip-link {
   position: fixed; left: 14px; top: -100px; z-index: 200;
   background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px;
@@ -103,7 +110,7 @@ code { font-family: var(--mono); font-size: .86em; background: var(--surface-2);
   animation: headerIn .55s cubic-bezier(.16,1,.3,1) both;
 }
 .nav-row { height: var(--header); display: flex; align-items: center; gap: 24px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 900; font-size: 19px; letter-spacing: -0.02em; flex: none; }
 .brand:hover { color: var(--text); }
 .brand img { border-radius: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .nav-links { display: flex; gap: 4px; margin: 0 auto; }
@@ -113,7 +120,7 @@ code { font-family: var(--mono); font-size: .86em; background: var(--surface-2);
 }
 .nav-links a:hover { color: var(--text); background: var(--surface-2); }
 .nav-links a.active { color: var(--accent-strong); background: var(--accent-soft); }
-.nav-actions { display: flex; align-items: center; gap: 8px; }
+.nav-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .icon-btn {
   width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
   border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); cursor: pointer;
@@ -133,7 +140,7 @@ html[data-theme="dark"] .theme-toggle .ico-moon { display: block; }
   border: 1px solid transparent; border-radius: 12px;
   padding: 12px 20px; font-size: 14px; font-weight: 800; line-height: 1.2;
   cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-  text-decoration: none; white-space: nowrap;
+  text-decoration: none; white-space: normal; max-width: 100%;
 }
 .btn:active { transform: scale(.97); }
 .btn-primary { background: var(--grad-btn); color: #fff; box-shadow: 0 8px 20px rgba(23, 103, 124, .24); }
